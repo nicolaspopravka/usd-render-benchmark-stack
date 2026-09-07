@@ -14,3 +14,7 @@ WORKDIR /usr/local/usd-render-benchmark
 
 ENTRYPOINT ["bash", "render_script.sh"]
 CMD []
+
+# TEMPORARY: CY2025 pxr lives in /usr/local/lib/python (not site-packages), so it is
+# off sys.path. CY2027 fixes this (site-packages); drop the fix then.
+ENV PYTHONPATH=/usr/local/lib/python
