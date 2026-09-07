@@ -56,14 +56,7 @@ jobs:
             "
 
       - name: Generate the summary from the mounted branch's logs
-        run: |
-          docker run --rm \
-            -v "$PWD/run-branch:/usr/local/usd-render-benchmark" \
-            -w /usr/local/usd-render-benchmark \
-            --entrypoint bash \
-            "${{ inputs.runnable_image }}" -c "
-              python3 generate_render_summary.py --system-specs 'github-actions-runner; ${{ inputs.runnable_image }}'
-            "
+        run: (cd run-branch && python3 generate_render_summary.py --system-specs "${{ inputs.runnable_image }}")
 
       - name: Upload outputs created in the mounted branch
         if: always()
