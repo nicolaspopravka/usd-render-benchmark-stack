@@ -5,3 +5,6 @@
 ARG BASE_IMAGE
 
 FROM ${BASE_IMAGE}
+
+# TEMPORARY: GNU time for render_script.sh — drop when aswf-docker #468 reaches the base.
+RUN test -x /usr/bin/time || (dnf install -y time && dnf clean all && rm -rf /var/cache/dnf)
