@@ -1,0 +1,70 @@
+name: run-demo
+
+# The image is the engine; the benchmark itself is a branch you drop in at run
+# time. Same image, any branch, no rebuilds — teapot in, logs/renderers/summary
+# out, all on a free headless runner.
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_branch:
+        description: "usd-render-benchmark branch to run (default main)"
+        type: string
+        default: main
+      runnable_image:
+        description: "Published runnable image, e.g. ghcr.io/nicolaspopravka/usd-render-benchmark:2025"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  demo:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout the run branch + init submodules
+        run: |
+          git clone --depth 1 --branch "${{ inputs.run_branch }}" \
+            https://github.com/nicolaspopravka/usd-render-benchmark.git run-branch
+          (cd run-branch && git submodule update --init --recursive)
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Mount the run branch into the image and run the harness
+        run: |
+          #
+          # The published runnable image is used as-is. We bind-mount the run
+          # branch so its render_script.sh runs from the mounted checkout, and
+          # add a software GL context inside the running container so the
+          # headless runner can draw (no EGL patch, no image rebuild).
+          #
+          docker run --rm \
+            -v "$PWD/run-branch:/usr/local/usd-render-benchmark" \
+            -w /usr/local/usd-render-benchmark \
+            --entrypoint bash \
+            "${{ inputs.runnable_image }}" -c "
+              dnf install -y mesa-dri-drivers mesa-libEGL libepoxy;
+              LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a bash render_script.sh
+            "
+
+      - name: Generate the summary from the mounted branch's logs
+        run: (cd run-branch && python3 generate_render_summary.py --system-specs "${{ inputs.runnable_image }}")
+
+      - name: Upload outputs created in the mounted branch
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: run-output
+          path: |
+            run-branch/logs
+            run-branch/renderers
+            run-branch/render_summary.md
+          if-no-files-found: warn
