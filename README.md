@@ -58,11 +58,10 @@ gh workflow run build-runnable.yml \
 ```
 
 Both workflows propagate the source tag unchanged and never interpret tag
-content: `build-pristine` maps `aswf/ci-vfxall:2027-clang22.1` to
-`ghcr.io/nicolaspopravka/usd-render-benchmark-stack:2027-clang22.1`, and
+content. `build-pristine` can retag any base image: `aswf/ci-moonray:2025.8@sha256:…`
+maps to `ghcr.io/nicolaspopravka/usd-render-benchmark-stack:2025.8`.
 `build-runnable` maps `…/usd-render-benchmark-stack:2027-clang22.1` to
-`…/usd-render-benchmark:2027-clang22.1`. They validate the expected repository
-prefix and Docker tag syntax.
+`…/usd-render-benchmark:2027-clang22.1`.
 
 The Build + push steps run with `pipefail`, so a failed build fails the
 workflow. The build records the digest it pushed (`--metadata-file`), and a

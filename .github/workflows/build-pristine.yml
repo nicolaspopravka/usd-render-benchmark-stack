@@ -2,14 +2,14 @@ name: build-pristine
 
 # Builds + publishes the pristine stack image:
 #   ghcr.io/nicolaspopravka/usd-render-benchmark-stack:<tag>
-# A trivial retag of the ASWF base (base_image input). Dispatch-only; the output
-# tag is propagated unchanged from the base_image tag (aswf/ci-vfxall:<tag>@sha256:...).
+# A trivial retag of a base image (base_image input). Dispatch-only; the output
+# tag is propagated unchanged from the base_image tag.
 
 on:
   workflow_dispatch:
     inputs:
       base_image:
-        description: "ASWF base to retag, e.g. aswf/ci-vfxall:2025@sha256:..."
+        description: "Base image to retag, e.g. aswf/ci-moonray:2025.8@sha256:..."
         required: true
         type: string
 
@@ -39,14 +39,7 @@ jobs:
       - name: Derive the output image from base_image
         run: |
           src="$(printf '%s' '${{ inputs.base_image }}' | cut -d'@' -f1)"
-          case "$src" in
-            aswf/ci-vfxall:*) : ;;
-            *) echo "unexpected base image (want aswf/ci-vfxall:<tag>): $src"; exit 1 ;;
-          esac
-          tag="${src#aswf/ci-vfxall:}"
-          if [[ ! "$tag" =~ ^[a-zA-Z0-9_][a-zA-Z0-9._-]{0,127}$ ]]; then
-            echo "invalid Docker tag: $tag"; exit 1
-          fi
+          tag="${src##*:}"
           echo "IMAGE_TAG=$tag" >> "$GITHUB_ENV"
           echo "PRISTINE_IMAGE=ghcr.io/nicolaspopravka/usd-render-benchmark-stack:${tag}" >> "$GITHUB_ENV"
 

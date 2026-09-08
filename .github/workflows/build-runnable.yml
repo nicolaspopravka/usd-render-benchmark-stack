@@ -45,9 +45,6 @@ jobs:
             *) echo "unexpected pristine image (want ghcr.io/nicolaspopravka/usd-render-benchmark-stack:<tag>): $pristine"; exit 1 ;;
           esac
           tag="${src#ghcr.io/nicolaspopravka/usd-render-benchmark-stack:}"
-          if [[ ! "$tag" =~ ^[a-zA-Z0-9_][a-zA-Z0-9._-]{0,127}$ ]]; then
-            echo "invalid Docker tag: $tag"; exit 1
-          fi
           echo "IMAGE_TAG=$tag" >> "$GITHUB_ENV"
           echo "RUNNABLE_IMAGE=ghcr.io/nicolaspopravka/usd-render-benchmark:${tag}" >> "$GITHUB_ENV"
 
