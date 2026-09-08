@@ -31,22 +31,23 @@ executes that branch's `render_script.sh`, and the resulting `logs/`,
 
 | Image | Purpose |
 | --- | --- |
-| `ghcr.io/nicolaspopravka/usd-render-benchmark-stack:<year>` | Base stack selected for a VFX Platform year. The current `Dockerfile.pristine` adds no benchmark files or packages to the selected base image. |
-| `ghcr.io/nicolaspopravka/usd-render-benchmark:<year>` | Thin runnable overlay that sets the benchmark work directory, `REZ_PACKAGES_PATH`, and `render_script.sh` entrypoint. It does not contain a run branch. |
+| `ghcr.io/nicolaspopravka/usd-render-benchmark-stack:<tag>` | A selected base stack under an explicit output tag. The current `Dockerfile.pristine` adds no benchmark files or packages to the selected base image. |
+| `ghcr.io/nicolaspopravka/usd-render-benchmark:<tag>` | Thin runnable overlay that sets the benchmark work directory, `REZ_PACKAGES_PATH`, and `render_script.sh` entrypoint. It does not contain a run branch. |
 
-The year tags are convenient references, not fixed evidence. Recorded results
+Image tags are convenient references, not fixed evidence. Recorded results
 should retain the image digest and the exact run commit that were observed.
 
 ## Build workflows
 
 Both image workflows are manual.
 
-Build the base stack from an ASWF image:
+Publish a base stack under an explicit tag:
 
 ```bash
 gh workflow run build-pristine.yml \
   --repo nicolaspopravka/usd-render-benchmark-stack \
-  -f base_image=aswf/ci-vfxall:2027
+  -f base_image=aswf/ci-vfxall:2027@sha256:... \
+  -f image_tag=2027
 ```
 
 Build the runnable overlay:
@@ -54,16 +55,20 @@ Build the runnable overlay:
 ```bash
 gh workflow run build-runnable.yml \
   --repo nicolaspopravka/usd-render-benchmark-stack \
-  -f pristine_image=ghcr.io/nicolaspopravka/usd-render-benchmark-stack:2027
+  -f pristine_image=ghcr.io/nicolaspopravka/usd-render-benchmark-stack:2027@sha256:... \
+  -f image_tag=2027
 ```
 
-`build-pristine` derives the year from the ASWF image name.
-`build-runnable` currently expects a tag whose final component is the year.
+Both workflows accept an explicit `image_tag` and never infer it from the input
+image reference. The base or pristine image may therefore use a tag, a digest,
+or both without changing the requested output tag. The same `image_tag` can be
+passed unchanged from the pristine build to the runnable build.
 
-After a build, check the build log and pull the published image. The current
-workflows pipe `docker buildx` output through `tee` without enabling
-`pipefail`, so the workflow conclusion alone is not sufficient confirmation
-that the image was pushed.
+The Build + push steps run with `pipefail`, so a failed build fails the
+workflow. The build records the digest it pushed (`--metadata-file`), and a
+follow-up step confirms the published tag resolves to that exact digest, so a
+missing, wrong, or stale push fails the run. Keep the build log (uploaded as
+an artifact) and the image digest with any recorded result.
 
 ## Run a benchmark branch
 

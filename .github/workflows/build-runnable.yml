@@ -1,15 +1,19 @@
 name: build-runnable
 
 # Builds + publishes the runnable environment overlay:
-#   ghcr.io/nicolaspopravka/usd-render-benchmark:<year>
+#   ghcr.io/nicolaspopravka/usd-render-benchmark:<tag>
 # FROM the published pristine image (pristine_image input). Dispatch-only; the
-# year is derived from pristine_image (…:<year>).
+# image_tag input is propagated unchanged to the output image.
 
 on:
   workflow_dispatch:
     inputs:
       pristine_image:
-        description: "Published pristine image, e.g. ghcr.io/nicolaspopravka/usd-render-benchmark-stack:2025"
+        description: "Published pristine image, e.g. ghcr.io/nicolaspopravka/usd-render-benchmark-stack:2027"
+        required: true
+        type: string
+      image_tag:
+        description: "Tag for the published runnable image, e.g. 2027"
         required: true
         type: string
 
@@ -25,6 +29,8 @@ jobs:
   build:
     runs-on: ubuntu-22.04
     timeout-minutes: 30
+    env:
+      RUNNABLE_IMAGE: ghcr.io/nicolaspopravka/usd-render-benchmark:${{ inputs.image_tag }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -36,20 +42,35 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Derive year and runnable image from pristine_image
+      - name: Validate the output tag
+        env:
+          IMAGE_TAG: ${{ inputs.image_tag }}
         run: |
-          pristine='${{ inputs.pristine_image }}'
-          year="${pristine##*:}"
-          echo "RUNNABLE_IMAGE=ghcr.io/nicolaspopravka/usd-render-benchmark:${year}" >> "$GITHUB_ENV"
+          [[ "$IMAGE_TAG" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$ ]] || {
+            echo "invalid Docker tag: $IMAGE_TAG"
+            exit 1
+          }
 
       - name: Build + push runnable
+        env:
+          PRISTINE_IMAGE_INPUT: ${{ inputs.pristine_image }}
         run: |
+          set -o pipefail
           docker buildx build --provenance=false \
             --file Dockerfile.runnable \
-            --build-arg PRISTINE_IMAGE="${{ inputs.pristine_image }}" \
-            --tag "${{ env.RUNNABLE_IMAGE }}" \
+            --build-arg PRISTINE_IMAGE="$PRISTINE_IMAGE_INPUT" \
+            --tag "$RUNNABLE_IMAGE" \
+            --metadata-file .buildx-metadata.json \
             --push \
             . 2>&1 | tee build-runnable.log
+
+      - name: Verify the tag resolves to the digest this run pushed
+        run: |
+          pushed="$(python3 -c 'import json;print(json.load(open(".buildx-metadata.json"))["containerimage.digest"])')"
+          resolved="$(docker buildx imagetools inspect "$RUNNABLE_IMAGE" --format '{{.Manifest.Digest}}')"
+          test "$pushed" = "$resolved" || {
+            echo "ERROR: $RUNNABLE_IMAGE does not resolve to the digest this run pushed"; exit 1
+          }
 
       - name: Upload log
         if: always()

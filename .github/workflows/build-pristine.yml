@@ -1,15 +1,19 @@
 name: build-pristine
 
 # Builds + publishes the pristine stack image:
-#   ghcr.io/nicolaspopravka/usd-render-benchmark-stack:<year>
-# A trivial retag of the ASWF base (base_image input). Dispatch-only; the year
-# is derived from base_image (aswf/ci-vfxall:<year>[.<patch>...]).
+#   ghcr.io/nicolaspopravka/usd-render-benchmark-stack:<tag>
+# A trivial retag of a base image (base_image input). Dispatch-only; image_tag
+# selects the output tag without interpreting the base image reference.
 
 on:
   workflow_dispatch:
     inputs:
       base_image:
-        description: "ASWF base to retag, e.g. aswf/ci-vfxall:2025@sha256:..."
+        description: "Base image to retag, e.g. aswf/ci-vfxall:2027@sha256:..."
+        required: true
+        type: string
+      image_tag:
+        description: "Tag for the published stack image, e.g. 2027"
         required: true
         type: string
 
@@ -25,6 +29,8 @@ jobs:
   build:
     runs-on: ubuntu-22.04
     timeout-minutes: 30
+    env:
+      PRISTINE_IMAGE: ghcr.io/nicolaspopravka/usd-render-benchmark-stack:${{ inputs.image_tag }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -36,21 +42,35 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Derive year and pristine image from base_image
+      - name: Validate the output tag
+        env:
+          IMAGE_TAG: ${{ inputs.image_tag }}
         run: |
-          tag="$(printf '%s' '${{ inputs.base_image }}' | cut -d'@' -f1)"
-          year="$(printf '%s' "$tag" | sed -E 's#.*:([0-9]+).*#\1#')"
-          echo "YEAR=$year" >> "$GITHUB_ENV"
-          echo "PRISTINE_IMAGE=ghcr.io/nicolaspopravka/usd-render-benchmark-stack:${year}" >> "$GITHUB_ENV"
+          [[ "$IMAGE_TAG" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$ ]] || {
+            echo "invalid Docker tag: $IMAGE_TAG"
+            exit 1
+          }
 
       - name: Build + push pristine
+        env:
+          BASE_IMAGE: ${{ inputs.base_image }}
         run: |
+          set -o pipefail
           docker buildx build --provenance=false \
             --file Dockerfile.pristine \
-            --build-arg BASE_IMAGE="${{ inputs.base_image }}" \
-            --tag "${{ env.PRISTINE_IMAGE }}" \
+            --build-arg BASE_IMAGE="$BASE_IMAGE" \
+            --tag "$PRISTINE_IMAGE" \
+            --metadata-file .buildx-metadata.json \
             --push \
             . 2>&1 | tee build-pristine.log
+
+      - name: Verify the tag resolves to the digest this run pushed
+        run: |
+          pushed="$(python3 -c 'import json;print(json.load(open(".buildx-metadata.json"))["containerimage.digest"])')"
+          resolved="$(docker buildx imagetools inspect "$PRISTINE_IMAGE" --format '{{.Manifest.Digest}}')"
+          test "$pushed" = "$resolved" || {
+            echo "ERROR: $PRISTINE_IMAGE does not resolve to the digest this run pushed"; exit 1
+          }
 
       - name: Upload log
         if: always()
