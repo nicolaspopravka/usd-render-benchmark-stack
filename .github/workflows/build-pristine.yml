@@ -40,7 +40,6 @@ jobs:
         run: |
           src="$(printf '%s' '${{ inputs.base_image }}' | cut -d'@' -f1)"
           tag="${src##*:}"
-          echo "IMAGE_TAG=$tag" >> "$GITHUB_ENV"
           echo "PRISTINE_IMAGE=ghcr.io/nicolaspopravka/usd-render-benchmark-stack:${tag}" >> "$GITHUB_ENV"
 
       - name: Build + push pristine

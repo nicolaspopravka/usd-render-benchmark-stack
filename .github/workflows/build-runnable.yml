@@ -45,7 +45,6 @@ jobs:
             *) echo "unexpected pristine image (want ghcr.io/nicolaspopravka/usd-render-benchmark-stack:<tag>): $pristine"; exit 1 ;;
           esac
           tag="${src#ghcr.io/nicolaspopravka/usd-render-benchmark-stack:}"
-          echo "IMAGE_TAG=$tag" >> "$GITHUB_ENV"
           echo "RUNNABLE_IMAGE=ghcr.io/nicolaspopravka/usd-render-benchmark:${tag}" >> "$GITHUB_ENV"
 
       - name: Build + push runnable
