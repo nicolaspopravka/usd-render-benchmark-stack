@@ -46,8 +46,8 @@ Publish a base stack under an explicit tag:
 ```bash
 gh workflow run build-pristine.yml \
   --repo nicolaspopravka/usd-render-benchmark-stack \
-  -f base_image=aswf/ci-moonray:2025.8@sha256:... \
-  -f image_tag=2025.8
+  -f base_image=aswf/ci-vfxall:2027@sha256:... \
+  -f image_tag=2027
 ```
 
 Build the runnable overlay:
@@ -55,8 +55,8 @@ Build the runnable overlay:
 ```bash
 gh workflow run build-runnable.yml \
   --repo nicolaspopravka/usd-render-benchmark-stack \
-  -f pristine_image=ghcr.io/nicolaspopravka/usd-render-benchmark-stack:2025.8@sha256:... \
-  -f image_tag=2025.8
+  -f pristine_image=ghcr.io/nicolaspopravka/usd-render-benchmark-stack:2027@sha256:... \
+  -f image_tag=2027
 ```
 
 Both workflows accept an explicit `image_tag` and never infer it from the input

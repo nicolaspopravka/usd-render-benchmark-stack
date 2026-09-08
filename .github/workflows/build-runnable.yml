@@ -9,11 +9,11 @@ on:
   workflow_dispatch:
     inputs:
       pristine_image:
-        description: "Published pristine image, e.g. ghcr.io/nicolaspopravka/usd-render-benchmark-stack:2025"
+        description: "Published pristine image, e.g. ghcr.io/nicolaspopravka/usd-render-benchmark-stack:2027"
         required: true
         type: string
       image_tag:
-        description: "Tag for the published runnable image, e.g. 2025"
+        description: "Tag for the published runnable image, e.g. 2027"
         required: true
         type: string
 
@@ -29,6 +29,8 @@ jobs:
   build:
     runs-on: ubuntu-22.04
     timeout-minutes: 30
+    env:
+      RUNNABLE_IMAGE: ghcr.io/nicolaspopravka/usd-render-benchmark:${{ inputs.image_tag }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -40,7 +42,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set the runnable image
+      - name: Validate the output tag
         env:
           IMAGE_TAG: ${{ inputs.image_tag }}
         run: |
@@ -48,7 +50,6 @@ jobs:
             echo "invalid Docker tag: $IMAGE_TAG"
             exit 1
           }
-          echo "RUNNABLE_IMAGE=ghcr.io/nicolaspopravka/usd-render-benchmark:${IMAGE_TAG}" >> "$GITHUB_ENV"
 
       - name: Build + push runnable
         env:
@@ -58,7 +59,7 @@ jobs:
           docker buildx build --provenance=false \
             --file Dockerfile.runnable \
             --build-arg PRISTINE_IMAGE="$PRISTINE_IMAGE_INPUT" \
-            --tag "${{ env.RUNNABLE_IMAGE }}" \
+            --tag "$RUNNABLE_IMAGE" \
             --metadata-file .buildx-metadata.json \
             --push \
             . 2>&1 | tee build-runnable.log
@@ -66,9 +67,9 @@ jobs:
       - name: Verify the tag resolves to the digest this run pushed
         run: |
           pushed="$(python3 -c 'import json;print(json.load(open(".buildx-metadata.json"))["containerimage.digest"])')"
-          resolved="$(docker buildx imagetools inspect "${{ env.RUNNABLE_IMAGE }}" --format '{{.Manifest.Digest}}')"
+          resolved="$(docker buildx imagetools inspect "$RUNNABLE_IMAGE" --format '{{.Manifest.Digest}}')"
           test "$pushed" = "$resolved" || {
-            echo "ERROR: ${{ env.RUNNABLE_IMAGE }} does not resolve to the digest this run pushed"; exit 1
+            echo "ERROR: $RUNNABLE_IMAGE does not resolve to the digest this run pushed"; exit 1
           }
 
       - name: Upload log
