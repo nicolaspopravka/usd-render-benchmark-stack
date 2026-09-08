@@ -45,12 +45,16 @@ jobs:
 
       - name: Build + push pristine
         run: |
+          set -o pipefail
           docker buildx build --provenance=false \
             --file Dockerfile.pristine \
             --build-arg BASE_IMAGE="${{ inputs.base_image }}" \
             --tag "${{ env.PRISTINE_IMAGE }}" \
             --push \
             . 2>&1 | tee build-pristine.log
+
+      - name: Verify published image
+        run: docker buildx imagetools inspect "${{ env.PRISTINE_IMAGE }}"
 
       - name: Upload log
         if: always()

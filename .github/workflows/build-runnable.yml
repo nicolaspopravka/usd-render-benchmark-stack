@@ -44,12 +44,16 @@ jobs:
 
       - name: Build + push runnable
         run: |
+          set -o pipefail
           docker buildx build --provenance=false \
             --file Dockerfile.runnable \
             --build-arg PRISTINE_IMAGE="${{ inputs.pristine_image }}" \
             --tag "${{ env.RUNNABLE_IMAGE }}" \
             --push \
             . 2>&1 | tee build-runnable.log
+
+      - name: Verify published image
+        run: docker buildx imagetools inspect "${{ env.RUNNABLE_IMAGE }}"
 
       - name: Upload log
         if: always()
