@@ -2,14 +2,18 @@ name: build-pristine
 
 # Builds + publishes the pristine stack image:
 #   ghcr.io/nicolaspopravka/usd-render-benchmark-stack:<tag>
-# A trivial retag of a base image (base_image input). Dispatch-only; the output
-# tag is propagated unchanged from the base_image tag.
+# A trivial retag of a base image (base_image input). Dispatch-only; image_tag
+# selects the output tag without interpreting the base image reference.
 
 on:
   workflow_dispatch:
     inputs:
       base_image:
         description: "Base image to retag, e.g. aswf/ci-moonray:2025.8@sha256:..."
+        required: true
+        type: string
+      image_tag:
+        description: "Tag for the published stack image, e.g. 2025.8"
         required: true
         type: string
 
@@ -36,18 +40,24 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Derive the output image from base_image
+      - name: Set the output image
+        env:
+          IMAGE_TAG: ${{ inputs.image_tag }}
         run: |
-          src='${{ inputs.base_image }}'
-          tag="${src%%@*}"; tag="${tag##*:}"
-          echo "PRISTINE_IMAGE=ghcr.io/nicolaspopravka/usd-render-benchmark-stack:${tag}" >> "$GITHUB_ENV"
+          [[ "$IMAGE_TAG" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$ ]] || {
+            echo "invalid Docker tag: $IMAGE_TAG"
+            exit 1
+          }
+          echo "PRISTINE_IMAGE=ghcr.io/nicolaspopravka/usd-render-benchmark-stack:${IMAGE_TAG}" >> "$GITHUB_ENV"
 
       - name: Build + push pristine
+        env:
+          BASE_IMAGE: ${{ inputs.base_image }}
         run: |
           set -o pipefail
           docker buildx build --provenance=false \
             --file Dockerfile.pristine \
-            --build-arg BASE_IMAGE="${{ inputs.base_image }}" \
+            --build-arg BASE_IMAGE="$BASE_IMAGE" \
             --tag "${{ env.PRISTINE_IMAGE }}" \
             --metadata-file .buildx-metadata.json \
             --push \

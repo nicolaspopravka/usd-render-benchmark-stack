@@ -3,13 +3,17 @@ name: build-runnable
 # Builds + publishes the runnable environment overlay:
 #   ghcr.io/nicolaspopravka/usd-render-benchmark:<tag>
 # FROM the published pristine image (pristine_image input). Dispatch-only; the
-# output tag is propagated unchanged from the pristine_image tag.
+# image_tag input is propagated unchanged to the output image.
 
 on:
   workflow_dispatch:
     inputs:
       pristine_image:
         description: "Published pristine image, e.g. ghcr.io/nicolaspopravka/usd-render-benchmark-stack:2025"
+        required: true
+        type: string
+      image_tag:
+        description: "Tag for the published runnable image, e.g. 2025"
         required: true
         type: string
 
@@ -36,18 +40,24 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Derive the runnable image from pristine_image
+      - name: Set the runnable image
+        env:
+          IMAGE_TAG: ${{ inputs.image_tag }}
         run: |
-          src='${{ inputs.pristine_image }}'
-          tag="${src%%@*}"; tag="${tag##*:}"
-          echo "RUNNABLE_IMAGE=ghcr.io/nicolaspopravka/usd-render-benchmark:${tag}" >> "$GITHUB_ENV"
+          [[ "$IMAGE_TAG" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$ ]] || {
+            echo "invalid Docker tag: $IMAGE_TAG"
+            exit 1
+          }
+          echo "RUNNABLE_IMAGE=ghcr.io/nicolaspopravka/usd-render-benchmark:${IMAGE_TAG}" >> "$GITHUB_ENV"
 
       - name: Build + push runnable
+        env:
+          PRISTINE_IMAGE_INPUT: ${{ inputs.pristine_image }}
         run: |
           set -o pipefail
           docker buildx build --provenance=false \
             --file Dockerfile.runnable \
-            --build-arg PRISTINE_IMAGE="${{ inputs.pristine_image }}" \
+            --build-arg PRISTINE_IMAGE="$PRISTINE_IMAGE_INPUT" \
             --tag "${{ env.RUNNABLE_IMAGE }}" \
             --metadata-file .buildx-metadata.json \
             --push \
