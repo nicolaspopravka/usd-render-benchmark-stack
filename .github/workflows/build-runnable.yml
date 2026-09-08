@@ -40,11 +40,7 @@ jobs:
         run: |
           pristine='${{ inputs.pristine_image }}'
           src="${pristine%%@*}"
-          case "$src" in
-            ghcr.io/nicolaspopravka/usd-render-benchmark-stack:*) : ;;
-            *) echo "unexpected pristine image (want ghcr.io/nicolaspopravka/usd-render-benchmark-stack:<tag>): $pristine"; exit 1 ;;
-          esac
-          tag="${src#ghcr.io/nicolaspopravka/usd-render-benchmark-stack:}"
+          tag="${src##*:}"
           echo "RUNNABLE_IMAGE=ghcr.io/nicolaspopravka/usd-render-benchmark:${tag}" >> "$GITHUB_ENV"
 
       - name: Build + push runnable
