@@ -57,15 +57,18 @@ gh workflow run build-runnable.yml \
   -f pristine_image=ghcr.io/nicolaspopravka/usd-render-benchmark-stack:2027
 ```
 
-`build-pristine` derives the year from the ASWF image name.
-`build-runnable` currently expects a tag whose final component is the year.
+Both workflows propagate the source tag unchanged and never interpret tag
+content: `build-pristine` maps `aswf/ci-vfxall:2027-clang22.1` to
+`ghcr.io/nicolaspopravka/usd-render-benchmark-stack:2027-clang22.1`, and
+`build-runnable` maps `…/usd-render-benchmark-stack:2027-clang22.1` to
+`…/usd-render-benchmark:2027-clang22.1`. They validate the expected repository
+prefix and Docker tag syntax.
 
 The Build + push steps run with `pipefail`, so a failed build fails the
 workflow. The build records the digest it pushed (`--metadata-file`), and a
-follow-up step confirms the published tag resolves to that exact digest; the
-derived year is validated too, so a missing, wrong, or stale push fails the
-run. Keep the build log (uploaded as an artifact) and the image digest with
-any recorded result.
+follow-up step confirms the published tag resolves to that exact digest, so a
+missing, wrong, or stale push fails the run. Keep the build log (uploaded as
+an artifact) and the image digest with any recorded result.
 
 ## Run a benchmark branch
 

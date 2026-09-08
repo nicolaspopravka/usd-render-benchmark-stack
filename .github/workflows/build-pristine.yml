@@ -1,9 +1,9 @@
 name: build-pristine
 
 # Builds + publishes the pristine stack image:
-#   ghcr.io/nicolaspopravka/usd-render-benchmark-stack:<year>
-# A trivial retag of the ASWF base (base_image input). Dispatch-only; the year
-# is derived from base_image (aswf/ci-vfxall:<year>[.<patch>...]).
+#   ghcr.io/nicolaspopravka/usd-render-benchmark-stack:<tag>
+# A trivial retag of the ASWF base (base_image input). Dispatch-only; the output
+# tag is propagated unchanged from the base_image tag (aswf/ci-vfxall:<tag>@sha256:...).
 
 on:
   workflow_dispatch:
@@ -36,19 +36,19 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Derive year and pristine image from base_image
+      - name: Derive the output image from base_image
         run: |
-          tag="$(printf '%s' '${{ inputs.base_image }}' | cut -d'@' -f1)"
-          year="$(printf '%s' "$tag" | sed -E 's#.*:([0-9]+).*#\1#')"
-          case "$year" in
-            202[3-7]) : ;;
-            *) echo "cannot derive a valid 4-digit year (2023-2027) from: $tag"; exit 1 ;;
+          src="$(printf '%s' '${{ inputs.base_image }}' | cut -d'@' -f1)"
+          case "$src" in
+            aswf/ci-vfxall:*) : ;;
+            *) echo "unexpected base image (want aswf/ci-vfxall:<tag>): $src"; exit 1 ;;
           esac
-          test "$tag" = "aswf/ci-vfxall:${year}" || {
-            echo "unexpected base tag form (want aswf/ci-vfxall:<year>): $tag"; exit 1
-          }
-          echo "YEAR=$year" >> "$GITHUB_ENV"
-          echo "PRISTINE_IMAGE=ghcr.io/nicolaspopravka/usd-render-benchmark-stack:${year}" >> "$GITHUB_ENV"
+          tag="${src#aswf/ci-vfxall:}"
+          if [[ ! "$tag" =~ ^[a-zA-Z0-9_][a-zA-Z0-9._-]{0,127}$ ]]; then
+            echo "invalid Docker tag: $tag"; exit 1
+          fi
+          echo "IMAGE_TAG=$tag" >> "$GITHUB_ENV"
+          echo "PRISTINE_IMAGE=ghcr.io/nicolaspopravka/usd-render-benchmark-stack:${tag}" >> "$GITHUB_ENV"
 
       - name: Build + push pristine
         run: |
@@ -63,7 +63,7 @@ jobs:
 
       - name: Verify the tag resolves to the digest this run pushed
         run: |
-          pushed="$(python3 -c 'import json;print(json.load(open(".buildx-metadata.json"))["image.digest"])')"
+          pushed="$(python3 -c 'import json;print(json.load(open(".buildx-metadata.json"))["containerimage.digest"])')"
           resolved="$(docker buildx imagetools inspect "${{ env.PRISTINE_IMAGE }}" --format '{{.Manifest.Digest}}')"
           echo "pushed=$pushed"
           echo "resolved=$resolved"

@@ -1,9 +1,9 @@
 name: build-runnable
 
 # Builds + publishes the runnable environment overlay:
-#   ghcr.io/nicolaspopravka/usd-render-benchmark:<year>
+#   ghcr.io/nicolaspopravka/usd-render-benchmark:<tag>
 # FROM the published pristine image (pristine_image input). Dispatch-only; the
-# year is derived from pristine_image (…:<year>).
+# output tag is propagated unchanged from the pristine_image tag.
 
 on:
   workflow_dispatch:
@@ -36,15 +36,20 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Derive year and runnable image from pristine_image
+      - name: Derive the runnable image from pristine_image
         run: |
           pristine='${{ inputs.pristine_image }}'
-          case "$pristine" in
-            ghcr.io/nicolaspopravka/usd-render-benchmark-stack:202[3-7]) : ;;
-            *) echo "unexpected pristine image (want ghcr.io/nicolaspopravka/usd-render-benchmark-stack:<2023-2027>): $pristine"; exit 1 ;;
+          src="${pristine%%@*}"
+          case "$src" in
+            ghcr.io/nicolaspopravka/usd-render-benchmark-stack:*) : ;;
+            *) echo "unexpected pristine image (want ghcr.io/nicolaspopravka/usd-render-benchmark-stack:<tag>): $pristine"; exit 1 ;;
           esac
-          year="${pristine##*:}"
-          echo "RUNNABLE_IMAGE=ghcr.io/nicolaspopravka/usd-render-benchmark:${year}" >> "$GITHUB_ENV"
+          tag="${src#ghcr.io/nicolaspopravka/usd-render-benchmark-stack:}"
+          if [[ ! "$tag" =~ ^[a-zA-Z0-9_][a-zA-Z0-9._-]{0,127}$ ]]; then
+            echo "invalid Docker tag: $tag"; exit 1
+          fi
+          echo "IMAGE_TAG=$tag" >> "$GITHUB_ENV"
+          echo "RUNNABLE_IMAGE=ghcr.io/nicolaspopravka/usd-render-benchmark:${tag}" >> "$GITHUB_ENV"
 
       - name: Build + push runnable
         run: |
@@ -59,7 +64,7 @@ jobs:
 
       - name: Verify the tag resolves to the digest this run pushed
         run: |
-          pushed="$(python3 -c 'import json;print(json.load(open(".buildx-metadata.json"))["image.digest"])')"
+          pushed="$(python3 -c 'import json;print(json.load(open(".buildx-metadata.json"))["containerimage.digest"])')"
           resolved="$(docker buildx imagetools inspect "${{ env.RUNNABLE_IMAGE }}" --format '{{.Manifest.Digest}}')"
           echo "pushed=$pushed"
           echo "resolved=$resolved"
