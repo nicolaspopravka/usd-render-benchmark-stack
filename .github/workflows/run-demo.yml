@@ -52,6 +52,10 @@ jobs:
             --entrypoint bash \
             "${{ inputs.runnable_image }}" -c "
               dnf install -y mesa-dri-drivers mesa-libEGL libepoxy;
+              # Disable Mesa's disk shader cache for the software-rendered demo.
+              # This avoids the CY2027 abort caused by conflicting zstd
+              # implementations in Blosc and libzstd.
+              MESA_SHADER_CACHE_DISABLE=true \
               LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a bash render_script.sh
             "
 
