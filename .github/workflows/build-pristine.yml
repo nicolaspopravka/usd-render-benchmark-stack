@@ -57,12 +57,9 @@ jobs:
         run: |
           pushed="$(python3 -c 'import json;print(json.load(open(".buildx-metadata.json"))["containerimage.digest"])')"
           resolved="$(docker buildx imagetools inspect "${{ env.PRISTINE_IMAGE }}" --format '{{.Manifest.Digest}}')"
-          echo "pushed=$pushed"
-          echo "resolved=$resolved"
           test "$pushed" = "$resolved" || {
             echo "ERROR: ${{ env.PRISTINE_IMAGE }} does not resolve to the digest this run pushed"; exit 1
           }
-          echo "verified: ${{ env.PRISTINE_IMAGE }} @ $resolved"
 
       - name: Upload log
         if: always()
