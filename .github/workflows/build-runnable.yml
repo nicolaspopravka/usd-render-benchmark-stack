@@ -39,6 +39,10 @@ jobs:
       - name: Derive year and runnable image from pristine_image
         run: |
           pristine='${{ inputs.pristine_image }}'
+          case "$pristine" in
+            ghcr.io/nicolaspopravka/usd-render-benchmark-stack:202[3-7]) : ;;
+            *) echo "unexpected pristine image (want ghcr.io/nicolaspopravka/usd-render-benchmark-stack:<2023-2027>): $pristine"; exit 1 ;;
+          esac
           year="${pristine##*:}"
           echo "RUNNABLE_IMAGE=ghcr.io/nicolaspopravka/usd-render-benchmark:${year}" >> "$GITHUB_ENV"
 
@@ -49,11 +53,20 @@ jobs:
             --file Dockerfile.runnable \
             --build-arg PRISTINE_IMAGE="${{ inputs.pristine_image }}" \
             --tag "${{ env.RUNNABLE_IMAGE }}" \
+            --metadata-file .buildx-metadata.json \
             --push \
             . 2>&1 | tee build-runnable.log
 
-      - name: Verify published image
-        run: docker buildx imagetools inspect "${{ env.RUNNABLE_IMAGE }}"
+      - name: Verify the tag resolves to the digest this run pushed
+        run: |
+          pushed="$(python3 -c 'import json;print(json.load(open(".buildx-metadata.json"))["image.digest"])')"
+          resolved="$(docker buildx imagetools inspect "${{ env.RUNNABLE_IMAGE }}" --format '{{.Manifest.Digest}}')"
+          echo "pushed=$pushed"
+          echo "resolved=$resolved"
+          test "$pushed" = "$resolved" || {
+            echo "ERROR: ${{ env.RUNNABLE_IMAGE }} does not resolve to the digest this run pushed"; exit 1
+          }
+          echo "verified: ${{ env.RUNNABLE_IMAGE }} @ $resolved"
 
       - name: Upload log
         if: always()

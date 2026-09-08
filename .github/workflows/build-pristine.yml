@@ -40,6 +40,13 @@ jobs:
         run: |
           tag="$(printf '%s' '${{ inputs.base_image }}' | cut -d'@' -f1)"
           year="$(printf '%s' "$tag" | sed -E 's#.*:([0-9]+).*#\1#')"
+          case "$year" in
+            202[3-7]) : ;;
+            *) echo "cannot derive a valid 4-digit year (2023-2027) from: $tag"; exit 1 ;;
+          esac
+          test "$tag" = "aswf/ci-vfxall:${year}" || {
+            echo "unexpected base tag form (want aswf/ci-vfxall:<year>): $tag"; exit 1
+          }
           echo "YEAR=$year" >> "$GITHUB_ENV"
           echo "PRISTINE_IMAGE=ghcr.io/nicolaspopravka/usd-render-benchmark-stack:${year}" >> "$GITHUB_ENV"
 
@@ -50,11 +57,20 @@ jobs:
             --file Dockerfile.pristine \
             --build-arg BASE_IMAGE="${{ inputs.base_image }}" \
             --tag "${{ env.PRISTINE_IMAGE }}" \
+            --metadata-file .buildx-metadata.json \
             --push \
             . 2>&1 | tee build-pristine.log
 
-      - name: Verify published image
-        run: docker buildx imagetools inspect "${{ env.PRISTINE_IMAGE }}"
+      - name: Verify the tag resolves to the digest this run pushed
+        run: |
+          pushed="$(python3 -c 'import json;print(json.load(open(".buildx-metadata.json"))["image.digest"])')"
+          resolved="$(docker buildx imagetools inspect "${{ env.PRISTINE_IMAGE }}" --format '{{.Manifest.Digest}}')"
+          echo "pushed=$pushed"
+          echo "resolved=$resolved"
+          test "$pushed" = "$resolved" || {
+            echo "ERROR: ${{ env.PRISTINE_IMAGE }} does not resolve to the digest this run pushed"; exit 1
+          }
+          echo "verified: ${{ env.PRISTINE_IMAGE }} @ $resolved"
 
       - name: Upload log
         if: always()

@@ -61,9 +61,11 @@ gh workflow run build-runnable.yml \
 `build-runnable` currently expects a tag whose final component is the year.
 
 The Build + push steps run with `pipefail`, so a failed build fails the
-workflow, and a follow-up step inspects the published tag on the registry so a
-missing or wrong push fails the run. Keep the build log (uploaded as an
-artifact) and the image digest with any recorded result.
+workflow. The build records the digest it pushed (`--metadata-file`), and a
+follow-up step confirms the published tag resolves to that exact digest; the
+derived year is validated too, so a missing, wrong, or stale push fails the
+run. Keep the build log (uploaded as an artifact) and the image digest with
+any recorded result.
 
 ## Run a benchmark branch
 
