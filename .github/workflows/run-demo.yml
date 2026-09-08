@@ -52,14 +52,10 @@ jobs:
             --entrypoint bash \
             "${{ inputs.runnable_image }}" -c "
               dnf install -y mesa-dri-drivers mesa-libEGL libepoxy;
-              #
-              # Mesa shader/disk cache off: the llvmpipe cache-write thread
-              # compresses with the image-bundled /usr/local/lib/libzstd.so.1
-              # and hits free(): invalid pointer on the refreshed CY2027 base
-              # (PLANS.md Phase 41). Software rendering gains nothing from the
-              # cache.
-              #
-              MESA_SHADER_CACHE_DISABLE=1 MESA_DISK_CACHE_DISABLE=1 \
+              # Disable Mesa's disk shader cache for the software-rendered demo.
+              # This avoids the CY2027 abort caused by conflicting zstd
+              # implementations in Blosc and libzstd.
+              MESA_SHADER_CACHE_DISABLE=true \
               LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a bash render_script.sh
             "
 
