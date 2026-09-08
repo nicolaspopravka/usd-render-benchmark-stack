@@ -60,10 +60,10 @@ gh workflow run build-runnable.yml \
 `build-pristine` derives the year from the ASWF image name.
 `build-runnable` currently expects a tag whose final component is the year.
 
-After a build, check the build log and pull the published image. The current
-workflows pipe `docker buildx` output through `tee` without enabling
-`pipefail`, so the workflow conclusion alone is not sufficient confirmation
-that the image was pushed.
+The Build + push steps run with `pipefail`, so a failed build fails the
+workflow, and a follow-up step inspects the published tag on the registry so a
+missing or wrong push fails the run. Keep the build log (uploaded as an
+artifact) and the image digest with any recorded result.
 
 ## Run a benchmark branch
 
