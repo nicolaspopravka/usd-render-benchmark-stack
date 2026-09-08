@@ -38,9 +38,8 @@ jobs:
 
       - name: Derive the runnable image from pristine_image
         run: |
-          pristine='${{ inputs.pristine_image }}'
-          src="${pristine%%@*}"
-          tag="${src##*:}"
+          src='${{ inputs.pristine_image }}'
+          tag="${src%%@*}"; tag="${tag##*:}"
           echo "RUNNABLE_IMAGE=ghcr.io/nicolaspopravka/usd-render-benchmark:${tag}" >> "$GITHUB_ENV"
 
       - name: Build + push runnable

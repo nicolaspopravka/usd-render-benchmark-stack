@@ -38,8 +38,8 @@ jobs:
 
       - name: Derive the output image from base_image
         run: |
-          src="$(printf '%s' '${{ inputs.base_image }}' | cut -d'@' -f1)"
-          tag="${src##*:}"
+          src='${{ inputs.base_image }}'
+          tag="${src%%@*}"; tag="${tag##*:}"
           echo "PRISTINE_IMAGE=ghcr.io/nicolaspopravka/usd-render-benchmark-stack:${tag}" >> "$GITHUB_ENV"
 
       - name: Build + push pristine
