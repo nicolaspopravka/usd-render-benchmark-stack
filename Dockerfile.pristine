@@ -4,4 +4,12 @@
 
 ARG BASE_IMAGE
 
+FROM ${BASE_IMAGE} AS rez-builder
+COPY install_rez.sh /usr/local/bin/install_rez.sh
+ENV REZ_INSTALL_DIR=/usr/local/rez
+RUN bash -lc 'source /usr/local/bin/install_rez.sh && rez --version'
+
 FROM ${BASE_IMAGE}
+
+# TEMPORARY: Rez from rez-builder — drop when aswf-docker #467 ships it in the base.
+COPY --from=rez-builder /usr/local/rez /usr/local/rez
