@@ -128,6 +128,20 @@ if(NOT TARGET OpenSubdiv::osdgpu)
         IMPORTED_LOCATION "/usr/local/lib/libosdGPU.so"
         INTERFACE_INCLUDE_DIRECTORIES "/usr/local/include")
 endif()
+# Older-cycle exports (23.08/24.08) spell these with an uppercase CPU/GPU;
+# target names are case-sensitive, so provide both capitalizations.
+if(NOT TARGET OpenSubdiv::osdCPU)
+    add_library(OpenSubdiv::osdCPU SHARED IMPORTED)
+    set_target_properties(OpenSubdiv::osdCPU PROPERTIES
+        IMPORTED_LOCATION "/usr/local/lib/libosdCPU.so"
+        INTERFACE_INCLUDE_DIRECTORIES "/usr/local/include")
+endif()
+if(NOT TARGET OpenSubdiv::osdGPU)
+    add_library(OpenSubdiv::osdGPU SHARED IMPORTED)
+    set_target_properties(OpenSubdiv::osdGPU PROPERTIES
+        IMPORTED_LOCATION "/usr/local/lib/libosdGPU.so"
+        INTERFACE_INCLUDE_DIRECTORIES "/usr/local/include")
+endif()
 
 {includes}"""
     if includes not in text:
