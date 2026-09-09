@@ -1,6 +1,7 @@
 # syntax=docker/dockerfile:1.10
 
-# Byte-pristine <cy> stack image — currently a trivial retag of the ASWF base.
+# Byte-pristine <cy> stack image — currently a trivial retag of the ASWF base
+# plus the Run-time overlays carried by the fix/* branches.
 
 ARG BASE_IMAGE
 
@@ -16,3 +17,10 @@ COPY --from=rez-builder /usr/local/rez /usr/local/rez
 
 # TEMPORARY: GNU time for render_script.sh — drop when aswf-docker #468 reaches the base.
 RUN test -x /usr/bin/time || (dnf install -y time && dnf clean all && rm -rf /var/cache/dnf)
+
+# TEMPORARY: build OpenMoonRay into the pristine stack — drop when the ASWF
+# base images ship OpenMoonRay (ASWF pins ASWF_MOONRAY_VERSION=3.6.0.1 on all
+# years; the script rebuilds v2026.29.1 against this base). Follows the
+# official Rocky 9 container build; see build_moonray.sh.
+COPY build_moonray.sh /usr/local/aswf/build_moonray.sh
+RUN /usr/local/aswf/build_moonray.sh
