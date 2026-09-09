@@ -44,15 +44,18 @@ fi
 git lfs install
 
 # ispc: MoonRay's ISPC kernels require it on Linux. When the deployed ispc is
-# unusable, provision the official release aarch64-independent Linux bundle.
+# unusable, provision an official release. v2026.29.1's kernels (OpMap.ispc's
+# fmod) compile on older ispc but ispc 1.25+ errors; default to 1.24.0 and
+# override via ISPC_VERSION when a different one is needed.
+ISPC_VERSION="${ISPC_VERSION:-1.24.0}"
 if ! ispc --version >/dev/null 2>&1; then
-    echo "WARN: deployed ispc unusable; installing official ispc v1.25.0"
+    echo "WARN: deployed ispc unusable; installing official ispc v${ISPC_VERSION}"
     ISPC_TARBALL="${BUILD_ROOT}/ispc.tar.gz"
     curl --location --fail --silent --show-error -o "${ISPC_TARBALL}" \
-        https://github.com/ispc/ispc/releases/download/v1.25.0/ispc-v1.25.0-linux.tar.gz
-    echo "1667976049abe6653d170de3f8a462799d57981ce46a161ccf59367f1177a028  ${ISPC_TARBALL}" | sha256sum --check -
+        "https://github.com/ispc/ispc/releases/download/v${ISPC_VERSION}/ispc-v${ISPC_VERSION}-linux.tar.gz"
     tar -xzf "${ISPC_TARBALL}" -C "${BUILD_ROOT}"
-    install -m 0755 "${BUILD_ROOT}/ispc-v1.25.0-linux/bin/ispc" /usr/local/bin/ispc
+    install -m 0755 "${BUILD_ROOT}/ispc-v${ISPC_VERSION}-linux/bin/ispc" /usr/local/bin/ispc
+    ispc --version
 fi
 
 # OpenUSD cmake-export relocation shim (ASWF conan deploy defect; general).
