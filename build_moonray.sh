@@ -93,6 +93,9 @@ ptex_conan = re.compile(
 
 for path in files:
     text = path.read_text()
+    # Generic relocation: conan deploy stage dir -> installed prefix
+    # (/opt/conan_home/d/<pkg><hash>/p/include -> /usr/local/include, etc.).
+    text = re.sub(r"/opt/conan_home/d/[A-Za-z0-9]+/p/", "/usr/local/", text)
     text, _ = hint.subn(repl, text)
     if path.name.startswith("pxrTargets") or path.name.startswith("pxrConfig"):
         text, _ = materialx_conan.subn(lambda m: m.group("c"), text)
