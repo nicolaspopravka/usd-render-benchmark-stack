@@ -28,7 +28,8 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-22.04
-    timeout-minutes: 30
+    # 420 min: enough for the OpenMoonRay pristine overlay build (~35-90 min).
+    timeout-minutes: 420
     env:
       PRISTINE_IMAGE: ghcr.io/nicolaspopravka/usd-render-benchmark-stack:${{ inputs.image_tag }}
     steps:
