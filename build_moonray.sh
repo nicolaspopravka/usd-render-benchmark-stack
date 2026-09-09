@@ -141,9 +141,10 @@ if remaining:
 print("OpenUSD cmake: corrected stale Conan path hints and synthesized OpenSubdiv targets")
 
 # Residual CONAN_LIB:: targets in older-cycle exports (23.08/24.08 reference
-# boost/python components the deploy never defines). Synthesize an imported
-# target for each; the library stem is inferred from the trailing
-# "<name>+digits" of the component (e.g. ..._boost_python310 -> libboost_python310.so).
+# boost/python components the deploy never defines). The dependencies are
+# already linked into the installed OpenUSD libraries, so an empty INTERFACE
+# IMPORTED target is enough for consumers; a real need would surface as an
+# undefined symbol at MoonRay link time.
 import re as _re
 _stray = sorted({
     n
@@ -152,19 +153,12 @@ _stray = sorted({
 })
 _includes = 'include("${PXR_CMAKE_DIR}/cmake/pxrTargets.cmake")'
 if _stray:
-    lines = ["# Residual CONAN_LIB boost/python targets (older-cycle exports)"]
+    lines = ["# Residual CONAN_LIB boost/python targets in older-cycle exports",
+             "# (deps already linked into the installed OpenUSD libraries)."]
     for name in _stray:
-        _clean = _re.sub(r"_(RELEASE|DEBUG)$", "", name)
-        m = _re.search(r"_([a-z_]+)([0-9]+)$", _clean)
-        stem = f"{m.group(1)}{m.group(2)}" if m else None
-        if not stem:
-            raise SystemExit(f"cannot infer library stem for CONAN_LIB::{name}")
         lines += [
             f"if(NOT TARGET CONAN_LIB::{name})",
-            f"    add_library(CONAN_LIB::{name} UNKNOWN IMPORTED)",
-            f"    set_target_properties(CONAN_LIB::{name} PROPERTIES \\",
-            f"        IMPORTED_LOCATION \"/usr/local/lib/lib{stem}.so\" \\",
-            f'        INTERFACE_INCLUDE_DIRECTORIES "/usr/local/include")',
+            f"    add_library(CONAN_LIB::{name} INTERFACE IMPORTED)",
             "endif()",
             "",
         ]
@@ -172,7 +166,7 @@ if _stray:
     if _includes not in pxr_config.read_text():
         raise SystemExit("cannot locate pxrTargets include in pxrConfig.cmake")
     pxr_config.write_text(pxr_config.read_text().replace(_includes, synth, 1))
-    print(f"OpenUSD cmake: synthesized {len(_stray)} CONAN_LIB targets from older-cycle exports")
+    print(f"OpenUSD cmake: synthesized {len(_stray)} CONAN_LIB interface targets from older-cycle exports")
 
 # Boost header-only component shims (same deploy-gap class). Boost's "system"
 # component is header-only, so the ASWF deploy ships no boost_system-* package
