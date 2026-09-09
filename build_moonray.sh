@@ -154,7 +154,8 @@ _includes = 'include("${PXR_CMAKE_DIR}/cmake/pxrTargets.cmake")'
 if _stray:
     lines = ["# Residual CONAN_LIB boost/python targets (older-cycle exports)"]
     for name in _stray:
-        m = _re.search(r"_([a-z_]+)([0-9]+)$", name)
+        _clean = _re.sub(r"_(RELEASE|DEBUG)$", "", name)
+        m = _re.search(r"_([a-z_]+)([0-9]+)$", _clean)
         stem = f"{m.group(1)}{m.group(2)}" if m else None
         if not stem:
             raise SystemExit(f"cannot infer library stem for CONAN_LIB::{name}")
