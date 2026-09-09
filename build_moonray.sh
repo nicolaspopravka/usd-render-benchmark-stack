@@ -37,11 +37,13 @@ BOOST_PYTHON_COMPONENT_NAME="${BOOST_PYTHON_COMPONENT_NAME:-python${PYTHON_MAJOR
 BUILD_JOBS="${BUILD_JOBS:-$(nproc)}"
 PYBIN="${CMAKE_INSTALL_PREFIX}/bin/python${PYTHON_MAJOR_MINOR}"
 
-# Step 0: prerequisite — openmoonray submodules track some files via Git LFS.
+# Step 0: prerequisites — git-lfs (LFS-tracked submodule files) and cppunit
+# (arras4_core's unit tests; some year bases ship it, this keeps it present).
 if ! command -v git-lfs >/dev/null 2>&1; then
     dnf -y install --quiet git-lfs
 fi
 git lfs install
+dnf -y install --quiet cppunit-devel || echo "WARN: cppunit-devel unavailable (arras unit tests may not build)"
 
 # ispc: MoonRay's ISPC kernels require it on Linux. When the deployed ispc is
 # unusable, provision an official release. v2026.29.1's kernels (OpMap.ispc's
