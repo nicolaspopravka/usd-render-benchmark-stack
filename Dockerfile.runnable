@@ -17,3 +17,7 @@ CMD []
 
 # TEMPORARY: rez PATH — drop when aswf-docker #467 lands in the base.
 ENV PATH=/usr/local/rez/bin/rez:${PATH}
+
+# TEMPORARY: pxr lives in /usr/local/lib/python (not site-packages), so it is
+# off sys.path. CY2027 fixes this (site-packages); drop the fix then.
+ENV PYTHONPATH=/usr/local/lib/python
