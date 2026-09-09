@@ -52,9 +52,16 @@ jobs:
             --entrypoint bash \
             "${{ inputs.runnable_image }}" -c "
               dnf install -y mesa-dri-drivers mesa-libEGL libepoxy;
+
+              # CY2024 (GH #46): ASWF's LLVM 17 is built with NVPTX;X86 only, so
+              # distro Mesa's swrast cannot load (missing
+              # LLVMInitializeAMDGPUTargetInfo) and the Qt offscreen GL setup
+              # segfaults. Prefer the distro LLVM when present.
+              [ -d /usr/lib64/llvm17/lib ] && export LD_LIBRARY_PATH=/usr/lib64/llvm17/lib:$LD_LIBRARY_PATH
+
               # Disable Mesa's disk shader cache for the software-rendered demo.
               # This avoids the CY2027 abort caused by conflicting zstd
-              # implementations in Blosc and libzstd.
+              # implementations in Blosc and libzstd (GH #45).
               MESA_SHADER_CACHE_DISABLE=true \
               LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a bash render_script.sh
             "
