@@ -13,3 +13,6 @@ FROM ${BASE_IMAGE}
 
 # TEMPORARY: Rez from rez-builder — drop when aswf-docker #467 ships it in the base.
 COPY --from=rez-builder /usr/local/rez /usr/local/rez
+
+# TEMPORARY: GNU time for render_script.sh — drop when aswf-docker #468 reaches the base.
+RUN test -x /usr/bin/time || (dnf install -y time && dnf clean all && rm -rf /var/cache/dnf)
