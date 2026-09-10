@@ -16,3 +16,5 @@ ENTRYPOINT ["bash", "render_script.sh"]
 CMD []
 # TEMPORARY: MoonRay plugin discovery — drop when OpenMoonRay lands in the base.
 ENV PXR_PLUGINPATH_NAME=/usr/local/plugin/pxr
+# TEMPORARY: Arras session dir — drop when OpenMoonRay lands in the base.
+ENV ARRAS_SESSION_PATH=/usr/local/sessions
