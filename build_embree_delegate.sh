@@ -233,11 +233,18 @@ if(NOT HDEMBREE_SOURCE_DIR)
   message(FATAL_ERROR "HDEMBREE_SOURCE_DIR is required")
 endif()
 
+# The caller presets EMBREE_LIBRARY (via -D) so the era-appropriate library
+# is forced: the base ships conan libembree4 on every year, so a plain
+# find_library(embree4 embree3) would link the embree3-era plugin against
+# embree4 on USD 23.08-25.05.  find_library only runs when the cache var is
+# not preset.
 find_library(EMBREE_LIBRARY
   NAMES embree4 embree3
   PATHS "${EMBREE_ROOT}/lib"
-  NO_DEFAULT_PATH
-  REQUIRED)
+  NO_DEFAULT_PATH)
+if(NOT EMBREE_LIBRARY)
+  message(FATAL_ERROR "Cannot locate the Embree library under ${EMBREE_ROOT}/lib")
+endif()
 message(STATUS "Embree library: ${EMBREE_LIBRARY}")
 
 set(HDEMBREE_PXR_LIBS plug tf vt gf work hf hd hdx)
@@ -345,6 +352,18 @@ install(FILES "${CMAKE_CURRENT_BINARY_DIR}/plugInfo.json"
   DESTINATION plugin/usd/hdEmbree/resources)
 EOF
 
+# Force the era-appropriate Embree library (see the CMake comment): the base
+# ships conan libembree4 on every year, and a name-ordered find would pick it
+# for the 3.x pairing too.
+if [[ "$EMBREE3_BUILD" == "1" ]]; then
+  readonly EMBREE_LIBRARY_FILE=/usr/local/lib/libembree3.so.3
+  readonly EXPECTED_EMBREE_SONAME=libembree3
+else
+  readonly EMBREE_LIBRARY_FILE=/usr/local/lib/libembree4.so
+  readonly EXPECTED_EMBREE_SONAME=libembree4
+fi
+test -e "$EMBREE_LIBRARY_FILE"
+
 cmake -S "$CONSUMER_DIR" -B "$BUILD_ROOT/hdembree-build" \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_INSTALL_PREFIX="$USD_PREFIX" \
@@ -352,6 +371,7 @@ cmake -S "$CONSUMER_DIR" -B "$BUILD_ROOT/hdembree-build" \
   -DUSD_LIB_DIR="$USD_PREFIX/lib" \
   -DHDEMBREE_SOURCE_DIR="$HDEMBREE_SOURCE_DIR" \
   -DEMBREE_ROOT="$USD_PREFIX" \
+  -DEMBREE_LIBRARY="$EMBREE_LIBRARY_FILE" \
   -DCMAKE_INSTALL_RPATH=/usr/local/lib
 
 cmake --build "$BUILD_ROOT/hdembree-build" -j"$(nproc)"
@@ -369,7 +389,7 @@ if grep -Eq 'not found|undefined symbol' "$EVIDENCE_ROOT/hdEmbree-ldd.txt"; then
   grep -E 'not found|undefined symbol' "$EVIDENCE_ROOT/hdEmbree-ldd.txt" | head -20 >&2
   exit 1
 fi
-grep -Eq 'libembree[34]' "$EVIDENCE_ROOT/hdEmbree-ldd.txt"
+grep -Eq '${EXPECTED_EMBREE_SONAME}' "$EVIDENCE_ROOT/hdEmbree-ldd.txt"
 
 readelf -d "$PLUGIN_ROOT/hdEmbree.so" | tee "$EVIDENCE_ROOT/hdEmbree-dynamic.txt"
 grep -q "/usr/local/lib" "$EVIDENCE_ROOT/hdEmbree-dynamic.txt"
