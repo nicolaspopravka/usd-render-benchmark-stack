@@ -19,15 +19,19 @@ set -euxo pipefail
 # hdStorm external-consumer pattern, direct linkage -- the conan pxrConfig
 # bakes dead conan-home paths, so find_package(pxr) is never used).
 #
-# Embree era is driven by the base's USD version (from pxr.Usd.GetVersion()):
-#   USD < 26.x (23.08/24.08/25.05.01): the hdEmbree of those releases uses
-#     the embree3 API -> build the pinned Embree 3.2.2 (Pixar build_usd.py
-#     pairing) into /usr/local and link it.
-#   USD >= 26.x (26.03/26.08): the plugin supports embree4 -> link the conan
-#     Embree 4.2.0 the base already ships at /usr/local (the integrated
-#     dependency an ASWF-enabled build would use).
-# The 3.x pairing also vendors legacy TBB 2020.3.1 (libtbb.so.2) when the
-# base does not already provide it, mirroring build_usd.py InstallTBB_Linux.
+# Embree comes EXCLUSIVELY from the image: the ASWF conan stack builds
+# embree into /usr/local (the ci-moonray dependency set, May-Jun 2026).  No
+# Embree is downloaded or built here ("always use the embree shipped in the
+# image" -- Nicolas, Sep 11 2026).
+#
+# Compatibility probe: OpenUSD's in-tree hdEmbree targets one embree family
+# per release -- < embree3/rtcore.h > on 23.08-25.05.01, < embree4/rtcore.h >
+# on 26.03/26.08.  The shipped conan package provides ONLY the embree4
+# family (include/embree4 + libembree4.so.4).  Years whose hdEmbree requires
+# embree3 therefore FAIL the probe with a documented diagnostic: the shipped
+# embree cannot build hdEmbree against the shipped OpenUSD on that year --
+# an upstream (aswf-docker) gap, surfaced here rather than papered over by a
+# separate embree3 build.
 
 readonly OPENUSD_URL="https://github.com/PixarAnimationStudios/OpenUSD.git"
 readonly BUILD_ROOT=/opt/build
@@ -37,13 +41,6 @@ readonly CONSUMER_DIR=/usr/local/share/hdembree-consumer
 readonly PLUGIN_ROOT=/usr/local/plugin/usd
 
 # --- pinned revisions (Pixar build_usd.py Linux pairings; collected 2026-08-29) ---
-readonly EMBREE3_TAG=v3.2.2
-readonly EMBREE3_REVISION=dac0fa9d4a55d0ab0456d332bd0f23fd8a3325bc
-readonly EMBREE3_TARBALL_SHA256=f0523819aa24f77608afde3d23ddbeaea88937e3f9fb6a115c23e0e0646c8f5f
-readonly TBB_TAG=v2020.3.1
-readonly TBB_REVISION=617e9a711b713de9f33c2be1323cc5cebff0e850
-readonly TBB_TARBALL_SHA256=ad73e88dbf8590daa66136275d0785e5a733d0ee2cc66b99f210bdc969302b7d
-
 openusd_pins() {
   case "$1" in
     0.23.8)
@@ -86,6 +83,17 @@ command -v git >/dev/null 2>&1 || {
 readonly BUILD_JOBS="${EMBREE_BUILD_JOBS:-$(nproc)}"
 mkdir -p "$BUILD_ROOT" "$EVIDENCE_ROOT" "$CONSUMER_DIR"
 
+# --- the shipped (conan) Embree: use it and only it -------------------------
+# ASWF's conan stack builds embree 4.2.0 into /usr/local (ci-moonray dep set).
+shipped_embree_lib="$(ls /usr/local/lib/libembree4.so.4 2>/dev/null || true)"
+shipped_embree_header=/usr/local/include/embree4/rtcore.h
+test -n "$shipped_embree_lib"
+test -f "$shipped_embree_header"
+test -d /usr/local/lib/cmake/embree-*
+printf 'shipped Embree: %s\n' "$shipped_embree_lib" \
+  | tee "$EVIDENCE_ROOT/shipped-embree.txt"
+ldd -r /usr/local/lib/libembree4.so.4 | tee "$EVIDENCE_ROOT/libembree4-ldd.txt"
+
 # --- verify the pxr installation we are consuming ---------------------------
 test -d "$USD_PREFIX/include/pxr"
 test -d "$USD_PREFIX/include/pxr/imaging/hdx"
@@ -93,109 +101,16 @@ test -d "$USD_PREFIX/lib"
 test -x "$USD_PREFIX/bin/usdrecord"
 test -f "$PLUGIN_ROOT/plugInfo.json"
 
-usd_python_dir=""
-for candidate in \
-  "$USD_PREFIX/lib/python3.13/site-packages" \
-  "$USD_PREFIX/lib/python3.12/site-packages" \
-  "$USD_PREFIX/lib/python3.11/site-packages" \
-  "$USD_PREFIX/lib/python3.10/site-packages" \
-  "$USD_PREFIX/lib/python" \
-; do
-  if [[ -d "$candidate/pxr" ]]; then
-    usd_python_dir="$candidate"
-    break
-  fi
-done
-test -n "$usd_python_dir"
-test -d "$usd_python_dir/pxr"
-
-usd_version="$(PYTHONPATH="$usd_python_dir${PYTHONPATH:+:$PYTHONPATH}" \
-  python3 -c 'from pxr import Usd; v=tuple(Usd.GetVersion())[:3]; print("%d.%d.%d" % v)')"
+# pxr version from the installed header (no pxr import -- import SIGILLs on
+# AVX2-only hosts for the prebuilt 2023-26 libs).
+usd_version="$(sed -n \
+  's/^#define PXR_MAJOR_VERSION \([0-9]*\)$/\1/p; s/^#define PXR_MINOR_VERSION \([0-9]*\)$/\1/p; s/^#define PXR_PATCH_VERSION \([0-9]*\)$/\1/p' \
+  "$USD_PREFIX/include/pxr/pxr.h" | paste -sd. -)"
 printf '%s\n' "$usd_version" | tee "$EVIDENCE_ROOT/openusd-version.txt"
 openusd_pins "$usd_version"
-# USB version tuple is (0, minor, patch): the era discriminator is the MINOR
-# field -- 23/24/25 -> embree3 pairing, 26 -> embree4 (conan 4.2.0).
-readonly USDU_MINOR="$(printf '%s' "$usd_version" | cut -d. -f2)"
-readonly EMBREE3_BUILD=$([[ "$USDU_MINOR" -lt 26 ]] && echo 1 || echo 0)
-printf 'Embree 3.x build required: %s\n' "$EMBREE3_BUILD" \
-  | tee "$EVIDENCE_ROOT/embree3-build-flag.txt"
 
 find "$USD_PREFIX/lib" -maxdepth 1 -name 'libusd_*.so*' -printf '%f\n' | sort \
   > "$EVIDENCE_ROOT/openusd-libraries.txt"
-
-# --- Embree: build 3.2.2 (USD < 26) into /usr/local, or use the base's conan 4.2.0 ---
-if [[ "$EMBREE3_BUILD" == "1" ]]; then
-  tarball="$BUILD_ROOT/embree-${EMBREE3_TAG}.tar.gz"
-  curl -fsSL --retry 5 -o "$tarball" \
-    "https://github.com/RenderKit/embree/archive/refs/tags/${EMBREE3_TAG}.tar.gz"
-  echo "${EMBREE3_TARBALL_SHA256}  ${tarball}" | sha256sum --check --strict \
-    | tee "$EVIDENCE_ROOT/embree-sha256-check.txt"
-
-  mkdir -p "$BUILD_ROOT/embree-src"
-  tar -xzf "$tarball" --strip-components=1 -C "$BUILD_ROOT/embree-src"
-  IFS='.' read -r EVMAJOR EVMINOR EVPATCH <<< "${EMBREE3_TAG#v}"
-  grep -m1 "SET(EMBREE_VERSION_MAJOR ${EVMAJOR})" "$BUILD_ROOT/embree-src/CMakeLists.txt" \
-    | tee "$EVIDENCE_ROOT/embree-version-line.txt"
-  grep -m1 "SET(EMBREE_VERSION_MINOR ${EVMINOR})" "$BUILD_ROOT/embree-src/CMakeLists.txt" \
-    | tee -a "$EVIDENCE_ROOT/embree-version-line.txt"
-  grep -m1 "SET(EMBREE_VERSION_PATCH ${EVPATCH})" "$BUILD_ROOT/embree-src/CMakeLists.txt" \
-    | tee -a "$EVIDENCE_ROOT/embree-version-line.txt"
-
-  # Legacy TBB 2020.3.1 for the embree3 pairing.  Build against a stage for
-  # determinism (matches build_usd.py InstallTBB_Linux), but only install
-  # into /usr/local when the base does not already ship libtbb.so.2
-  # (2023/24 bases do; 2025 has oneTBB .12 only).
-  tbb_tarball="$BUILD_ROOT/tbb-${TBB_TAG}.tar.gz"
-  curl -fsSL --retry 5 -o "$tbb_tarball" \
-    "https://github.com/oneapi-src/oneTBB/archive/refs/tags/${TBB_TAG}.tar.gz"
-  echo "${TBB_TARBALL_SHA256}  ${tbb_tarball}" | sha256sum --check --strict \
-    | tee "$EVIDENCE_ROOT/tbb-sha256-check.txt"
-
-  mkdir -p "$BUILD_ROOT/tbb-src"
-  tar -xzf "$tbb_tarball" --strip-components=1 -C "$BUILD_ROOT/tbb-src"
-  make -C "$BUILD_ROOT/tbb-src" -j"$BUILD_JOBS" tbb tbbmalloc
-
-  TBB_STAGE="$BUILD_ROOT/tbb-stage"
-  mkdir -p "$TBB_STAGE/include" "$TBB_STAGE/lib"
-  cp -a "$BUILD_ROOT/tbb-src/include/tbb" "$TBB_STAGE/include/"
-  cp -a "$BUILD_ROOT/tbb-src/build/"*_release/libtbb*.so.* "$TBB_STAGE/lib/"
-  for l in libtbb libtbbmalloc libtbbmalloc_proxy; do
-    ln -sf "$l.so.2" "$TBB_STAGE/lib/$l.so"
-  done
-  test -f "$TBB_STAGE/include/tbb/task_scheduler_init.h"
-  test -e "$TBB_STAGE/lib/libtbb.so.2"
-  test -e "$TBB_STAGE/lib/libtbb.so"
-
-  cmake -S "$BUILD_ROOT/embree-src" -B "$BUILD_ROOT/embree-build" \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_INSTALL_PREFIX="$USD_PREFIX" \
-    -DCMAKE_INSTALL_LIBDIR=lib \
-    -DCMAKE_INSTALL_RPATH=/usr/local/lib \
-    -DEMBREE_TUTORIALS=OFF \
-    -DEMBREE_ISPC_SUPPORT=OFF \
-    -DEMBREE_TBB_ROOT="$TBB_STAGE"
-  cmake --build "$BUILD_ROOT/embree-build" -j"$BUILD_JOBS"
-  cmake --install "$BUILD_ROOT/embree-build"
-  test -e "$USD_PREFIX/lib/libembree3.so.3"
-
-  # Ship the vendored legacy TBB for the embree3 link closure only where the
-  # base lacks libtbb.so.2 (2023/24 already have it).
-  if [[ ! -e /usr/local/lib/libtbb.so.2 ]]; then
-    cp -a "$TBB_STAGE"/lib/libtbb*.so.* /usr/local/lib/
-  fi
-
-  cp "$BUILD_ROOT/embree-build/CMakeCache.txt" "$EVIDENCE_ROOT/Embree-CMakeCache.txt"
-  find "$USD_PREFIX/lib" -maxdepth 1 -name 'libembree3*' -o -maxdepth 1 -name 'libtbb.so.2*' \
-    | sort > "$EVIDENCE_ROOT/embree-install-manifest.txt"
-  ldd -r /usr/local/lib/libembree3.so.3 | tee "$EVIDENCE_ROOT/libembree3-ldd.txt"
-  grep -Eq 'libtbb\.so\.2' "$EVIDENCE_ROOT/libembree3-ldd.txt"
-else
-  # USD >= 26: link the base's conan Embree 4.2.0 (the integrated dep an
-  # ASWF-enabled build would use).  Assert it is present and usable.
-  test -f /usr/local/lib/libembree4.so
-  test -f /usr/local/include/embree4/rtcore.h
-  ldd -r /usr/local/lib/libembree4.so.4 | tee "$EVIDENCE_ROOT/libembree4-ldd.txt"
-fi
 
 # --- pinned OpenUSD checkout (sources pristine) -----------------------------
 cd "$BUILD_ROOT"
@@ -209,7 +124,34 @@ HDEMBREE_SOURCE_DIR="$BUILD_ROOT/openusd/pxr/imaging/plugin/hdEmbree"
 test -d "$HDEMBREE_SOURCE_DIR"
 ls "$HDEMBREE_SOURCE_DIR" | tee "$EVIDENCE_ROOT/hdembree-source-listing.txt"
 
-# --- consumer build ----------------------------------------------------------
+# --- compatibility probe: does the shipped embree family match the plugin? --
+required_embree="$(grep -rhoE '#include <embree[0-9]/rtcore\.h>' \
+  "$HDEMBREE_SOURCE_DIR" | grep -oE 'embree[0-9]' | sort -u | head -1)"
+test -n "$required_embree"
+printf 'required Embree family: %s (OpenUSD %s)\n' "$required_embree" "$usd_version" \
+  | tee "$EVIDENCE_ROOT/required-embree.txt"
+if [[ "$required_embree" != "embree4" ]]; then
+  {
+    echo "ERROR: upstream compat gap -- the shipped conan Embree cannot build hdEmbree"
+    echo "against the shipped OpenUSD on this year ($usd_version)."
+    echo ""
+    echo "OpenUSD $usd_version's in-tree hdEmbree requires $required_embree"
+    echo "  (pxr/imaging/plugin/hdEmbree/context.h: #include <${required_embree}/rtcore.h>),"
+    echo "but the ASWF image ships conan Embree 4.2.0 ONLY:"
+    echo "  lib:     /usr/local/lib/libembree4.so.4 (no libembree[3].so*)"
+    echo "  headers: /usr/local/include/embree4/ (no include/${required_embree}/)"
+    echo "The ASWF-created embree 4.2.0 conan package (ci-moonray dep set, May-Jun"
+    echo "2026) is unusable to build hdEmbree on the years the shipped OpenUSD needs"
+    echo "embree3. As-fixed: building a separate Embree 3.x here is rejected by design"
+    echo "(\"always use the embree shipped in the image\"). Candidate aswf-docker"
+    echo "upstream finding."
+  } | tee "$EVIDENCE_ROOT/compat-probe-failure.txt"
+  exit 1
+fi
+readonly EMBREE_LIBRARY_FILE=/usr/local/lib/libembree4.so
+test -e "$EMBREE_LIBRARY_FILE"
+
+# --- consumer build (direct linkage, hdCycles pattern) ----------------------
 cat > "$CONSUMER_DIR/CMakeLists.txt" <<'EOF'
 cmake_minimum_required(VERSION 3.21)
 project(hdembree-consumer LANGUAGES CXX)
@@ -223,13 +165,18 @@ project(hdembree-consumer LANGUAGES CXX)
 #
 #   <prefix>/plugin/usd/hdEmbree.so
 #   <prefix>/plugin/usd/hdEmbree/resources/plugInfo.json
+#
+# Embree is the image's shipped conan embree4 (libembree4 + embree4 headers).
+# The caller presets EMBREE_LIBRARY (-D) so the era-appropriate library is
+# forced: find_library(embree4 embree3) would name-order to whatever exists
+# first, and the plugin's required family is decided by the compat probe.
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(HDEMBREE_SOURCE_DIR "" CACHE PATH
     "Directory of the upstream hdEmbree plugin sources inside an OpenUSD checkout")
-set(EMBREE_ROOT "/usr/local" CACHE PATH "Embree install prefix")
+set(EMBREE_ROOT "/usr/local" CACHE PATH "Embree install prefix (shipped conan embree)")
 set(USD_INCLUDE_DIR "/usr/local/include" CACHE PATH "Prebuilt OpenUSD headers")
 set(USD_LIB_DIR "/usr/local/lib" CACHE PATH "Prebuilt OpenUSD libraries")
 
@@ -237,15 +184,12 @@ if(NOT HDEMBREE_SOURCE_DIR)
   message(FATAL_ERROR "HDEMBREE_SOURCE_DIR is required")
 endif()
 
-# The caller presets EMBREE_LIBRARY (via -D) so the era-appropriate library
-# is forced: the base ships conan libembree4 on every year, so a plain
-# find_library(embree4 embree3) would link the embree3-era plugin against
-# embree4 on USD 23.08-25.05.  find_library only runs when the cache var is
-# not preset.
-find_library(EMBREE_LIBRARY
-  NAMES embree4 embree3
-  PATHS "${EMBREE_ROOT}/lib"
-  NO_DEFAULT_PATH)
+if(NOT EMBREE_LIBRARY)
+  find_library(EMBREE_LIBRARY
+    NAMES embree4 embree3
+    PATHS "${EMBREE_ROOT}/lib"
+    NO_DEFAULT_PATH)
+endif()
 if(NOT EMBREE_LIBRARY)
   message(FATAL_ERROR "Cannot locate the Embree library under ${EMBREE_ROOT}/lib")
 endif()
@@ -356,18 +300,6 @@ install(FILES "${CMAKE_CURRENT_BINARY_DIR}/plugInfo.json"
   DESTINATION plugin/usd/hdEmbree/resources)
 EOF
 
-# Force the era-appropriate Embree library (see the CMake comment): the base
-# ships conan libembree4 on every year, and a name-ordered find would pick it
-# for the 3.x pairing too.
-if [[ "$EMBREE3_BUILD" == "1" ]]; then
-  readonly EMBREE_LIBRARY_FILE=/usr/local/lib/libembree3.so.3
-  readonly EXPECTED_EMBREE_SONAME=libembree3
-else
-  readonly EMBREE_LIBRARY_FILE=/usr/local/lib/libembree4.so
-  readonly EXPECTED_EMBREE_SONAME=libembree4
-fi
-test -e "$EMBREE_LIBRARY_FILE"
-
 cmake -S "$CONSUMER_DIR" -B "$BUILD_ROOT/hdembree-build" \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_INSTALL_PREFIX="$USD_PREFIX" \
@@ -393,12 +325,27 @@ if grep -Eq 'not found|undefined symbol' "$EVIDENCE_ROOT/hdEmbree-ldd.txt"; then
   grep -E 'not found|undefined symbol' "$EVIDENCE_ROOT/hdEmbree-ldd.txt" | head -20 >&2
   exit 1
 fi
-grep -Eq "${EXPECTED_EMBREE_SONAME}" "$EVIDENCE_ROOT/hdEmbree-ldd.txt"
+grep -Eq 'libembree4' "$EVIDENCE_ROOT/hdEmbree-ldd.txt"
 
 readelf -d "$PLUGIN_ROOT/hdEmbree.so" | tee "$EVIDENCE_ROOT/hdEmbree-dynamic.txt"
 grep -q "/usr/local/lib" "$EVIDENCE_ROOT/hdEmbree-dynamic.txt"
 
 # --- the key gate: default discovery with NO PXR_PLUGINPATH_NAME ------------
+usd_python_dir=""
+for candidate in \
+  "$USD_PREFIX/lib/python3.13/site-packages" \
+  "$USD_PREFIX/lib/python3.12/site-packages" \
+  "$USD_PREFIX/lib/python3.11/site-packages" \
+  "$USD_PREFIX/lib/python3.10/site-packages" \
+  "$USD_PREFIX/lib/python" \
+; do
+  if [[ -d "$candidate/pxr" ]]; then
+    usd_python_dir="$candidate"
+    break
+  fi
+done
+test -n "$usd_python_dir"
+test -d "$usd_python_dir/pxr"
 env -u PXR_PLUGINPATH_NAME \
   PYTHONPATH="$usd_python_dir${PYTHONPATH:+:$PYTHONPATH}" \
   python3 - <<'PYEOF'
@@ -416,8 +363,8 @@ cp "$BUILD_ROOT/hdembree-build/CMakeCache.txt" "$EVIDENCE_ROOT/HdEmbree-CMakeCac
   printf 'OpenUSD version: %s\n' "$usd_version"
   printf 'OpenUSD tag: %s\n' "$OPENUSD_TAG"
   printf 'OpenUSD revision: %s\n' "$OPENUSD_REVISION"
-  printf 'Embree 3.x build: %s\n' "$EMBREE3_BUILD"
   printf 'OpenUSD prefix: %s\n' "$USD_PREFIX"
+  printf 'Embree source: shipped ASWF conan embree4 (no tarball build)\n'
   printf 'Installed: %s\n' "$PLUGIN_ROOT"
   printf 'Compiler: '
   gcc --version | head -1
