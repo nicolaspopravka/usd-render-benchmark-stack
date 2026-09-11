@@ -16,3 +16,8 @@ COPY --from=rez-builder /usr/local/rez /usr/local/rez
 
 # TEMPORARY: GNU time for render_script.sh — drop when aswf-docker #468 reaches the base.
 RUN test -x /usr/bin/time || (dnf install -y time && dnf clean all && rm -rf /var/cache/dnf)
+
+# TEMPORARY: build hdEmbree into the pristine stack — drop when the ASWF
+# base images ship OpenUSD with hdEmbree enabled.
+COPY build_embree_delegate.sh /usr/local/aswf/build_embree_delegate.sh
+RUN /usr/local/aswf/build_embree_delegate.sh
