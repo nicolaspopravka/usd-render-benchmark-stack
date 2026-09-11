@@ -14,3 +14,6 @@ WORKDIR /usr/local/usd-render-benchmark
 
 ENTRYPOINT ["bash", "render_script.sh"]
 CMD []
+
+# TEMPORARY: rez PATH — drop when aswf-docker #467 lands in the base.
+ENV PATH=/usr/local/rez/bin/rez:${PATH}

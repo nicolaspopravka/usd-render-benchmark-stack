@@ -1,7 +1,24 @@
 # syntax=docker/dockerfile:1.10
 
-# Byte-pristine <cy> stack image — currently a trivial retag of the ASWF base.
+# Byte-pristine <cy> 2027 stack image: base plus the hdEmbree delegate built
+# as a USD-enabled install, with the Run-time overlays from fix/rez.  The
+# 2027 base ships GNU time and pxr in site-packages, so fix/time and
+# fix/pythonpath are NOT carried here (Phase 41 convention).
 
 ARG BASE_IMAGE
 
+FROM ${BASE_IMAGE} AS rez-builder
+COPY install_rez.sh /usr/local/bin/install_rez.sh
+ENV REZ_INSTALL_DIR=/usr/local/rez
+RUN bash -lc 'source /usr/local/bin/install_rez.sh && rez --version'
+
 FROM ${BASE_IMAGE}
+
+# TEMPORARY: Rez from rez-builder — drop when aswf-docker #467 ships it in the base.
+COPY --from=rez-builder /usr/local/rez /usr/local/rez
+
+# TEMPORARY: build hdEmbree into the pristine stack — drop when the ASWF
+# base images ship OpenUSD with hdEmbree enabled.
+COPY build_embree_delegate.sh /usr/local/aswf/build_embree_delegate.sh
+ARG EMBREE_BUILD_JOBS
+RUN EMBREE_BUILD_JOBS=${EMBREE_BUILD_JOBS} /usr/local/aswf/build_embree_delegate.sh
