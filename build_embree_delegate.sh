@@ -46,19 +46,19 @@ readonly TBB_TARBALL_SHA256=ad73e88dbf8590daa66136275d0785e5a733d0ee2cc66b99f210
 
 openusd_pins() {
   case "$1" in
-    23.08)
+    0.23.8)
       readonly OPENUSD_TAG=v23.08
       readonly OPENUSD_REVISION=10b62439e9242a55101cf8b200f2c7e02420e1b0 ;;
-    24.08)
+    0.24.8)
       readonly OPENUSD_TAG=v24.08
       readonly OPENUSD_REVISION=59992d2178afcebd89273759f2bddfe730e59aa8 ;;
-    25.05.01)
+    0.25.5)
       readonly OPENUSD_TAG=v25.05.01
       readonly OPENUSD_REVISION=1595c62ea8381b5b22eb8621afc8652f89b6136d ;;
-    26.03)
+    0.26.3)
       readonly OPENUSD_TAG=v26.03
       readonly OPENUSD_REVISION=1818e14bae0036ac4bc7b4e60826b5797076a4fe ;;
-    26.08)
+    0.26.8)
       readonly OPENUSD_TAG=v26.08
       readonly OPENUSD_REVISION=ee47c679abde5b467a7b6a41f3b2285564a4222e ;;
     *)
@@ -83,6 +83,7 @@ command -v git >/dev/null 2>&1 || {
   rm -rf /var/cache/dnf
 }
 
+readonly BUILD_JOBS="${EMBREE_BUILD_JOBS:-$(nproc)}"
 mkdir -p "$BUILD_ROOT" "$EVIDENCE_ROOT" "$CONSUMER_DIR"
 
 # --- verify the pxr installation we are consuming ---------------------------
@@ -109,10 +110,13 @@ test -n "$usd_python_dir"
 test -d "$usd_python_dir/pxr"
 
 usd_version="$(PYTHONPATH="$usd_python_dir${PYTHONPATH:+:$PYTHONPATH}" \
-  python3 -c 'from pxr import Usd; v=Usd.GetVersion(); print("%d.%d.%d" % v)')"
+  python3 -c 'from pxr import Usd; v=tuple(Usd.GetVersion())[:3]; print("%d.%d.%d" % v)')"
 printf '%s\n' "$usd_version" | tee "$EVIDENCE_ROOT/openusd-version.txt"
 openusd_pins "$usd_version"
-readonly EMBREE3_BUILD=$([[ "${usd_version%%.*}" -lt 26 ]] && echo 1 || echo 0)
+# USB version tuple is (0, minor, patch): the era discriminator is the MINOR
+# field -- 23/24/25 -> embree3 pairing, 26 -> embree4 (conan 4.2.0).
+readonly USDU_MINOR="$(printf '%s' "$usd_version" | cut -d. -f2)"
+readonly EMBREE3_BUILD=$([[ "$USDU_MINOR" -lt 26 ]] && echo 1 || echo 0)
 printf 'Embree 3.x build required: %s\n' "$EMBREE3_BUILD" \
   | tee "$EVIDENCE_ROOT/embree3-build-flag.txt"
 
@@ -149,7 +153,7 @@ if [[ "$EMBREE3_BUILD" == "1" ]]; then
 
   mkdir -p "$BUILD_ROOT/tbb-src"
   tar -xzf "$tbb_tarball" --strip-components=1 -C "$BUILD_ROOT/tbb-src"
-  make -C "$BUILD_ROOT/tbb-src" -j"$(nproc)" tbb tbbmalloc
+  make -C "$BUILD_ROOT/tbb-src" -j"$BUILD_JOBS" tbb tbbmalloc
 
   TBB_STAGE="$BUILD_ROOT/tbb-stage"
   mkdir -p "$TBB_STAGE/include" "$TBB_STAGE/lib"
@@ -170,7 +174,7 @@ if [[ "$EMBREE3_BUILD" == "1" ]]; then
     -DEMBREE_TUTORIALS=OFF \
     -DEMBREE_ISPC_SUPPORT=OFF \
     -DEMBREE_TBB_ROOT="$TBB_STAGE"
-  cmake --build "$BUILD_ROOT/embree-build" -j"$(nproc)"
+  cmake --build "$BUILD_ROOT/embree-build" -j"$BUILD_JOBS"
   cmake --install "$BUILD_ROOT/embree-build"
   test -e "$USD_PREFIX/lib/libembree3.so.3"
 
@@ -374,7 +378,7 @@ cmake -S "$CONSUMER_DIR" -B "$BUILD_ROOT/hdembree-build" \
   -DEMBREE_LIBRARY="$EMBREE_LIBRARY_FILE" \
   -DCMAKE_INSTALL_RPATH=/usr/local/lib
 
-cmake --build "$BUILD_ROOT/hdembree-build" -j"$(nproc)"
+cmake --build "$BUILD_ROOT/hdembree-build" -j"$BUILD_JOBS"
 cmake --install "$BUILD_ROOT/hdembree-build"
 
 # --- gates -------------------------------------------------------------------
@@ -389,7 +393,7 @@ if grep -Eq 'not found|undefined symbol' "$EVIDENCE_ROOT/hdEmbree-ldd.txt"; then
   grep -E 'not found|undefined symbol' "$EVIDENCE_ROOT/hdEmbree-ldd.txt" | head -20 >&2
   exit 1
 fi
-grep -Eq '${EXPECTED_EMBREE_SONAME}' "$EVIDENCE_ROOT/hdEmbree-ldd.txt"
+grep -Eq "${EXPECTED_EMBREE_SONAME}" "$EVIDENCE_ROOT/hdEmbree-ldd.txt"
 
 readelf -d "$PLUGIN_ROOT/hdEmbree.so" | tee "$EVIDENCE_ROOT/hdEmbree-dynamic.txt"
 grep -q "/usr/local/lib" "$EVIDENCE_ROOT/hdEmbree-dynamic.txt"

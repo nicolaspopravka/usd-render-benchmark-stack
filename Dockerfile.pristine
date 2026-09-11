@@ -20,4 +20,5 @@ RUN test -x /usr/bin/time || (dnf install -y time && dnf clean all && rm -rf /va
 # TEMPORARY: build hdEmbree into the pristine stack — drop when the ASWF
 # base images ship OpenUSD with hdEmbree enabled.
 COPY build_embree_delegate.sh /usr/local/aswf/build_embree_delegate.sh
-RUN /usr/local/aswf/build_embree_delegate.sh
+ARG EMBREE_BUILD_JOBS
+RUN EMBREE_BUILD_JOBS=${EMBREE_BUILD_JOBS} /usr/local/aswf/build_embree_delegate.sh
