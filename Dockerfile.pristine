@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.10
 
-# Byte-pristine <cy> stack image — currently a trivial retag of the ASWF base
-# plus the Run-time overlays carried by the fix/* branches.
+# Byte-pristine <cy> stack image — the ASWF base plus the overlays carried by
+# the fix/* branches.
 
 ARG BASE_IMAGE
 
@@ -20,7 +20,8 @@ RUN test -x /usr/bin/time || (dnf install -y time && dnf clean all && rm -rf /va
 
 # TEMPORARY: build OpenMoonRay into the pristine stack — drop when the ASWF
 # base images ship OpenMoonRay (ASWF pins ASWF_MOONRAY_VERSION=3.6.0.1 on all
-# years; the script rebuilds v2026.29.1 against this base). Follows the
+# years; the script rebuilds the tagged release against this base). Follows the
 # official Rocky 9 container build; see build_moonray.sh.
+ARG MOONRAY_TAG
 COPY build_moonray.sh /usr/local/aswf/build_moonray.sh
-RUN /usr/local/aswf/build_moonray.sh
+RUN MOONRAY_TAG="${MOONRAY_TAG}" /usr/local/aswf/build_moonray.sh

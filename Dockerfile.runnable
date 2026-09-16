@@ -26,3 +26,13 @@ ENV PYTHONPATH=/usr/local/lib/python
 ENV PXR_PLUGINPATH_NAME=/usr/local/plugin/pxr
 # TEMPORARY: Arras session dir — drop when OpenMoonRay lands in the base.
 ENV ARRAS_SESSION_PATH=/usr/local/sessions
+
+# Export shader_json from the installed MoonRay DSOs for the Hydra Ndr plugins
+# (the runnable's analogue of the doc's setup.sh; env scoped to this step).
+RUN export PATH=/usr/local/bin:$PATH \
+        LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH:-} \
+        MOONRAY_ROOT=/usr/local \
+        RDL2_DSO_PATH=/usr/local/rdl2dso.proxy:/usr/local/rdl2dso \
+        MOONRAY_CLASS_PATH=/usr/local/shader_json \
+    && mkdir -p /usr/local/shader_json \
+    && rdl2_json_exporter --out /usr/local/shader_json/ --sparse
