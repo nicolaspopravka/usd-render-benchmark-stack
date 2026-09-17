@@ -23,6 +23,10 @@ RUN test -x /usr/bin/time || (dnf install -y time && dnf clean all && rm -rf /va
 COPY fixers/ /usr/local/aswf/moonray-fixers/
 RUN /usr/local/aswf/moonray-fixers/01-gitlfs-prereqs.sh
 
+# TEMPORARY: OpenUSD cmake exports reference CONAN_LIB targets the deploy never
+# defines — drop when the ASWF bases ship corrected exports.
+RUN /usr/local/aswf/moonray-fixers/02-openusd-cmake-exports.sh
+
 # TEMPORARY: build OpenMoonRay into the pristine stack — drop when the ASWF
 # base images ship OpenMoonRay (ASWF pins ASWF_MOONRAY_VERSION=3.6.0.1 on all
 # years; the script rebuilds the tagged release against this base). Follows the
