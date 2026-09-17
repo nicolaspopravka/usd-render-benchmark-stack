@@ -6,12 +6,16 @@
 #
 # Canonical reference: OpenUSD's in-tree hdEmbree plugin
 # (pxr/imaging/plugin/hdEmbree), built externally against the base's prebuilt
-# OpenUSD via the direct-linkage consumer pattern (hdCycles precedent), then
-# installed into the COMPILED-IN plugin root (${ASWF_INSTALL_PREFIX}/plugin/usd)
-# -- exactly where a USD build with PXR_BUILD_EMBREE_PLUGIN=ON would put it.
-# The base root plugInfo.json already Includes "*/resources/", so the installed
-# leaf is discovered by DEFAULT (no PXR_PLUGINPATH_NAME). One USD build per
-# image: nothing here rebuilds OpenUSD.
+# OpenUSD via the pxr CMake package (find_package(pxr), the hdMoonray
+# consumer pattern), then installed into the COMPILED-IN plugin root
+# (${ASWF_INSTALL_PREFIX}/plugin/usd) -- exactly where a USD build with
+# PXR_BUILD_EMBREE_PLUGIN=ON would put it. The base root plugInfo.json already
+# Includes "*/resources/", so the installed leaf is discovered by DEFAULT (no
+# PXR_PLUGINPATH_NAME). One USD build per image: nothing here rebuilds OpenUSD.
+#
+# The ASWF deploy's pxr cmake exports reference imported targets it does not
+# define; fixers/02-openusd-cmake-exports.sh (a RUN step in Dockerfile.pristine)
+# provides them so find_package(pxr) succeeds -- the same fixer MoonRay uses.
 #
 # The OpenUSD source tag must match the base's prebuilt OpenUSD; it is caller
 # data (per-CY), not derived. Embree always comes from the image (Nicolas).
@@ -45,10 +49,11 @@ git clone --branch "${OPENUSD_TAG}" --depth 1 \
 git -C "${OPENUSD_SRC}" rev-parse HEAD   # recorded for evidence; not asserted
 
 # --- configure ------------------------------------------------------------
+# CMAKE_PREFIX_PATH lets find_package(pxr) resolve /usr/local/pxrConfig.cmake.
 cmake -S "${CONSUMER_DIR}" -B "${OPENUSD_BUILD}" \
+    -DCMAKE_PREFIX_PATH="${CMAKE_INSTALL_PREFIX}" \
     -DHDEMBREE_SOURCE_DIR="${OPENUSD_SRC}/pxr/imaging/plugin/hdEmbree" \
     -DUSD_INCLUDE_DIR="${CMAKE_INSTALL_PREFIX}/include" \
-    -DUSD_LIB_DIR="${CMAKE_INSTALL_PREFIX}/lib" \
     -DEMBREE_ROOT="${CMAKE_INSTALL_PREFIX}" \
     -DCMAKE_INSTALL_PREFIX="${CMAKE_INSTALL_PREFIX}" \
     -DCMAKE_INSTALL_RPATH="${CMAKE_INSTALL_PREFIX}/lib"
