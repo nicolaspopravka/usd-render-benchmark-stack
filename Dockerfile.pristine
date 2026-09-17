@@ -28,6 +28,10 @@ COPY --from=rez-builder /usr/local/rez /usr/local/rez
 COPY fixers/ /usr/local/aswf/moonray-fixers/
 RUN /usr/local/aswf/moonray-fixers/02-openusd-cmake-exports.sh
 
+# TEMPORARY: pxrConfig find_dependency(OpenVDB) needs a findable config on some
+# CYs — drop when the ASWF bases ship an OpenVDB cmake config.
+RUN /usr/local/aswf/moonray-fixers/04-openvdb-config.sh
+
 # TEMPORARY: build hdEmbree into the pristine stack — drop when the ASWF
 # base images ship OpenUSD with hdEmbree enabled.
 COPY cmake/hdembree-consumer /usr/local/aswf/cmake/hdembree-consumer
