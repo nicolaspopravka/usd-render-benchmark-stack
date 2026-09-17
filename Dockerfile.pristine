@@ -5,6 +5,7 @@
 
 ARG BASE_IMAGE
 
+# TEMPORARY: build Rez in this stage — drop when aswf-docker #467 ships it in the base.
 FROM ${BASE_IMAGE} AS rez-builder
 COPY install_rez.sh /usr/local/bin/install_rez.sh
 ENV REZ_INSTALL_DIR=/usr/local/rez
