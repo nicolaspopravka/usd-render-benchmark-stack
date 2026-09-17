@@ -4,6 +4,10 @@
 # as a USD-enabled install, with the Run-time overlays from fix/rez.  The
 # 2027 base ships GNU time and pxr in site-packages, so fix/time and
 # fix/pythonpath are NOT carried here (Phase 41 convention).
+#
+# hdEmbree installs into the compiled-in plugin root (/usr/local/plugin/usd);
+# no PXR_PLUGINPATH_NAME is needed, the image enumerates {Storm, Embree} by
+# default discovery. See build_hdembree.sh.
 
 ARG BASE_IMAGE
 
@@ -19,6 +23,7 @@ COPY --from=rez-builder /usr/local/rez /usr/local/rez
 
 # TEMPORARY: build hdEmbree into the pristine stack — drop when the ASWF
 # base images ship OpenUSD with hdEmbree enabled.
-COPY build_embree_delegate.sh /usr/local/aswf/build_embree_delegate.sh
-ARG EMBREE_BUILD_JOBS
-RUN EMBREE_BUILD_JOBS=${EMBREE_BUILD_JOBS} /usr/local/aswf/build_embree_delegate.sh
+COPY cmake/hdembree-consumer /usr/local/aswf/cmake/hdembree-consumer
+COPY build_hdembree.sh /usr/local/aswf/build_hdembree.sh
+ARG OPENUSD_TAG
+RUN OPENUSD_TAG="${OPENUSD_TAG}" /usr/local/aswf/build_hdembree.sh
