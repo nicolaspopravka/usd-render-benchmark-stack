@@ -1,6 +1,10 @@
 # syntax=docker/dockerfile:1.10
 
-# Byte-pristine <cy> stack image — currently a trivial retag of the ASWF base.
+# Byte-pristine <cy> stack image: base plus the hdEmbree delegate built and
+# installed into the compiled-in plugin root (/usr/local/plugin/usd), where a
+# USD build with hdEmbree enabled would have put it. No PXR_PLUGINPATH_NAME is
+# needed; the image enumerates {Storm, Embree} by default discovery.
+# See build_hdembree.sh.
 
 ARG BASE_IMAGE
 
@@ -19,6 +23,7 @@ RUN test -x /usr/bin/time || (dnf install -y time && dnf clean all && rm -rf /va
 
 # TEMPORARY: build hdEmbree into the pristine stack — drop when the ASWF
 # base images ship OpenUSD with hdEmbree enabled.
-COPY build_embree_delegate.sh /usr/local/aswf/build_embree_delegate.sh
-ARG EMBREE_BUILD_JOBS
-RUN EMBREE_BUILD_JOBS=${EMBREE_BUILD_JOBS} /usr/local/aswf/build_embree_delegate.sh
+COPY cmake/hdembree-consumer /usr/local/aswf/cmake/hdembree-consumer
+COPY build_hdembree.sh /usr/local/aswf/build_hdembree.sh
+ARG OPENUSD_TAG
+RUN OPENUSD_TAG="${OPENUSD_TAG}" /usr/local/aswf/build_hdembree.sh
