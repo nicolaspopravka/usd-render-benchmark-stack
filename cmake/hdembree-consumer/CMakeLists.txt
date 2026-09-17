@@ -2,14 +2,15 @@ cmake_minimum_required(VERSION 3.21)
 project(hdembree-consumer LANGUAGES CXX)
 
 # External consumer build of OpenUSD's in-tree hdEmbree plugin
-# (pxr/imaging/plugin/hdEmbree): compile the plugin sources against the base's
-# PREBUILT OpenUSD by direct linkage and install into the compiled-in plugin
-# root (<prefix>/plugin/usd) -- exactly where a USD build with
+# (pxr/imaging/plugin/hdEmbree): build the plugin against the base's PREBUILT
+# OpenUSD via the pxr package (find_package), then install into the compiled-in
+# plugin root (<prefix>/plugin/usd) -- exactly where a USD build with
 # PXR_BUILD_EMBREE_PLUGIN=ON would put it. Embree always comes from the image.
 # One USD build per image: nothing is rebuilt here.
 #
-# ASWF builds OpenUSD SPLIT (libusd_plug, libusd_tf, ...); a monolithic
-# libusd_ms is neither expected nor supported.
+# The ASWF deploy's pxr cmake exports reference imported targets it does not
+# define (CONAN_LIB::*, OpenSubdiv::*, ...); fixers/02-openusd-cmake-exports.sh
+# (a RUN step in Dockerfile.pristine) provides them before this configure runs.
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -17,15 +18,23 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # --- inputs (all cached; provided by build_hdembree.sh) --------------------
 set(HDEMBREE_SOURCE_DIR "" CACHE PATH
     "Directory of the upstream hdEmbree plugin sources inside an OpenUSD checkout")
-set(EMBREE_ROOT "/usr/local" CACHE PATH "Embree install prefix (shipped conan embree)")
 set(USD_INCLUDE_DIR "/usr/local/include" CACHE PATH "Prebuilt OpenUSD headers")
-set(USD_LIB_DIR "/usr/local/lib" CACHE PATH "Prebuilt OpenUSD libraries")
+set(EMBREE_ROOT "/usr/local" CACHE PATH "Embree install prefix (shipped conan embree)")
 
 if(NOT HDEMBREE_SOURCE_DIR)
   message(FATAL_ERROR "HDEMBREE_SOURCE_DIR is required")
 endif()
 
-# --- Embree library ---------------------------------------------------------
+# --- pxr (prebuilt OpenUSD) ---------------------------------------------------
+# PXR_VERSION is set by pxrConfig; the retrieved components are links with the
+# plugin's needs (hdMoonray precedent: link the plain component targets).
+find_package(pxr REQUIRED)
+find_package(Threads REQUIRED)
+if(PXR_VERSION VERSION_LESS 2603)
+  message(FATAL_ERROR "This consumer expects OpenUSD >= 26.03 on the base")
+endif()
+
+# --- Embree library ----------------------------------------------------------
 # No era preselect: the shipped conan embree provides the family the plugin
 # needs on the CU cycles (26.03/26.08 -> embree4); one family is present, so
 # find_library name-order cannot mislink.
@@ -40,39 +49,13 @@ if(NOT EMBREE_LIBRARY)
 endif()
 message(STATUS "Embree library: ${EMBREE_LIBRARY}")
 
-# --- prebuilt OpenUSD split libraries ---------------------------------------
-# A USD build with hdEmbree needs these split libs. ASWF ships them; fail
-# loudly if any is missing (no monolithic fallback by design).
-set(HDEMBREE_PXR_LIBS plug tf vt gf work hf hd hdx)
-set(HDEMBREE_LINK_LIBRARIES "")
-set(_missing "")
-foreach(_name IN LISTS HDEMBREE_PXR_LIBS)
-  find_library(_pxr_lib
-    NAMES "usd_${_name}" "${_name}"
-    PATHS "${USD_LIB_DIR}"
-    NO_DEFAULT_PATH)
-  if(_pxr_lib)
-    list(APPEND HDEMBREE_LINK_LIBRARIES "${_pxr_lib}")
-    message(STATUS "OpenUSD split library: ${_pxr_lib}")
-  else()
-    list(APPEND _missing "${_name}")
-  endif()
-  unset(_pxr_lib CACHE)
-endforeach()
-
-if(_missing)
-  message(FATAL_ERROR
-    "Cannot locate prebuilt OpenUSD split libraries (missing: ${_missing}); "
-    "ASWF builds USD split, a monolithic libusd_ms is not expected")
-endif()
-
-# --- TBB -------------------------------------------------------------------
+# --- TBB ----------------------------------------------------------------------
 find_library(HDEMBREE_TBB_LIBRARY
   NAMES tbb
-  PATHS "${USD_LIB_DIR}" /usr/local/lib)
+  PATHS "${EMBREE_ROOT}/lib")
 message(STATUS "TBB library: ${HDEMBREE_TBB_LIBRARY}")
 
-# --- Python include dir (for wrap_python.hpp) --------------------------------
+# --- Python include dir (for wrap_python.hpp) -----------------------------------
 set(IMAGE_PYTHON_EXECUTABLE "/usr/local/bin/python3")
 execute_process(
   COMMAND "${IMAGE_PYTHON_EXECUTABLE}" -c
@@ -93,7 +76,21 @@ endif()
 set(PYTHON_INCLUDE_DIR "${_pyinc}")
 message(STATUS "Python include dir: ${PYTHON_INCLUDE_DIR}")
 
-# --- sources / target ---------------------------------------------------------
+# --- pxr component targets to link ----------------------------------------------
+# The pxr package defines imported targets per component (tf, plug, ...); verify
+# each exists so a silent name typo fails loudly.
+set(HDEMBREE_PXR_LIBS plug tf vt gf work hf hd hdx)
+set(_missing "")
+foreach(_name IN LISTS HDEMBREE_PXR_LIBS)
+  if(NOT TARGET "${_name}")
+    list(APPEND _missing "${_name}")
+  endif()
+endforeach()
+if(_missing)
+  message(FATAL_ERROR "pxr package does not define component targets: ${_missing}")
+endif()
+
+# --- sources / target -----------------------------------------------------------
 file(GLOB_RECURSE HDEMBREE_SOURCES CONFIGURE_DEPENDS "${HDEMBREE_SOURCE_DIR}/*.cpp")
 list(LENGTH HDEMBREE_SOURCES HDEMBREE_SOURCE_COUNT)
 if(HDEMBREE_SOURCE_COUNT EQUAL 0)
@@ -111,7 +108,7 @@ target_include_directories(hdEmbree PRIVATE
   "${EMBREE_ROOT}/include")
 
 target_link_libraries(hdEmbree PRIVATE
-  ${HDEMBREE_LINK_LIBRARIES}
+  ${HDEMBREE_PXR_LIBS}
   ${HDEMBREE_TBB_LIBRARY}
   ${EMBREE_LIBRARY})
 
@@ -122,7 +119,7 @@ target_compile_definitions(hdEmbree PRIVATE
   PXR_BUILD_LOCATION=usd
   PXR_PLUGIN_BUILD_LOCATION=../plugin/usd)
 
-# --- plugInfo ------------------------------------------------------------------
+# --- plugInfo -----------------------------------------------------------------------
 set(PLUG_INFO_ROOT "..")
 set(PLUG_INFO_LIBRARY_PATH "../hdEmbree.so")
 set(PLUG_INFO_RESOURCE_PATH "resources")
@@ -130,7 +127,7 @@ set(PLUG_INFO_PLUGIN_NAME "pxr.hdEmbree")
 configure_file("${HDEMBREE_SOURCE_DIR}/plugInfo.json"
                "${CMAKE_CURRENT_BINARY_DIR}/plugInfo.json" @ONLY)
 
-# --- install into the compiled-in plugin root (sibling of hdStorm) ---------------
+# --- install into the compiled-in plugin root (sibling of hdStorm) --------------------
 # The base root plugInfo.json already Includes "*/resources/", so no root file
 # is installed here.
 install(TARGETS hdEmbree
