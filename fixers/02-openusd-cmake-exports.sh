@@ -79,3 +79,23 @@ for name in stray:
 pxr_config.write_text(text.replace(includes, "\n".join(lines) + includes, 1))
 print(f"OpenUSD cmake exports: synthesized {len(stray)} imported interface targets: {', '.join(stray)}")
 PYEOF
+
+# pxrConfig.cmake's find_dependency(OpenVDB) fails on cycles whose ASWF OpenVDB
+# deploy ships no findable CMake config (OpenVDB 13.0 on the 2027 base, run
+# 35246204686; 26.08 pxrConfig:133). The dependency is already linked into the
+# installed USD libraries, so a stub config reporting FOUND (with an empty
+# interface matching the pxrTargets signature) is enough. Written only when the
+# deploy ships no config.
+if [ ! -e /usr/local/lib/cmake/OpenVDB/OpenVDBConfig.cmake ] \
+   && [ ! -e /usr/local/cmake/OpenVDBConfig.cmake ]; then
+    mkdir -p /usr/local/lib/cmake/OpenVDB
+    cat > /usr/local/lib/cmake/OpenVDB/OpenVDBConfig.cmake <<'EOF'
+# ASWF deployed-image shim: OpenVDB's cmake config is not deployed; the
+# dependency is already linked into the installed OpenUSD libraries.
+if(NOT TARGET OpenVDB::openvdb)
+    add_library(OpenVDB::openvdb INTERFACE IMPORTED)
+endif()
+set(OpenVDB_FOUND TRUE)
+EOF
+    echo "OpenUSD cmake exports: stub OpenVDBConfig.cmake written (find_dependency(OpenVDB))"
+fi
