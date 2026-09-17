@@ -7,6 +7,11 @@ ARG BASE_IMAGE
 
 FROM ${BASE_IMAGE}
 
+# TEMPORARY: Step-1 prereqs the base omits (install_packages.sh installs
+# git-lfs) — drop when git-lfs ships in the ASWF base images.
+COPY fixers/ /usr/local/aswf/moonray-fixers/
+RUN /usr/local/aswf/moonray-fixers/01-gitlfs-prereqs.sh
+
 # TEMPORARY: build OpenMoonRay into the pristine stack — drop when the ASWF
 # base images ship OpenMoonRay (ASWF pins ASWF_MOONRAY_VERSION=3.6.0.1 on all
 # years; the script rebuilds the tagged release against this base). Follows the
