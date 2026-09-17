@@ -13,13 +13,16 @@
 #   CONAN_LIB::ptex_Ptex_Ptex_dynamic_Ptex_RELEASE
 #   OpenSubdiv::osdCPU / OpenSubdiv::osdGPU
 #   OpenColorIO::OpenColorIO
-# while the deploy installs only the libraries, not the conan generator files.
-# Observed on the ci-moonray 2023.5 basis (pristine build runs 35193000093 /
-# 35196329050) with further `CONAN_LIB::` names on 2024.9/2025.8.
+# and OpenSubdiv::osdGPU's link interface references Threads::Threads without
+# the config loading it. The deploy installs only the libraries, not the conan
+# generator files. Observed on the ci-moonray 2023.5/2024.9 bases (pristine
+# build runs 35193000093 / 35196329050 / 35197608340) and the 2025.8 basis
+# (35198047442) for the Threads::Threads case.
 #
 # The dependencies are already linked into the installed OpenUSD libraries, so
 # an empty INTERFACE IMPORTED target is enough for consumers; a real need would
-# surface as an undefined symbol at MoonRay link time.
+# surface as an undefined symbol at MoonRay link time. Threads::Threads is a
+# standard CMake module target, so find_package(Threads) defines it.
 #
 # DROP THIS when the ASWF bases ship corrected OpenUSD cmake exports.
 set -euo pipefail
@@ -56,8 +59,12 @@ if marker in text:
 if includes not in text:
     raise SystemExit("cannot locate pxrTargets include in pxrConfig.cmake")
 
+# Define Threads::Threads before the find_dependency section (the deployed
+# OpenSubdiv config references it in osdGPU's link interface without loading it).
+text = f"{marker}\nfind_package(Threads REQUIRED)\n\n{text}"
+
+# Synthetic imported targets before pxrTargets include
 lines = [
-    marker,
     "# Imported targets the deployed OpenUSD exports reference but the ASWF",
     "# conan deploy never defines (deps already linked into the installed USD",
     "# libraries; an empty interface is enough for consumers).",

@@ -16,6 +16,10 @@ RUN /usr/local/aswf/moonray-fixers/01-gitlfs-prereqs.sh
 # defines — drop when the ASWF bases ship corrected exports.
 RUN /usr/local/aswf/moonray-fixers/02-openusd-cmake-exports.sh
 
+# TEMPORARY: deployed conan ispc unrunnable (LLVM runtime omitted) — drop when
+# the ASWF bases ship a runnable ispc.
+RUN /usr/local/aswf/moonray-fixers/03-ispc.sh
+
 # TEMPORARY: build OpenMoonRay into the pristine stack — drop when the ASWF
 # base images ship OpenMoonRay (ASWF pins ASWF_MOONRAY_VERSION=3.6.0.1 on all
 # years; the script rebuilds the tagged release against this base). Follows the
