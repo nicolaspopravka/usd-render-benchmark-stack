@@ -37,20 +37,21 @@ if(PXR_VERSION VERSION_LESS 2603)
   message(FATAL_ERROR "This consumer expects OpenUSD >= 26.03 on the base")
 endif()
 
-# --- Embree library ----------------------------------------------------------
-# No era preselect: the shipped conan embree provides the family the plugin
-# needs on the CU cycles (26.03/26.08 -> embree4); one family is present, so
-# find_library name-order cannot mislink.
-if(NOT EMBREE_LIBRARY)
-  find_library(EMBREE_LIBRARY
-    NAMES embree4 embree3
-    PATHS "${EMBREE_ROOT}/lib"
-    NO_DEFAULT_PATH)
+# --- Embree package ----------------------------------------------------------
+# Embree ships a CMake package; consume it (Embree 4 exports Embree:: targets,
+# older versions un-namespaced). No era preselect: the shipped conan embree4
+# provides the family the plugin needs on the CU cycles, and the config's
+# exported target is authoritative.
+find_package(embree CONFIG QUIET)
+if(TARGET Embree::embree)
+  set(HDEMBREE_EMBREE_LIBS Embree::embree)
+elseif(TARGET embree)
+  set(HDEMBREE_EMBREE_LIBS embree)
+else()
+  message(FATAL_ERROR
+    "Embree package not found (expected Embree::embree or embree under ${EMBREE_ROOT})")
 endif()
-if(NOT EMBREE_LIBRARY)
-  message(FATAL_ERROR "Cannot locate the Embree library under ${EMBREE_ROOT}/lib")
-endif()
-message(STATUS "Embree library: ${EMBREE_LIBRARY}")
+message(STATUS "Embree target: ${HDEMBREE_EMBREE_LIBS}")
 
 # --- Python include dir (for wrap_python.hpp) -----------------------------------
 set(IMAGE_PYTHON_EXECUTABLE "/usr/local/bin/python3")
@@ -108,7 +109,7 @@ target_link_libraries(hdEmbree PRIVATE
   ${HDEMBREE_PXR_LIBS}
   TBB::tbb
   Threads::Threads
-  ${EMBREE_LIBRARY})
+  ${HDEMBREE_EMBREE_LIBS})
 
 target_compile_definitions(hdEmbree PRIVATE
   MFB_PACKAGE_NAME=hdEmbree
