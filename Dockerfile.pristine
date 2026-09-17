@@ -22,6 +22,12 @@ FROM ${BASE_IMAGE}
 # TEMPORARY: Rez from rez-builder — drop when aswf-docker #467 ships it in the base.
 COPY --from=rez-builder /usr/local/rez /usr/local/rez
 
+# TEMPORARY: OpenUSD cmake exports reference CONAN_LIB targets the deploy never
+# defines (find_package(pxr) consumer, same fixer as MoonRay) — drop when the
+# ASWF bases ship corrected exports.
+COPY fixers/ /usr/local/aswf/moonray-fixers/
+RUN /usr/local/aswf/moonray-fixers/02-openusd-cmake-exports.sh
+
 # TEMPORARY: build hdEmbree into the pristine stack — drop when the ASWF
 # base images ship OpenUSD with hdEmbree enabled.
 COPY cmake/hdembree-consumer /usr/local/aswf/cmake/hdembree-consumer
