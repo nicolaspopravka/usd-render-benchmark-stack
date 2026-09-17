@@ -26,10 +26,13 @@ if(NOT HDEMBREE_SOURCE_DIR)
 endif()
 
 # --- pxr (prebuilt OpenUSD) ---------------------------------------------------
-# PXR_VERSION is set by pxrConfig; the retrieved components are links with the
-# plugin's needs (hdMoonray precedent: link the plain component targets).
-find_package(pxr REQUIRED)
+# Threads and TBB are REAL dependencies of this plugin AND of the pxr config's
+# dependency graph, so they are found BEFORE find_package(pxr): otherwise
+# fixers/02-openusd-cmake-exports.sh synthesizes them as empty interfaces and a
+# later real package would conflict. PXR_VERSION is set by pxrConfig.
 find_package(Threads REQUIRED)
+find_package(TBB REQUIRED)
+find_package(pxr REQUIRED)
 if(PXR_VERSION VERSION_LESS 2603)
   message(FATAL_ERROR "This consumer expects OpenUSD >= 26.03 on the base")
 endif()
@@ -48,12 +51,6 @@ if(NOT EMBREE_LIBRARY)
   message(FATAL_ERROR "Cannot locate the Embree library under ${EMBREE_ROOT}/lib")
 endif()
 message(STATUS "Embree library: ${EMBREE_LIBRARY}")
-
-# --- TBB ----------------------------------------------------------------------
-find_library(HDEMBREE_TBB_LIBRARY
-  NAMES tbb
-  PATHS "${EMBREE_ROOT}/lib")
-message(STATUS "TBB library: ${HDEMBREE_TBB_LIBRARY}")
 
 # --- Python include dir (for wrap_python.hpp) -----------------------------------
 set(IMAGE_PYTHON_EXECUTABLE "/usr/local/bin/python3")
@@ -109,7 +106,8 @@ target_include_directories(hdEmbree PRIVATE
 
 target_link_libraries(hdEmbree PRIVATE
   ${HDEMBREE_PXR_LIBS}
-  ${HDEMBREE_TBB_LIBRARY}
+  TBB::tbb
+  Threads::Threads
   ${EMBREE_LIBRARY})
 
 target_compile_definitions(hdEmbree PRIVATE
