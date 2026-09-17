@@ -40,8 +40,8 @@ endif()
 # --- Embree package ----------------------------------------------------------
 # Embree ships a CMake package; consume it (Embree 4 exports Embree:: targets,
 # older versions un-namespaced). No era preselect: the shipped conan embree4
-# provides the family the plugin needs on the CU cycles, and the config's
-# exported target is authoritative.
+# provides the family the plugin needs on these CYs (26.03/26.08), and the
+# config's exported target is authoritative.
 find_package(embree CONFIG QUIET)
 if(TARGET Embree::embree)
   set(HDEMBREE_EMBREE_LIBS Embree::embree)

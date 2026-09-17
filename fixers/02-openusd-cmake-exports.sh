@@ -80,7 +80,7 @@ pxr_config.write_text(text.replace(includes, "\n".join(lines) + includes, 1))
 print(f"OpenUSD cmake exports: synthesized {len(stray)} imported interface targets: {', '.join(stray)}")
 PYEOF
 
-# pxrConfig.cmake's find_dependency(OpenVDB) fails on cycles whose ASWF OpenVDB
+# pxrConfig.cmake's find_dependency(OpenVDB) fails on CYs whose ASWF OpenVDB
 # deploy ships no findable CMake config (OpenVDB 13.0 on the 2027 base, run
 # 35246204686; 26.08 pxrConfig:133). The dependency is already linked into the
 # installed USD libraries, so a stub config reporting FOUND (with an empty
