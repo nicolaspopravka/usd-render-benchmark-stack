@@ -2,17 +2,20 @@
 # Copyright (c) Contributors to the aswf-docker Project. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
-# Provide the CONAN_LIB:: imported targets that the deployed OpenUSD cmake
-# exports reference but the ASWF conan deploy never defines.
+# Provide the imported targets that the deployed OpenUSD cmake exports
+# reference but the ASWF conan deploy never defines.
 #
 # Root cause: the deployed pxrTargets.cmake set_target_properties() calls for
-# the installed USD targets reference Conan-generated names such as
+# the installed USD targets reference dependency targets that do not exist in
+# the deploy, e.g.
 #   CONAN_LIB::boost_Boost_python_boost_python310_RELEASE
 #   CONAN_LIB::materialx_materialx_MaterialXCore_MaterialXCore_RELEASE
 #   CONAN_LIB::ptex_Ptex_Ptex_dynamic_Ptex_RELEASE
-# while the deploy installs only the libraries, not the conan generator files
-# that define these targets. Observed on the ci-moonray 2023.5/2024.9/2025.8
-# bases (pristine build runs for 2023.2/2024.2/2025.2).
+#   OpenSubdiv::osdCPU / OpenSubdiv::osdGPU
+#   OpenColorIO::OpenColorIO
+# while the deploy installs only the libraries, not the conan generator files.
+# Observed on the ci-moonray 2023.5 basis (pristine build runs 35193000093 /
+# 35196329050) with further `CONAN_LIB::` names on 2024.9/2025.8.
 #
 # The dependencies are already linked into the installed OpenUSD libraries, so
 # an empty INTERFACE IMPORTED target is enough for consumers; a real need would
@@ -31,13 +34,17 @@ if not (pxr_config.is_file() and targets):
     raise SystemExit("OpenUSD cmake exports not found at /usr/local")
 files = [pxr_config, *targets]
 
+# Every namespaced imported-target reference the exports use (CONAN_LIB::*,
+# OpenSubdiv::*, OpenColorIO::*, ...). Pxr's own targets are un-namespaced, so
+# they are not matched. Tokens containing `${` are variables, not targets.
 stray = sorted({
-    n
+    tok
     for p in files
-    for n in re.findall(r"CONAN_LIB::([A-Za-z0-9_]+)", p.read_text())
+    for tok in re.findall(r"\b[A-Za-z_][A-Za-z0-9_]*::[A-Za-z_][A-Za-z0-9_]*\b", p.read_text())
+    if "$" not in tok
 })
 if not stray:
-    print("OpenUSD cmake exports: no residual CONAN_LIB targets")
+    print("OpenUSD cmake exports: no undefined imported targets")
     raise SystemExit(0)
 
 marker = "# ASWF deployed-image dependency shim for OpenMoonRay"
@@ -51,16 +58,17 @@ if includes not in text:
 
 lines = [
     marker,
-    "# Residual CONAN_LIB boost/python targets in older-cycle exports",
-    "# (deps already linked into the installed OpenUSD libraries).",
+    "# Imported targets the deployed OpenUSD exports reference but the ASWF",
+    "# conan deploy never defines (deps already linked into the installed USD",
+    "# libraries; an empty interface is enough for consumers).",
 ]
 for name in stray:
     lines += [
-        f"if(NOT TARGET CONAN_LIB::{name})",
-        f"    add_library(CONAN_LIB::{name} INTERFACE IMPORTED)",
+        f"if(NOT TARGET {name})",
+        f"    add_library({name} INTERFACE IMPORTED)",
         "endif()",
         "",
     ]
 pxr_config.write_text(text.replace(includes, "\n".join(lines) + includes, 1))
-print(f"OpenUSD cmake exports: synthesized {len(stray)} CONAN_LIB interface targets")
+print(f"OpenUSD cmake exports: synthesized {len(stray)} imported interface targets: {', '.join(stray)}")
 PYEOF
