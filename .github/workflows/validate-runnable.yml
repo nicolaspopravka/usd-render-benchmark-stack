@@ -76,7 +76,7 @@ jobs:
               # Plugin enumeration (default discovery; Cycles at /usr/local/plugin/usd).
               pxr_dir=$(find /usr/local/lib -maxdepth 4 -type d -name pxr -print -quit)
               test -n "$pxr_dir"
-              PYTHONPATH="$(dirname "$pxr_dir")" python3 -c "import os; from pxr import UsdImagingGL; names=[UsdImagingGL.Engine.GetRendererDisplayName(p) for p in UsdImagingGL.Engine.GetRendererPlugins()]; print('renderers:', names); assert all(w in names for w in os.environ['DELEGATES'].split(',')), 'not all delegates enumerated: ' + os.environ['DELEGATES']"
+              PYTHONPATH="$(dirname "$pxr_dir")" python3 -c "import os; from pxr import UsdImagingGL; names=[UsdImagingGL.Engine.GetRendererDisplayName(p) for p in UsdImagingGL.Engine.GetRendererPlugins()]; print(\"renderers:\", names); assert all(w in names for w in os.environ[\"DELEGATES\"].split(\",\")), \"not all delegates enumerated\""
 
               for r in ${DELEGATES//,/ }; do
                 echo "=== rendering with $r ==="

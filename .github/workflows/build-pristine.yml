@@ -116,7 +116,7 @@ jobs:
             }
             pxr_dir=$(find /usr/local/lib -maxdepth 4 -type d -name pxr -print -quit)
             test -n "$pxr_dir"
-            PYTHONPATH="$(dirname "$pxr_dir")" python3 -c "from pxr import Usd, UsdImagingGL; names=[UsdImagingGL.Engine.GetRendererDisplayName(p) for p in UsdImagingGL.Engine.GetRendererPlugins()]; print('renderers:', names); assert 'Cycles' in names, 'Cycles plugin not enumerated by default discovery'"
+            PYTHONPATH="$(dirname "$pxr_dir")" python3 -c "from pxr import Usd, UsdImagingGL; names=[UsdImagingGL.Engine.GetRendererDisplayName(p) for p in UsdImagingGL.Engine.GetRendererPlugins()]; print(\"renderers:\", names); assert \"Cycles\" in names, \"Cycles plugin not enumerated by default discovery\""
           '
 
       - name: Upload log
