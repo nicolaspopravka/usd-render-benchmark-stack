@@ -1,0 +1,104 @@
+name: validate-runnable
+
+# Free-GHA runtime validation of a published runnable benchmark image:
+# plugin enumeration + a teapot render per delegate under Xvfb/Mesa llvmpipe.
+# Dispatching this does not publish anything; results are uploaded as
+# artifacts. Use the stack-repo dispatch UI or gh.
+
+on:
+  workflow_dispatch:
+    inputs:
+      runnable_image:
+        description: "Published runnable image, e.g. ghcr.io/nicolaspopravka/usd-render-benchmark:2025.3"
+        required: true
+        type: string
+      delegates:
+        description: "Comma-separated renderer tokens to validate, e.g. Storm,Embree,Cycles"
+        required: false
+        default: "Storm,Cycles"
+        type: string
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Fetch pinned USD WG teapot
+        run: |
+          mkdir -p teapot
+          curl --fail --location --retry 4 \
+            --output teapot/teapot.usda \
+            https://raw.githubusercontent.com/usd-wg/assets/907d5f17bbe933fc14441a3f3ab69a5bd8abe32a/test_assets/_common/teapot.usda
+          printf '%s  %s\n' \
+            92915fe259cb7f895a74dae0bbb6375e8a5843c3f9e24fa4b38607f2aa39431c \
+            teapot/teapot.usda | sha256sum --check
+
+      - name: Run the validation matrix in-container
+        env:
+          RUNNABLE_IMAGE: ${{ inputs.runnable_image }}
+          DELEGATES: ${{ inputs.delegates }}
+        run: |
+          mkdir -p teapot-out
+          docker run --rm \
+            --env DISPLAY=:99 \
+            --env LIBGL_ALWAYS_SOFTWARE=1 \
+            --env GALLIUM_DRIVER=llvmpipe \
+            --env CYCLES_DEVICE=CPU \
+            --env DELEGATES="${{ inputs.delegates }}" \
+            --volume "$PWD/teapot:/test/in:ro" \
+            --volume "$PWD/teapot-out:/test/out" \
+            --entrypoint bash \
+            "$RUNNABLE_IMAGE" -c '
+              set -e
+              dnf install -y mesa-dri-drivers xorg-x11-server-Xvfb >/dev/null
+
+              # CY2024 (GH #46): prefer the distro LLVM for Mesa swrast.
+              [ -d /usr/lib64/llvm17/lib ] && export LD_LIBRARY_PATH=/usr/lib64/llvm17/lib:$LD_LIBRARY_PATH
+
+              mkdir -p /test/out
+              export DISPLAY=:99 LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe CYCLES_DEVICE=CPU
+              Xvfb :99 -screen 0 1280x960x24 +extension GLX +render -noreset >/test/out/xvfb.log 2>&1 &
+              xvfb_pid=$!
+              trap "kill $xvfb_pid 2>/dev/null || true" EXIT
+              sleep 2
+
+              # Plugin enumeration (default discovery; Cycles at /usr/local/plugin/usd).
+              pxr_dir=$(find /usr/local/lib -maxdepth 4 -type d -name pxr -print -quit)
+              test -n "$pxr_dir"
+              PYTHONPATH="$(dirname "$pxr_dir")" python3 -c 'import os; from pxr import UsdImagingGL; names=[UsdImagingGL.Engine.GetRendererDisplayName(p) for p in UsdImagingGL.Engine.GetRendererPlugins()]; print("renderers:", names); [assert want in names, f"{want} not enumerated by default discovery" for want in os.environ["DELEGATES"].split(",")]'
+
+              for r in ${DELEGATES//,/ }; do
+                echo "=== rendering with $r ==="
+                usdrecord --renderer "$r" --camera /Camera \
+                  /test/in/teapot.usda "/test/out/$r.png" >"/test/out/$r.log" 2>&1 || true
+                test -s "/test/out/$r.png" || {
+                  echo "no image written for $r (see $r.log)"
+                  exit 1
+                }
+                echo "$r OK: $(wc -c < "/test/out/$r.png") bytes"
+              done
+            '
+
+      - name: Summarize
+        run: |
+          ls -l teapot-out/
+          file teapot-out/*.png 2>/dev/null || true
+
+      - name: Upload outputs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: validate-${{ github.run_id }}-outputs
+          path: teapot-out
+          if-no-files-found: warn

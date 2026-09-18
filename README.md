@@ -31,11 +31,27 @@ executes that branch's `render_script.sh`, and the resulting `logs/`,
 
 | Image | Purpose |
 | --- | --- |
-| `ghcr.io/nicolaspopravka/usd-render-benchmark-stack:<tag>` | A selected base stack under an explicit output tag. The current `Dockerfile.pristine` adds no benchmark files or packages to the selected base image. |
+| `ghcr.io/nicolaspopravka/usd-render-benchmark-stack:<tag>` | A selected base stack under an explicit output tag. With the optional `cycles_tag` build input, the Cycles Hydra delegate is also built into `/usr/local` (a permanent stack feature; see below). |
 | `ghcr.io/nicolaspopravka/usd-render-benchmark:<tag>` | Thin runnable overlay that sets the benchmark work directory, `REZ_PACKAGES_PATH`, and `render_script.sh` entrypoint. It does not contain a run branch. |
 
 Image tags are convenient references, not fixed evidence. Recorded results
 should retain the image digest and the exact run commit that were observed.
+
+## Delegate ladder and the Cycles feature
+
+The `.N` image-tag series is a delegate ladder on top of the plain `<year>`
+(Storm) image: `.2` adds a second delegate (MoonRay on CY2023–25, Embree on
+CY2026–27), and `.3` adds Cycles. The runner-composite tags are published by
+this repository's workflows from the underlying ASWF images.
+
+Cycles is intentionally **not** part of the ASWF images — Cycles is a Blender
+project, so it will not ship in an `aswf/ci-*` image. In the benchmark stack
+it is a permanent feature: `build_cycles.sh` builds the `hdCycles` Hydra
+delegate against the *same* `/usr/local` OpenUSD and VFX-Platform libraries
+that already serve the other delegates, without Blender's precompiled
+dependency bundle. The plugin lands in the compiled-in default discovery root,
+so `usdrecord --renderer Cycles` works with no extra environment. The build is
+CPU/Embree only by design (no OptiX, no OpenImageDenoise, no SYCL, no OpenVDB).
 
 ## Build workflows
 
@@ -49,6 +65,22 @@ gh workflow run build-pristine.yml \
   -f base_image=aswf/ci-vfxall:2027@sha256:... \
   -f image_tag=2027
 ```
+
+Build a `.3` stack image (adds Cycles over a `.2` composite; base must be
+digest-pinned):
+
+```bash
+gh workflow run build-pristine.yml \
+  --repo nicolaspopravka/usd-render-benchmark-stack \
+  -f base_image=ghcr.io/nicolaspopravka/usd-render-benchmark-stack:2027.2@sha256:... \
+  -f image_tag=2027.3 \
+  -f cycles_tag=v5.0.0
+```
+
+The `cycles_tag` input is optional and empty by default, so ordinary base
+retags keep working unchanged. When set, the workflow also runs a post-push
+closure check on the published image (`ldd -r` on `hdCycles.so` plus plugin
+enumeration), per the stack's "verify what you pushed" convention.
 
 Build the runnable overlay:
 

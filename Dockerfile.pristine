@@ -1,7 +1,23 @@
 # syntax=docker/dockerfile:1.10
 
-# Byte-pristine <cy> stack image — currently a trivial retag of the ASWF base.
+# Byte-pristine <cy> stack image.
+#
+# BASE_IMAGE is either the ASWF base (plain <year>) or a published composite
+# such as stack:<year>.2. When CYCLES_TAG is set, the Cycles Hydra delegate is
+# built into /usr/local as a permanent stack feature — no Blender lib bundle,
+# every dependency resolved from this image's own /usr/local, plugin installed
+# into the compiled-in default discovery root. CYCLES_TAG empty (default)
+# keeps this a pure retag.
 
 ARG BASE_IMAGE
 
 FROM ${BASE_IMAGE}
+
+# Permanent feature: build Cycles against the base's /usr/local.
+COPY build_cycles.sh /usr/local/aswf/build_cycles.sh
+COPY cmake/import_openusd_dependencies.cmake /usr/local/share/cycles/import_openusd_dependencies.cmake
+ARG CYCLES_TAG=""
+RUN if [ -n "${CYCLES_TAG}" ]; then \
+      chmod +x /usr/local/aswf/build_cycles.sh && \
+      CYCLES_TAG="${CYCLES_TAG}" /usr/local/aswf/build_cycles.sh; \
+    fi
