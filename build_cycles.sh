@@ -42,7 +42,9 @@ fi
 gcc --version | head -1
 
 # Build-time deps the base omits. Runtime stays on the base's /usr/local libs.
-dnf install -y git glew-devel mesa-libGL-devel mesa-libEGL-devel
+# libepoxy is required by the Hydra delegate (v5.0.0+ FindEpoxy) and is not
+# part of the ASWF stack — a small GL-utilities wrapper, not a duplicate.
+dnf install -y git glew-devel mesa-libGL-devel mesa-libEGL-devel libepoxy-devel
 dnf clean all
 
 # The delegate must be built against THIS image's OpenUSD.
