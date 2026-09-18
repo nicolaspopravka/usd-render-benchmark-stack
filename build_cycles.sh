@@ -102,31 +102,19 @@ fi
 
 # Place the delegate where a USD build with Cycles enabled would have put it:
 # the compiled-in default plugin discovery root (/usr/local/plugin/usd), in
-# the same single-plugInfo layout as hdStorm.
-#
-# Cycles' own install produces a nested layout (hydra/plugInfo.json ->
-# hdCycles/resources/plugInfo.json). At a discovery root the nested
-# resources-plugInfo's relative LibraryPath does not resolve, so the plugin is
-# repackaged into a flat plugInfo.json (same Types/Name/displayName from the
-# installed resources/plugInfo.json) with the .so in the same directory.
+# the same per-plugin layout the conan deploy uses for hdStorm/hdEmbree:
+#   plugin/usd/<Name>/
+#       <Name>.so
+#       resources/plugInfo.json     (LibraryPath "../<Name>.so", relative)
+# Cycles' own install already produces exactly this file pair under
+# install/hydra/ (hdCycles.so + hdCycles/resources/plugInfo.json), with the
+# LibraryPath already "../hdCycles.so" — transplant it verbatim.
 plugin_root="$ASWF_INSTALL_PREFIX/plugin/usd/hdCycles"
-mkdir -p "$plugin_root"
+mkdir -p "$plugin_root/resources"
 cp -a "$BUILD_ROOT/cycles/install/hydra/hdCycles.so" "$plugin_root/hdCycles.so"
-python3 - "$plugin_root" "$BUILD_ROOT/cycles/install/hydra/hdCycles/resources/plugInfo.json" <<'PY'
-import json, sys
-
-plugin_root, res_path = sys.argv[1], sys.argv[2]
-with open(res_path) as f:
-    entry = json.load(f)["Plugins"][0].copy()
-# hdStorm-layout flat plugInfo: LibraryPath relative to this directory.
-entry["LibraryPath"] = "hdCycles.so"
-entry["ResourcePath"] = ""
-entry["Root"] = ".."
-with open(f"{plugin_root}/plugInfo.json", "w") as out:
-    json.dump({"Plugins": [entry]}, out, indent=4)
-print(f"flat plugInfo.json written: {plugin_root}/plugInfo.json")
-PY
-cat "$plugin_root/plugInfo.json"
+cp -a "$BUILD_ROOT/cycles/install/hydra/hdCycles/resources/plugInfo.json" \
+      "$plugin_root/resources/plugInfo.json"
+cat "$plugin_root/resources/plugInfo.json"
 
 # Self-check at the pristine layer: Cycles registers under default discovery
 # (env-free, so valid without the runnable env). MoonRay needs the runnable
