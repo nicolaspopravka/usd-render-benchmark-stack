@@ -101,11 +101,45 @@ fi
 )
 
 # Place the delegate where a USD build with Cycles enabled would have put it:
-# the compiled-in default plugin discovery root (/usr/local/plugin/usd).
-# install/hydra/ = plugInfo.json + hdCycles.so + <Plugin>/resources/plugInfo.json
+# the compiled-in default plugin discovery root (/usr/local/plugin/usd), in
+# the same single-plugInfo layout as hdStorm.
+#
+# Cycles' own install produces a nested layout (hydra/plugInfo.json ->
+# hdCycles/resources/plugInfo.json). At a discovery root the nested
+# resources-plugInfo's relative LibraryPath does not resolve, so the plugin is
+# repackaged into a flat plugInfo.json (same Types/Name/displayName from the
+# installed resources/plugInfo.json) with the .so in the same directory.
 plugin_root="$ASWF_INSTALL_PREFIX/plugin/usd/hdCycles"
 mkdir -p "$plugin_root"
-cp -a "$BUILD_ROOT/cycles/install/hydra/." "$plugin_root/"
+cp -a "$BUILD_ROOT/cycles/install/hydra/hdCycles.so" "$plugin_root/hdCycles.so"
+python3 - "$plugin_root" "$BUILD_ROOT/cycles/install/hydra/hdCycles/resources/plugInfo.json" <<'PY'
+import json, sys
+
+plugin_root, res_path = sys.argv[1], sys.argv[2]
+with open(res_path) as f:
+    entry = json.load(f)["Plugins"][0].copy()
+# hdStorm-layout flat plugInfo: LibraryPath relative to this directory.
+entry["LibraryPath"] = "hdCycles.so"
+entry["ResourcePath"] = ""
+entry["Root"] = ".."
+with open(f"{plugin_root}/plugInfo.json", "w") as out:
+    json.dump({"Plugins": [entry]}, out, indent=4)
+print(f"flat plugInfo.json written: {plugin_root}/plugInfo.json")
+PY
+cat "$plugin_root/plugInfo.json"
+
+# Self-check at the pristine layer: Cycles registers under default discovery
+# (env-free, so valid without the runnable env). MoonRay needs the runnable
+# env and is verified at the runnable layer.
+pxr_dir=$(find "$ASWF_INSTALL_PREFIX/lib" -maxdepth 4 -type d -name pxr -print -quit)
+test -n "$pxr_dir"
+PYTHONPATH="$(dirname "$pxr_dir")" python3 - <<'PY'
+from pxr import Usd, UsdImagingGL
+names = [UsdImagingGL.Engine.GetRendererDisplayName(p)
+         for p in UsdImagingGL.Engine.GetRendererPlugins()]
+print(f"pristine default-discovery renderers: {names}")
+assert "Cycles" in names, "Cycles not enumerated under default discovery"
+PY
 if [[ -e "$BUILD_ROOT/cycles/install/cycles" ]]; then
   install -m 755 "$BUILD_ROOT/cycles/install/cycles" "$ASWF_INSTALL_PREFIX/bin/cycles"
 fi
