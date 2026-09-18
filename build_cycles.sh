@@ -57,6 +57,20 @@ git clone --branch "$CYCLES_TAG" --depth 1 "$CYCLES_URL" "$BUILD_ROOT/cycles"
 printf 'CYCLES_TAG=%s resolved HEAD=%s\n' "$CYCLES_TAG" \
   "$(git -C "$BUILD_ROOT/cycles" rev-parse HEAD)"
 
+# OSL shader precompilation needs the OSL compiler's own shader dir (stdosl.h).
+# When the base ships the OSL standard library we keep WITH_CYCLES_OSL ON and
+# feed it the resolved path; otherwise OSL shading is disabled (the benchmark
+# scenes render through Cycles' native nodes, which need no OSL).
+stdosl="$(find "$ASWF_INSTALL_PREFIX" -path '*OSL/shaders/stdosl.h' -print -quit 2>/dev/null)"
+if [[ -n "$stdosl" ]]; then
+  osl_shader_dir="$(dirname "$stdosl")"
+  osl_cmake_args=(-DOSL_SHADER_DIR="$osl_shader_dir")
+  echo "OSL shader dir: $osl_shader_dir"
+else
+  osl_cmake_args=(-DWITH_CYCLES_OSL=OFF)
+  echo "WARNING: stdosl.h not found under $ASWF_INSTALL_PREFIX; building with WITH_CYCLES_OSL=OFF"
+fi
+
 (
   cd "$BUILD_ROOT/cycles"
 
@@ -65,6 +79,7 @@ printf 'CYCLES_TAG=%s resolved HEAD=%s\n' "$CYCLES_TAG" \
     -DCMAKE_PREFIX_PATH="$ASWF_INSTALL_PREFIX" \
     -DPXR_ROOT="$ASWF_INSTALL_PREFIX" \
     -DCMAKE_PROJECT_INCLUDE=/usr/local/share/cycles/import_openusd_dependencies.cmake \
+    "${osl_cmake_args[@]}" \
     -DWITH_LIBS_PRECOMPILED=OFF \
     -DWITH_CYCLES_OPENVDB=OFF \
     -DWITH_CYCLES_NANOVDB=OFF \
@@ -96,6 +111,10 @@ if [[ -e "$BUILD_ROOT/cycles/install/cycles" ]]; then
 fi
 if [[ -d "$BUILD_ROOT/cycles/install/lib" ]]; then
   cp -a "$BUILD_ROOT/cycles/install/lib/." "$ASWF_INSTALL_PREFIX/lib/"
+fi
+if [[ -d "$BUILD_ROOT/cycles/install/shader" ]]; then
+  mkdir -p "$ASWF_INSTALL_PREFIX/share/cycles"
+  cp -a "$BUILD_ROOT/cycles/install/shader/." "$ASWF_INSTALL_PREFIX/share/cycles/shader/"
 fi
 if ! grep -Fq "$ASWF_INSTALL_PREFIX/lib" /etc/ld.so.conf.d/* 2>/dev/null; then
   echo "$ASWF_INSTALL_PREFIX/lib" > /etc/ld.so.conf.d/usd-render-benchmark-cycles.conf
