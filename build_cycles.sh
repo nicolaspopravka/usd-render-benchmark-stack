@@ -100,33 +100,40 @@ fi
   cmake --install ./build
 )
 
-# Place the delegate where a USD build with Cycles enabled would have put it:
-# the compiled-in default plugin discovery root (/usr/local/plugin/usd), in
-# the same per-plugin layout the conan deploy uses for hdStorm/hdEmbree:
-#   plugin/usd/<Name>/
-#       <Name>.so
-#       resources/plugInfo.json     (LibraryPath "../<Name>.so", relative)
-# Cycles' own install already produces exactly this file pair under
-# install/hydra/ (hdCycles.so + hdCycles/resources/plugInfo.json), with the
-# LibraryPath already "../hdCycles.so" — transplant it verbatim.
+# Place the delegate where a USD build with Cycles enabled would have put it,
+# in the conan deploy's canonical layout (hdStorm/hdEmbree):
+#   plugin/usd/<Name>.so                    (the library, a SIBLING of the dir)
+#   plugin/usd/<Name>/resources/plugInfo.json  (LibraryPath "../<Name>.so")
+# The registry resolves LibraryPath relative to the plugin dir, so
+# "../hdCycles.so" lands at /usr/local/plugin/usd/hdCycles.so.
 plugin_root="$ASWF_INSTALL_PREFIX/plugin/usd/hdCycles"
 mkdir -p "$plugin_root/resources"
-cp -a "$BUILD_ROOT/cycles/install/hydra/hdCycles.so" "$plugin_root/hdCycles.so"
+cp -a "$BUILD_ROOT/cycles/install/hydra/hdCycles.so" \
+      "$ASWF_INSTALL_PREFIX/plugin/usd/hdCycles.so"
 cp -a "$BUILD_ROOT/cycles/install/hydra/hdCycles/resources/plugInfo.json" \
       "$plugin_root/resources/plugInfo.json"
 cat "$plugin_root/resources/plugInfo.json"
 
-# Self-check at the pristine layer: Cycles registers under default discovery
-# (env-free, so valid without the runnable env). MoonRay needs the runnable
-# env and is verified at the runnable layer.
+# Self-check at the pristine layer: Cycles is enumerated (metadata) AND the
+# registry-resolved library actually dlopens (catches path-resolution and
+# dependency bugs — a metadata-only enumeration would miss them). MoonRay needs
+# the runnable env and is verified at the runnable layer.
 pxr_dir=$(find "$ASWF_INSTALL_PREFIX/lib" -maxdepth 4 -type d -name pxr -print -quit)
 test -n "$pxr_dir"
 PYTHONPATH="$(dirname "$pxr_dir")" python3 - <<'PY'
+import ctypes
+import os
 from pxr import Usd, UsdImagingGL
+
 names = [UsdImagingGL.Engine.GetRendererDisplayName(p)
          for p in UsdImagingGL.Engine.GetRendererPlugins()]
 print(f"pristine default-discovery renderers: {names}")
 assert "Cycles" in names, "Cycles not enumerated under default discovery"
+
+lib = "/usr/local/plugin/usd/hdCycles.so"
+assert os.path.exists(lib), f"missing registry-resolved library {lib}"
+ctypes.CDLL(lib, mode=ctypes.RTLD_NOW | ctypes.RTLD_GLOBAL)
+print(f"registry-resolved library loads: {lib}")
 PY
 if [[ -e "$BUILD_ROOT/cycles/install/cycles" ]]; then
   install -m 755 "$BUILD_ROOT/cycles/install/cycles" "$ASWF_INSTALL_PREFIX/bin/cycles"
