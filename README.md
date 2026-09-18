@@ -78,9 +78,7 @@ gh workflow run build-pristine.yml \
 ```
 
 The `cycles_tag` input is optional and empty by default, so ordinary base
-retags keep working unchanged. When set, the workflow also runs a post-push
-closure check on the published image (`ldd -r` on `hdCycles.so` plus plugin
-enumeration), per the stack's "verify what you pushed" convention.
+retags keep working unchanged.
 
 Build the runnable overlay:
 

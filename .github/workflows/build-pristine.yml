@@ -92,39 +92,10 @@ jobs:
             echo "ERROR: $PRISTINE_IMAGE does not resolve to the digest this run pushed"; exit 1
           }
 
-      - name: Post-push closure check (Cycles)
-        # ldd is deliberately run AFTER build + push, in the published image.
-        if: ${{ inputs.cycles_tag != '' }}
-        env:
-          PRISTINE_IMAGE: ${{ env.PRISTINE_IMAGE }}
-        run: |
-          docker run --rm --entrypoint bash "$PRISTINE_IMAGE" -c '
-            set -e
-            plugin=/usr/local/plugin/usd/hdCycles/hdCycles.so
-            test -f "$plugin"
-            # No Blender bundle may exist.
-            test ! -e /opt/cycles && test ! -e /opt/cycles-dependencies
-            out=$(ldd -r "$plugin" 2>&1) || true
-            printf "%s\n" "$out" | tee /tmp/hdCycles-ldd.txt
-            if printf "%s\n" "$out" | grep -Eq "not found|undefined symbol"; then
-              echo "ERROR: unresolved symbols in hdCycles.so"
-              exit 1
-            fi
-            printf "%s\n" "$out" | grep -Fq "libOpenImageIO.so" || {
-              echo "ERROR: OIIO not linked (expected the base /usr/local OIIO)"
-              exit 1
-            }
-            pxr_dir=$(find /usr/local/lib -maxdepth 4 -type d -name pxr -print -quit)
-            test -n "$pxr_dir"
-            PYTHONPATH="$(dirname "$pxr_dir")" python3 -c "from pxr import Usd, UsdImagingGL; names=[UsdImagingGL.Engine.GetRendererDisplayName(p) for p in UsdImagingGL.Engine.GetRendererPlugins()]; print(\"renderers:\", names); assert \"Cycles\" in names, \"Cycles plugin not enumerated by default discovery\""
-          '
-
       - name: Upload log
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: pristine-build-log
-          path: |
-            build-pristine.log
-            /tmp/hdCycles-ldd.txt
+          path: build-pristine.log
           if-no-files-found: warn

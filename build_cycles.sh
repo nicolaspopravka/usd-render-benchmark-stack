@@ -116,9 +116,5 @@ if [[ -d "$BUILD_ROOT/cycles/install/shader" ]]; then
   mkdir -p "$ASWF_INSTALL_PREFIX/share/cycles"
   cp -a "$BUILD_ROOT/cycles/install/shader/." "$ASWF_INSTALL_PREFIX/share/cycles/shader/"
 fi
-if ! grep -Fq "$ASWF_INSTALL_PREFIX/lib" /etc/ld.so.conf.d/* 2>/dev/null; then
-  echo "$ASWF_INSTALL_PREFIX/lib" > /etc/ld.so.conf.d/usd-render-benchmark-cycles.conf
-fi
-ldconfig 2>/dev/null || true
 
 rm -rf "$BUILD_ROOT"
