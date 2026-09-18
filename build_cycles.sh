@@ -132,7 +132,11 @@ assert "Cycles" in names, "Cycles not enumerated under default discovery"
 
 lib = "/usr/local/plugin/usd/hdCycles.so"
 assert os.path.exists(lib), f"missing registry-resolved library {lib}"
-ctypes.CDLL(lib, mode=ctypes.RTLD_NOW | ctypes.RTLD_GLOBAL)
+try:
+    mode = ctypes.RTLD_NOW | ctypes.RTLD_GLOBAL
+except AttributeError:
+    mode = 2 | 256  # Linux glibc RTLD_NOW | RTLD_GLOBAL
+ctypes.CDLL(lib, mode=mode)
 print(f"registry-resolved library loads: {lib}")
 PY
 if [[ -e "$BUILD_ROOT/cycles/install/cycles" ]]; then
