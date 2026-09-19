@@ -24,8 +24,7 @@ set -euxo pipefail
 #
 # Inputs:
 #   CYCLES_TAG (required)  - Cycles git tag to build, e.g. v5.0.0. Tag-only by
-#                            design (MoonRay/Embree convention); the resolved
-#                            HEAD is logged, no commit assert.
+#                            design (MoonRay/Embree convention); no commit assert.
 
 readonly CYCLES_URL="https://projects.blender.org/blender/cycles.git"
 readonly CYCLES_LIB_URL="https://projects.blender.org/blender/lib-linux_x64.git"
@@ -40,17 +39,8 @@ if ! command -v git-lfs >/dev/null 2>&1; then
   dnf install -y git-lfs
 fi
 
-# The delegate must be built against THIS image's OpenUSD. pxr is on
-# /usr/local/lib/python on most CYs and in site-packages on CY2027; try both.
-if ! PYTHONPATH="$ASWF_INSTALL_PREFIX/lib/python${PYTHONPATH:+:$PYTHONPATH}" \
-     python3 -c 'from pxr import Usd; print("OpenUSD", Usd.GetVersion())' 2>/dev/null; then
-  python3 -c 'from pxr import Usd; print("OpenUSD", Usd.GetVersion())'
-fi
-
 mkdir -p "$BUILD_ROOT"
 git clone --branch "$CYCLES_TAG" --depth 1 "$CYCLES_URL" "$BUILD_ROOT/cycles"
-printf 'CYCLES_TAG=%s resolved HEAD=%s\n' "$CYCLES_TAG" \
-  "$(git -C "$BUILD_ROOT/cycles" rev-parse HEAD)"
 
 # OSL shader precompilation is skipped (WITH_CYCLES_OSL=OFF), so the delegate
 # build does not depend on the OSL compiler's stdosl.h.
@@ -78,7 +68,6 @@ git -C "$BUILD_ROOT/lib-linux_x64" lfs pull -I 'epoxy/**'
 bundle_epoxy="$BUILD_ROOT/lib-linux_x64/epoxy"
 cp -a "$bundle_epoxy/include/." "$ASWF_INSTALL_PREFIX/include/"
 cp -a "$bundle_epoxy/lib/." "$ASWF_INSTALL_PREFIX/lib/"
-echo "libepoxy installed under $ASWF_INSTALL_PREFIX (from $CYCLES_TAG's bundle gitlink $bundle_commit)"
 
 (
   cd "$BUILD_ROOT/cycles"
