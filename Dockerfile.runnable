@@ -25,13 +25,11 @@ ENV PYTHONPATH=/usr/local/lib/python
 # TEMPORARY: MoonRay/Embree plugin lookup — the composed delegates live outside
 # the compiled-in plugin/usd root (MoonRay under /usr/local/plugin/pxr); the
 # runnable must expose them so a stock usdrecord enumerates all delegates.
-ENV PXR_PLUGINPATH_NAME=/usr/local/plugin/pxr
+# Cycles is not an ASWF project: it installs under /opt/cycles and is activated
+# here the same way.
+ENV PXR_PLUGINPATH_NAME=/usr/local/plugin/pxr:/opt/cycles/hydra
 # TEMPORARY: Arras session dir — drop when OpenMoonRay lands in the base.
 ENV ARRAS_SESSION_PATH=/usr/local/sessions
-
-# Cycles OSL shader support data (native-node benchmark scenes need none; this
-# only makes OSL-capable setups resolve).
-ENV CYCLES_SHADER_PATH=/usr/local/share/cycles/shader
 
 # Export shader_json from the installed MoonRay DSOs for the Hydra Ndr plugins
 # (the runnable's analogue of the doc's setup.sh). Only on MoonRay years.
@@ -45,8 +43,11 @@ RUN if command -v rdl2_json_exporter >/dev/null 2>&1; then \
       && rdl2_json_exporter --out /usr/local/shader_json/ --sparse; \
     fi
 
-# Build-time evidence: the renderer set the runnable enumerates (non-gating
-# print; the PXR_PLUGINPATH_NAME above is what makes MoonRay appear).
-RUN pxr_dir=$(find /usr/local/lib -maxdepth 4 -type d -name pxr -print -quit) \
-    && test -n "$pxr_dir" \
-    && PYTHONPATH="$(dirname "$pxr_dir")" python3 -c 'from pxr import UsdImagingGL; names=[UsdImagingGL.Engine.GetRendererDisplayName(p) for p in UsdImagingGL.Engine.GetRendererPlugins()]; print("runnable renderers:", names)' || true
+# Build gate: a stock usdrecord must enumerate Cycles (via /opt/cycles/hydra)
+# alongside the other delegates — the layer where the full delegate environment
+# exists. Non-Cycles runnables (:1, :2) skip this.
+RUN if [ -d /opt/cycles/hydra ]; then \
+      pxr_dir=$(find /usr/local/lib -maxdepth 4 -type d -name pxr -print -quit) && \
+      test -n "$pxr_dir" && \
+      PYTHONPATH="$(dirname "$pxr_dir")" python3 -c 'from pxr import UsdImagingGL; names=[UsdImagingGL.Engine.GetRendererDisplayName(p) for p in UsdImagingGL.Engine.GetRendererPlugins()]; print("runnable renderers:", names); assert "Cycles" in names, "Cycles not enumerated under the runnable env"'; \
+    fi

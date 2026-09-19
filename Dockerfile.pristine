@@ -4,10 +4,9 @@
 #
 # BASE_IMAGE is either the ASWF base (plain <year>) or a published composite
 # such as stack:<year>.2. When CYCLES_TAG is set, the Cycles Hydra delegate is
-# built into /usr/local as a permanent stack feature — no Blender lib bundle,
-# every dependency resolved from this image's own /usr/local, plugin installed
-# into the compiled-in default discovery root. CYCLES_TAG empty (default)
-# keeps this a pure retag.
+# built as a permanent stack feature under /opt/cycles (Cycles is not an ASWF
+# project, so it keeps its own prefix) and activated via PXR_PLUGINPATH_NAME
+# in the runnable. CYCLES_TAG empty (default) keeps this a pure retag.
 
 ARG BASE_IMAGE
 
@@ -17,7 +16,11 @@ FROM ${BASE_IMAGE}
 COPY build_cycles.sh /usr/local/aswf/build_cycles.sh
 COPY cmake/import_openusd_dependencies.cmake /usr/local/share/cycles/import_openusd_dependencies.cmake
 ARG CYCLES_TAG=""
+# Compile with this cycle year's VFX-Platform compiler (the ASWF base's own
+# toolset, e.g. gcc-toolset-11 on CY2025): Cycles' CMake requires GCC >= 11.2
+# and delegates should not pick compilers ad hoc.
 RUN if [ -n "${CYCLES_TAG}" ]; then \
-      chmod +x /usr/local/aswf/build_cycles.sh && \
-      CYCLES_TAG="${CYCLES_TAG}" /usr/local/aswf/build_cycles.sh; \
+      bash -lc 'source /opt/rh/gcc-toolset-${ASWF_DTS_VERSION}/enable && \
+                chmod +x /usr/local/aswf/build_cycles.sh && \
+                CYCLES_TAG="${CYCLES_TAG}" /usr/local/aswf/build_cycles.sh'; \
     fi
