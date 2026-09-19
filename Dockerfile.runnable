@@ -31,6 +31,14 @@ ENV PXR_PLUGINPATH_NAME=/usr/local/plugin/pxr:/opt/cycles/hydra
 # TEMPORARY: Arras session dir — drop when OpenMoonRay lands in the base.
 ENV ARRAS_SESSION_PATH=/usr/local/sessions
 
+# GH #49 workaround: usdrecord's 'Storm'/'GL' tokens alias to a display name
+# that never matches (v25.05 rendererArgs ResolveStormAlias vs the Engine's
+# 'Storm'-hack), so they fall back to the *default* renderer — which becomes
+# Cycles once it enumerates first. Pin the default to Storm so those tokens
+# and the unqualified fallback all land on hdStorm. Drop when usdrecord fixes
+# the alias.
+ENV HD_DEFAULT_RENDERER=Storm
+
 # Export shader_json from the installed MoonRay DSOs for the Hydra Ndr plugins
 # (the runnable's analogue of the doc's setup.sh). Only on MoonRay years.
 RUN if command -v rdl2_json_exporter >/dev/null 2>&1; then \
