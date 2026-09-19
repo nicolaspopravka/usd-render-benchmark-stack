@@ -1,7 +1,20 @@
 # syntax=docker/dockerfile:1.10
 
-# Byte-pristine <cy> stack image — currently a trivial retag of the ASWF base.
+# Byte-pristine <cy> stack image.
+#
+# CYCLES_TAG empty (default) keeps this a pure retag. When CYCLES_TAG is set,
+# the Cycles Hydra delegate is built under /opt/cycles with this CY's
+# VFX-Platform compiler.
 
 ARG BASE_IMAGE
+ARG CYCLES_TAG=""
 
 FROM ${BASE_IMAGE}
+
+COPY build_cycles.sh /usr/local/aswf/build_cycles.sh
+COPY cmake/import_openusd_dependencies.cmake /usr/local/share/cycles/import_openusd_dependencies.cmake
+RUN if [ -n "${CYCLES_TAG}" ]; then \
+      bash -lc 'source /opt/rh/gcc-toolset-${ASWF_DTS_VERSION}/enable && \
+                chmod +x /usr/local/aswf/build_cycles.sh && \
+                CYCLES_TAG="${CYCLES_TAG}" /usr/local/aswf/build_cycles.sh'; \
+    fi

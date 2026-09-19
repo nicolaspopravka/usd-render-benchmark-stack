@@ -31,7 +31,7 @@ executes that branch's `render_script.sh`, and the resulting `logs/`,
 
 | Image | Purpose |
 | --- | --- |
-| `ghcr.io/nicolaspopravka/usd-render-benchmark-stack:<tag>` | A selected base stack under an explicit output tag. The current `Dockerfile.pristine` adds no benchmark files or packages to the selected base image. |
+| `ghcr.io/nicolaspopravka/usd-render-benchmark-stack:<tag>` | A selected base stack under an explicit output tag. With the optional `cycles_tag` build input, the Cycles Hydra delegate is also built into `/opt/cycles`. |
 | `ghcr.io/nicolaspopravka/usd-render-benchmark:<tag>` | Thin runnable overlay that sets the benchmark work directory, `REZ_PACKAGES_PATH`, and `render_script.sh` entrypoint. It does not contain a run branch. |
 
 Image tags are convenient references, not fixed evidence. Recorded results

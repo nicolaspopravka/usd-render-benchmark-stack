@@ -2,7 +2,6 @@
 
 # Runnable environment overlay: the pristine stack plus run conventions
 # (workdir + entrypoint + rez packages path).
-# publish -> ghcr.io/nicolaspopravka/usd-render-benchmark:<cy>
 
 ARG PRISTINE_IMAGE
 
@@ -14,3 +13,41 @@ WORKDIR /usr/local/usd-render-benchmark
 
 ENTRYPOINT ["bash", "render_script.sh"]
 CMD []
+
+# TEMPORARY: rez PATH — drop when aswf-docker #467 lands in the base.
+ENV PATH=/usr/local/rez/bin/rez:${PATH}
+
+# TEMPORARY: pxr lives in /usr/local/lib/python on most CYs (site-packages on
+# CY2027). Harmless on 2027; drop the fix when the bases all ship site-packages.
+ENV PYTHONPATH=/usr/local/lib/python
+
+# TEMPORARY: MoonRay/Embree plugin lookup — the composed delegates live outside
+# the compiled-in plugin/usd root (MoonRay under /usr/local/plugin/pxr); the
+# runnable must expose them so a stock usdrecord enumerates all delegates.
+# Cycles is not an ASWF project: it installs under /opt/cycles and is activated
+# here the same way.
+ENV PXR_PLUGINPATH_NAME=/usr/local/plugin/pxr:/opt/cycles/hydra
+# TEMPORARY: Arras session dir — drop when OpenMoonRay lands in the base.
+ENV ARRAS_SESSION_PATH=/usr/local/sessions
+
+# TEMPORARY: Export shader_json from the installed MoonRay DSOs for the Hydra
+# Ndr plugins (the runnable's analogue of the doc's setup.sh). Drop when
+# OpenMoonRay lands in the base.
+RUN if command -v rdl2_json_exporter >/dev/null 2>&1; then \
+      export PATH=/usr/local/bin:$PATH \
+             LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH:-} \
+             MOONRAY_ROOT=/usr/local \
+             RDL2_DSO_PATH=/usr/local/rdl2dso.proxy:/usr/local/rdl2dso \
+             MOONRAY_CLASS_PATH=/usr/local/shader_json \
+      && mkdir -p /usr/local/shader_json \
+      && rdl2_json_exporter --out /usr/local/shader_json/ --sparse; \
+    fi
+
+# GH #49 workaround: usdrecord's 'Storm'/'GL' tokens alias to a display name
+# that never matches (v25.05 rendererArgs ResolveStormAlias vs the Engine's
+# 'Storm'-hack), so they fall back to the *default* renderer — which becomes
+# Cycles once it enumerates first. Pin the engine default to hdStorm: its
+# registry plugInfo displayName is "GL" (the engine's "Storm" is only a
+# display-name surface), so HD_DEFAULT_RENDERER must be "GL" to match.
+# Drop when usdrecord fixes the alias.
+ENV HD_DEFAULT_RENDERER=GL
