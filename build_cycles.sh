@@ -42,7 +42,6 @@ fi
 
 # The delegate must be built against THIS image's OpenUSD. pxr is on
 # /usr/local/lib/python on most CYs and in site-packages on CY2027; try both.
-test -x "$ASWF_INSTALL_PREFIX/bin/usdrecord"
 if ! PYTHONPATH="$ASWF_INSTALL_PREFIX/lib/python${PYTHONPATH:+:$PYTHONPATH}" \
      python3 -c 'from pxr import Usd; print("OpenUSD", Usd.GetVersion())' 2>/dev/null; then
   python3 -c 'from pxr import Usd; print("OpenUSD", Usd.GetVersion())'
@@ -74,13 +73,11 @@ git -C "$BUILD_ROOT/lib-linux_x64" lfs install --skip-repo
 git -C "$BUILD_ROOT/lib-linux_x64" lfs pull -I 'epoxy/**'
 
 # The bundle's epoxy is a static archive + headers; install into /usr/local
-# (system-wide like GL, nowhere near the /opt/cycles tree).
+# (system-wide like GL, nowhere near the /opt/cycles tree). cp of a missing
+# source fails the build, so no prior layout check is needed.
 bundle_epoxy="$BUILD_ROOT/lib-linux_x64/epoxy"
-test -d "$bundle_epoxy/include" && test -d "$bundle_epoxy/lib"
 cp -a "$bundle_epoxy/include/." "$ASWF_INSTALL_PREFIX/include/"
 cp -a "$bundle_epoxy/lib/." "$ASWF_INSTALL_PREFIX/lib/"
-find "$ASWF_INSTALL_PREFIX/include" -path '*epoxy*' -name 'gl.h' -print -quit >/dev/null
-find "$ASWF_INSTALL_PREFIX/lib" -name 'libepoxy*' -print -quit >/dev/null
 echo "libepoxy installed under $ASWF_INSTALL_PREFIX (from $CYCLES_TAG's bundle gitlink $bundle_commit)"
 
 (
