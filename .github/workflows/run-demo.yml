@@ -51,7 +51,7 @@ jobs:
             -w /usr/local/usd-render-benchmark \
             --entrypoint bash \
             "${{ inputs.runnable_image }}" -c "
-              dnf install -y mesa-dri-drivers mesa-libEGL libepoxy;
+              dnf install -y mesa-dri-drivers;
 
               # CY2024 (GH #46): ASWF's LLVM 17 is built with NVPTX;X86 only, so
               # distro Mesa's swrast cannot load (missing
