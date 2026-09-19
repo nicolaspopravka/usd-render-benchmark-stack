@@ -40,10 +40,13 @@ if ! command -v git-lfs >/dev/null 2>&1; then
   dnf install -y git-lfs
 fi
 
-# The delegate must be built against THIS image's OpenUSD.
+# The delegate must be built against THIS image's OpenUSD. pxr is on
+# /usr/local/lib/python on most CYs and in site-packages on CY2027; try both.
 test -x "$ASWF_INSTALL_PREFIX/bin/usdrecord"
-PYTHONPATH="$ASWF_INSTALL_PREFIX/lib/python${PYTHONPATH:+:$PYTHONPATH}" \
+if ! PYTHONPATH="$ASWF_INSTALL_PREFIX/lib/python${PYTHONPATH:+:$PYTHONPATH}" \
+     python3 -c 'from pxr import Usd; print("OpenUSD", Usd.GetVersion())' 2>/dev/null; then
   python3 -c 'from pxr import Usd; print("OpenUSD", Usd.GetVersion())'
+fi
 
 mkdir -p "$BUILD_ROOT"
 git clone --branch "$CYCLES_TAG" --depth 1 "$CYCLES_URL" "$BUILD_ROOT/cycles"
@@ -54,9 +57,17 @@ printf 'CYCLES_TAG=%s resolved HEAD=%s\n' "$CYCLES_TAG" \
 # build does not depend on the OSL compiler's stdosl.h.
 
 # --- libepoxy from Cycles' pinned lib/linux_x64 submodule -------------------
-# The bundle commit is the gitlink the tag's `make update` would use.
-bundle_commit="$(git -C "$BUILD_ROOT/cycles" ls-tree HEAD lib/linux_x64 | awk '{print $3}')"
-test -n "$bundle_commit"
+# The bundle commit is the gitlink the tag's `make update` would use. Resolve it
+# BEFORE cloning the bundle (older tags name it lib/linux_x86_64; some have no
+# submodule at all). No submodule -> no way to source the pinned libepoxy here.
+bundle_commit="$(git -C "$BUILD_ROOT/cycles" ls-tree HEAD lib/linux_x64 2>/dev/null | awk '{print $3}')"
+if [[ -z "$bundle_commit" ]]; then
+  bundle_commit="$(git -C "$BUILD_ROOT/cycles" ls-tree HEAD lib/linux_x86_64 2>/dev/null | awk '{print $3}')"
+fi
+if [[ -z "$bundle_commit" ]]; then
+  echo "ERROR: $CYCLES_TAG has no lib/linux* submodule — cannot source the pinned libepoxy" >&2
+  exit 1
+fi
 git clone --filter=blob:none "$CYCLES_LIB_URL" "$BUILD_ROOT/lib-linux_x64"
 git -C "$BUILD_ROOT/lib-linux_x64" checkout --detach "$bundle_commit"
 git -C "$BUILD_ROOT/lib-linux_x64" lfs install --skip-repo

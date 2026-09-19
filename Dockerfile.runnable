@@ -56,7 +56,7 @@ RUN if command -v rdl2_json_exporter >/dev/null 2>&1; then \
 # alongside the other delegates — the layer where the full delegate environment
 # exists. Non-Cycles runnables (:1, :2) skip this.
 RUN if [ -d /opt/cycles/hydra ]; then \
-      pxr_dir=$(find /usr/local/lib -maxdepth 4 -type d -name pxr -print -quit) && \
+      pxr_dir=$(python3 -c 'import pxr, os; print(os.path.dirname(pxr.__file__))' 2>/dev/null || find /usr/local/lib -maxdepth 5 -type d -name pxr -print -quit) && \
       test -n "$pxr_dir" && \
       PYTHONPATH="$(dirname "$pxr_dir")" python3 -c 'from pxr import UsdImagingGL; names=[UsdImagingGL.Engine.GetRendererDisplayName(p) for p in UsdImagingGL.Engine.GetRendererPlugins()]; print("runnable renderers:", names); assert "Cycles" in names, "Cycles not enumerated under the runnable env"'; \
     fi
