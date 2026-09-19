@@ -7,9 +7,11 @@
 # VFX-Platform compiler.
 
 ARG BASE_IMAGE
-ARG CYCLES_TAG=""
 
 FROM ${BASE_IMAGE}
+
+# Build-arg must be declared inside the stage to be visible to RUN.
+ARG CYCLES_TAG=""
 
 COPY build_cycles.sh /usr/local/aswf/build_cycles.sh
 COPY cmake/import_openusd_dependencies.cmake /usr/local/share/cycles/import_openusd_dependencies.cmake
