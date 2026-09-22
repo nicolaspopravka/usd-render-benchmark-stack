@@ -97,38 +97,6 @@ Display, GPU, and headless-rendering requirements remain properties of the
 selected environment and runner. The command above shows the mount contract;
 it is not a guarantee that every renderer can run on every Docker host.
 
-Set `RUNNABLE_IMAGE` to a digest built with this runtime-directory contract.
-Older published images retain their fixed entrypoint and package path; changing
-their working directory alone is insufficient. Initialize the branch's
-submodules and populate any additional scene payloads before running it.
-Renderer execution choices, such as MoonRay's execution mode, belong in the
-branch's Rez package files.
-
-For the existing RunPod volume layout, mount the volume at `/workspace` and
-select its checkout at startup:
-
-```bash
-runpodctl pod create \
-  --compute-type cpu \
-  --image "$RUNNABLE_IMAGE" \
-  --network-volume-id "$RUNPOD_VOLUME_ID" \
-  --volume-mount-path /workspace \
-  --ssh=false \
-  --docker-args 'bash -c "cd /workspace/usd-render-benchmark && exec bash render_script.sh"'
-```
-
-This launches the harness and keeps outputs on the volume. CPU rendering needs
-the appropriate headless display setup. For inspection, replace the command
-with `sleep infinity`; in a separately opened terminal, change into the checkout
-and set `REZ_PACKAGES_PATH` if needed. The override keeps the container alive,
-but does not install SSH or a Web Terminal service. When the main command exits,
-RunPod may restart the container; use the benchmark's revised `runpod_script.sh`
-for one-run supervision, summary generation, retrieval, and pod deletion.
-
-The automated runner preserves `sync_workshop.sh` and its `/workspace` layout.
-It starts renders under the image environment and uses SSH for status and file
-transfer. Existing SSH sessions do not automatically inherit its shell exports.
-
 ## Headless demo
 
 The `run-demo` workflow exercises the same model on a GitHub-hosted runner. It
