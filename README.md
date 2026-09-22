@@ -23,16 +23,17 @@ The current setup has three parts:
 - [`nicolaspopravka/usd-render-benchmark`](https://github.com/nicolaspopravka/usd-render-benchmark)
   contains the harness and the branches that preserve individual run results.
 
-A run branch is mounted at `/usr/local/usd-render-benchmark`. The container
-executes that branch's `render_script.sh`, and the resulting `logs/`,
-`renderers/`, and `render_summary.md` remain in the mounted checkout.
+A run branch is mounted at a caller-selected directory, which is also the
+container's working directory. The default command executes that branch's
+`render_script.sh`. Logs and renders remain in the mounted checkout; summary
+generation is a separate runner step.
 
 ## Images
 
 | Image | Purpose |
 | --- | --- |
 | `ghcr.io/nicolaspopravka/usd-render-benchmark-stack:<tag>` | A selected base stack under an explicit output tag. With the optional `cycles_tag` build input, the Cycles Hydra delegate is also built into `/opt/cycles`. |
-| `ghcr.io/nicolaspopravka/usd-render-benchmark:<tag>` | Thin runnable overlay that sets the benchmark work directory, `REZ_PACKAGES_PATH`, and `render_script.sh` entrypoint. It does not contain a run branch. |
+| `ghcr.io/nicolaspopravka/usd-render-benchmark:<tag>` | Thin runnable overlay with `REZ_PACKAGES_PATH=./packages` and default command `bash render_script.sh`. The caller supplies the working directory and run branch. |
 
 Image tags are convenient references, not fixed evidence. Recorded results
 should retain the image digest and the exact run commit that were observed.
@@ -87,13 +88,46 @@ Mount it into a runnable image:
 
 ```bash
 docker run --rm \
-  -v "$PWD/run-branch:/usr/local/usd-render-benchmark" \
-  ghcr.io/nicolaspopravka/usd-render-benchmark:2027
+  -v "$PWD/run-branch:/benchmark" \
+  -w /benchmark \
+  "$RUNNABLE_IMAGE"
 ```
 
 Display, GPU, and headless-rendering requirements remain properties of the
 selected environment and runner. The command above shows the mount contract;
 it is not a guarantee that every renderer can run on every Docker host.
+
+Set `RUNNABLE_IMAGE` to a digest built with this runtime-directory contract.
+Older published images retain their fixed entrypoint and package path; changing
+their working directory alone is insufficient. Initialize the branch's
+submodules and populate any additional scene payloads before running it.
+Renderer execution choices, such as MoonRay's execution mode, belong in the
+branch's Rez package files.
+
+For the existing RunPod volume layout, mount the volume at `/workspace` and
+select its checkout at startup:
+
+```bash
+runpodctl pod create \
+  --compute-type cpu \
+  --image "$RUNNABLE_IMAGE" \
+  --network-volume-id "$RUNPOD_VOLUME_ID" \
+  --volume-mount-path /workspace \
+  --ssh=false \
+  --docker-args 'bash -c "cd /workspace/usd-render-benchmark && exec bash render_script.sh"'
+```
+
+This launches the harness and keeps outputs on the volume. CPU rendering needs
+the appropriate headless display setup. For inspection, replace the command
+with `sleep infinity`; in a separately opened terminal, change into the checkout
+and set `REZ_PACKAGES_PATH` if needed. The override keeps the container alive,
+but does not install SSH or a Web Terminal service. When the main command exits,
+RunPod may restart the container; use the benchmark's revised `runpod_script.sh`
+for one-run supervision, summary generation, retrieval, and pod deletion.
+
+The automated runner preserves `sync_workshop.sh` and its `/workspace` layout.
+It starts renders under the image environment and uses SSH for status and file
+transfer. Existing SSH sessions do not automatically inherit its shell exports.
 
 ## Headless demo
 
@@ -106,7 +140,7 @@ and uploads the resulting files.
 gh workflow run run-demo.yml \
   --repo nicolaspopravka/usd-render-benchmark-stack \
   -f run_branch=demo/run1 \
-  -f runnable_image=ghcr.io/nicolaspopravka/usd-render-benchmark:2027
+  -f runnable_image="$RUNNABLE_IMAGE"
 ```
 
 The verified demonstration is
