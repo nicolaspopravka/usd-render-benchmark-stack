@@ -23,16 +23,17 @@ The current setup has three parts:
 - [`nicolaspopravka/usd-render-benchmark`](https://github.com/nicolaspopravka/usd-render-benchmark)
   contains the harness and the branches that preserve individual run results.
 
-A run branch is mounted at `/usr/local/usd-render-benchmark`. The container
-executes that branch's `render_script.sh`, and the resulting `logs/`,
-`renderers/`, and `render_summary.md` remain in the mounted checkout.
+A run branch is mounted at a caller-selected directory, which is also the
+container's working directory. The default command executes that branch's
+`render_script.sh`. Logs and renders remain in the mounted checkout; summary
+generation is a separate runner step.
 
 ## Images
 
 | Image | Purpose |
 | --- | --- |
 | `ghcr.io/nicolaspopravka/usd-render-benchmark-stack:<tag>` | A selected base stack under an explicit output tag. With the optional `cycles_tag` build input, the Cycles Hydra delegate is also built into `/opt/cycles`. |
-| `ghcr.io/nicolaspopravka/usd-render-benchmark:<tag>` | Thin runnable overlay that sets the benchmark work directory, `REZ_PACKAGES_PATH`, and `render_script.sh` entrypoint. It does not contain a run branch. |
+| `ghcr.io/nicolaspopravka/usd-render-benchmark:<tag>` | Thin runnable overlay with `REZ_PACKAGES_PATH=./packages` and default command `bash render_script.sh`. The caller supplies the working directory and run branch. |
 
 Image tags are convenient references, not fixed evidence. Recorded results
 should retain the image digest and the exact run commit that were observed.
@@ -87,8 +88,9 @@ Mount it into a runnable image:
 
 ```bash
 docker run --rm \
-  -v "$PWD/run-branch:/usr/local/usd-render-benchmark" \
-  ghcr.io/nicolaspopravka/usd-render-benchmark:2027
+  -v "$PWD/run-branch:/benchmark" \
+  -w /benchmark \
+  "$RUNNABLE_IMAGE"
 ```
 
 Display, GPU, and headless-rendering requirements remain properties of the
@@ -106,7 +108,7 @@ and uploads the resulting files.
 gh workflow run run-demo.yml \
   --repo nicolaspopravka/usd-render-benchmark-stack \
   -f run_branch=demo/run1 \
-  -f runnable_image=ghcr.io/nicolaspopravka/usd-render-benchmark:2027
+  -f runnable_image="$RUNNABLE_IMAGE"
 ```
 
 The verified demonstration is

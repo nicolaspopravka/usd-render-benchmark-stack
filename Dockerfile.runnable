@@ -1,24 +1,21 @@
 # syntax=docker/dockerfile:1.10
 
 # Runnable environment overlay: the pristine stack plus run conventions
-# (workdir + entrypoint + rez packages path).
+# (runtime-selected workdir + default command + rez packages path).
 # publish -> ghcr.io/nicolaspopravka/usd-render-benchmark:<cy>
 
 # Two stages: the build selects one with --target. runnable-base is a plain
-# overlay of the pristine image; runnable-cycles adds the Cycles plugin path
-# and nothing else. A pristine built without Cycles targets runnable-base and
-# so carries no PXR_PLUGINPATH_NAME at all, rather than an empty or dangling one.
 
 ARG PRISTINE_IMAGE
 
 FROM ${PRISTINE_IMAGE} AS runnable-base
 
-ENV REZ_PACKAGES_PATH=/usr/local/usd-render-benchmark/packages
+ENV REZ_PACKAGES_PATH=./packages
 
-WORKDIR /usr/local/usd-render-benchmark
+WORKDIR /
 
-ENTRYPOINT ["bash", "render_script.sh"]
-CMD []
+ENTRYPOINT []
+CMD ["bash", "render_script.sh"]
 
 # Cycles is not an ASWF project: it installs under /opt/cycles, outside the
 # base's compiled-in plugin root, so it needs an explicit search path. The
