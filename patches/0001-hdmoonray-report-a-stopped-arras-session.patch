@@ -1,0 +1,114 @@
+diff --git a/plugin/hd_moonray/ArrasRenderer.cc b/plugin/hd_moonray/ArrasRenderer.cc
+index e93a542..e8ea024 100644
+--- a/plugin/hd_moonray/ArrasRenderer.cc
++++ b/plugin/hd_moonray/ArrasRenderer.cc
+@@ -2,6 +2,9 @@
+ // SPDX-License-Identifier: Apache-2.0
+ 
+ #include "ArrasRenderer.h"
++
++#include "pxr/pxr.h"
++#include "pxr/base/tf/errorMark.h"
+ #include <hydramoonray/RenderSettings.h>
+ #include <hydramoonray/HdmLog.h>
+ 
+@@ -16,6 +19,8 @@
+ 
+ namespace hdMoonray {
+ 
++PXR_NAMESPACE_USING_DIRECTIVE
++
+ using scene_rdl2::logging::Logger;
+ 
+ ArrasRenderer::ArrasRenderer()
+@@ -269,6 +274,25 @@ void
+ ArrasRenderer::exceptionHandler(const std::exception& e)
+ {
+     Logger::error(e.what());
++    setFrameFailure(e.what());
++}
++
++void
++ArrasRenderer::setFrameFailure(const std::string& reason)
++{
++    mFrameFailed = true;
++    std::lock_guard<std::mutex> lock(mFailureMutex);
++    if (mFailureReason.empty()) {
++        mFailureReason = reason;
++    }
++    Logger::error("Moonray: the frame in flight cannot finish: ", reason);
++}
++
++std::string
++ArrasRenderer::getFailureReason() const
++{
++    std::lock_guard<std::mutex> lock(mFailureMutex);
++    return mFailureReason;
+ }
+ 
+ void
+@@ -287,6 +311,11 @@ ArrasRenderer::statusHandler(const std::string& msg)
+                               (stopReason.isString() ? stopReason.asString() : msg));
+                 mConnected = false;
+                 mStatusString = "Disconnected";
++                // Only a frame that is still in flight needs failing; a session
++                // stopped between frames is just a disconnect.
++                if (mUpdateActive || !mFrameComplete) {
++                    setFrameFailure(stopReason.isString() ? stopReason.asString() : msg);
++                }
+                 return;
+             }
+         }
+@@ -315,6 +344,21 @@ ArrasRenderer::allocate(scene_rdl2::rdl2::RenderOutput* ro, PixelData& pd, const
+ bool
+ ArrasRenderer::resolve(scene_rdl2::rdl2::RenderOutput* ro, PixelData& pd)
+ {
++    if (mFrameFailed) {
++        // Report it here, on the thread driving the recorder, for two reasons.
++        // A posted diagnostic does not unwind C++, so raising alone would leave
++        // that loop spinning: the frame is completed as well, which is what lets
++        // it exit. And the error has to be posted on this thread to land in the
++        // diagnostic context usdrecord checks when Record() returns, which is
++        // what turns it into a reported failure instead of a silent hang.
++        TF_RUNTIME_ERROR("Moonray: Arras session stopped during rendering (%s)",
++                         getFailureReason().c_str());
++        mFrameFailed = false;  // report once, not on every resolve
++        mUpdateActive = false; // isFrameComplete() needs no active update ...
++        mFrameComplete = true; // ... and a complete frame
++        return false;
++    }
++
+     // mProgress < 0 indicates that mFbReceiver hasn't received any images yet,
+     if (mProgress < 0) return false;
+ 
+diff --git a/plugin/hd_moonray/ArrasRenderer.h b/plugin/hd_moonray/ArrasRenderer.h
+index 01f59b2..5d5ee81 100644
+--- a/plugin/hd_moonray/ArrasRenderer.h
++++ b/plugin/hd_moonray/ArrasRenderer.h
+@@ -59,6 +59,12 @@ private:
+     // Called whenever an exception is thrown.
+     void exceptionHandler(const std::exception& e);
+ 
++    // Record that the frame in flight cannot finish, and why. Called from the
++    // Arras callback threads; the failure is acted on from resolve(), which runs
++    // on the thread driving UsdAppUtilsFrameRecorder's convergence loop.
++    void setFrameFailure(const std::string& reason);
++    std::string getFailureReason() const;
++
+     // Called when statuses are received from other components in Arras.
+     void statusHandler(const std::string& msg);
+ 
+@@ -81,6 +87,13 @@ private:
+ 
+     std::atomic<bool> mConnected{false};
+ 
++    // Set when Arras reports the session stopped, or the SDK raises, while a
++    // frame is in flight. Left alone the frame simply never completes, and the
++    // recorder's convergence loop -- which has no timeout -- waits forever.
++    std::atomic<bool> mFrameFailed{false};
++    mutable std::mutex mFailureMutex;
++    std::string mFailureReason;
++
+     std::mutex mMutex;
+ 
+     // render progress value from the last received image.

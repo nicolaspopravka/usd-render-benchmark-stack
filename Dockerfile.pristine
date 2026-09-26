@@ -37,5 +37,11 @@ RUN /usr/local/aswf/moonray-fixers/03-ispc.sh
 # years; the script rebuilds the tagged release against this base). Follows the
 # official Rocky 9 container build; see build_moonray.sh.
 ARG MOONRAY_TAG
+# Candidate patches, applied only when this build asks for them (validation of an
+# upstream fix). Empty by default, so a normal build applies nothing.
+ARG MOONRAY_PATCHES_DIR=""
 COPY build_moonray.sh /usr/local/aswf/build_moonray.sh
-RUN MOONRAY_TAG="${MOONRAY_TAG}" /usr/local/aswf/build_moonray.sh
+COPY patches/ /usr/local/aswf/patches/
+RUN MOONRAY_TAG="${MOONRAY_TAG}" \
+    MOONRAY_PATCHES_DIR="${MOONRAY_PATCHES_DIR}" \
+    /usr/local/aswf/build_moonray.sh
