@@ -21,6 +21,11 @@ on:
         description: "OpenMoonRay git tag to build, e.g. v2026.29.1"
         required: true
         type: string
+      moonray_patches_dir:
+        description: "Optional in-repo directory of candidate patches to apply (e.g. /usr/local/aswf/patches). Empty = pristine build"
+        required: false
+        default: ""
+        type: string
 
 permissions:
   contents: read
@@ -67,6 +72,7 @@ jobs:
             --file Dockerfile.pristine \
             --build-arg BASE_IMAGE="$BASE_IMAGE" \
             --build-arg MOONRAY_TAG="$MOONRAY_TAG" \
+            --build-arg MOONRAY_PATCHES_DIR="${{ inputs.moonray_patches_dir }}" \
             --tag "$PRISTINE_IMAGE" \
             --metadata-file .buildx-metadata.json \
             --push \

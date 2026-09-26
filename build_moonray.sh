@@ -44,6 +44,38 @@ git clone --branch "${MOONRAY_TAG}" --recurse-submodules \
 git -C "${MOONRAY_SRC}" rev-parse HEAD   # recorded for evidence; not asserted
 git -C "${MOONRAY_SRC}" lfs pull
 
+# --- Optional: candidate patches ------------------------------------------
+# MOONRAY_PATCHES_DIR, when set, is applied to the checked-out superproject
+# before configure, so a candidate fix is actually built into the image. It
+# exists so a candidate can be validated on a real build without editing this
+# script or the upstream source in place; the default path applies nothing.
+#
+# Each patch goes to whichever tree owns the files it names: hdMoonray and
+# moonray_sdr_plugins are git submodules, so a superproject-rooted `git apply`
+# cannot see inside them.
+if [ -n "${MOONRAY_PATCHES_DIR:-}" ]; then
+    for patch in "${MOONRAY_PATCHES_DIR}"/*.patch; do
+        [ -f "$patch" ] || continue
+        applied=0
+        for tree in "${MOONRAY_SRC}" "${MOONRAY_SRC}/moonray/hydra/hdMoonray" \
+                    "${MOONRAY_SRC}/moonray/hydra/moonray_sdr_plugins"; do
+            [ -d "$tree" ] || continue
+            if ! git -C "$tree" apply --check "$patch" 2>/dev/null; then
+                continue
+            fi
+            echo "applying candidate patch to ${tree#"${MOONRAY_SRC}"/}: $(basename "$patch")"
+            git -C "$tree" apply --verbose "$patch"
+            applied=1
+            break
+        done
+        if [ "$applied" != "1" ]; then
+            echo "ERROR: candidate patch applies to no tree: ${patch}" >&2
+            exit 1
+        fi
+    done
+    echo "evidence: superproject $(git -C "${MOONRAY_SRC}" rev-parse HEAD), hdMoonray $(git -C "${MOONRAY_SRC}/moonray/hydra/hdMoonray" rev-parse HEAD)"
+fi
+
 # --- Step 3b: configure ---------------------------------------------------
 cmake -S "${MOONRAY_SRC}" -B "${MOONRAY_BUILD}" \
     -DCMAKE_PREFIX_PATH="${ASWF_INSTALL_PREFIX}" \
