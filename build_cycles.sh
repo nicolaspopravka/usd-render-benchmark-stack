@@ -20,7 +20,7 @@ set -euxo pipefail
 # Both paths satisfy the same find, and neither duplicates a library.
 # Per-year difference worth recording: the bundle is static, the distro package
 # is shared, so a distro-epoxy year's hdCycles.so carries a runtime
-# DT_NEEDED libepoxy.so.2.
+# DT_NEEDED libepoxy.so.0 (the soname on rocky8; .so.2 on newer distros).
 #
 # CPU/Embree only by design: no OptiX, no OpenImageDenoise, no oneAPI/SYCL, no
 # CUDA/HIP, no OpenVDB/NanoVDB, and no OSL shading (WITH_CYCLES_OSL=OFF — the
