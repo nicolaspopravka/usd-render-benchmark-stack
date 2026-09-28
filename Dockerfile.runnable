@@ -36,6 +36,7 @@ ENV ARRAS_SESSION_PATH=/usr/local/sessions
 RUN if command -v rdl2_json_exporter >/dev/null 2>&1; then \
       export PATH=/usr/local/bin:$PATH \
              LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH:-} \
+             MOONRAY_ROOT=/usr/local \
              RDL2_DSO_PATH=/usr/local/rdl2dso.proxy:/usr/local/rdl2dso \
              MOONRAY_CLASS_PATH=/usr/local/shader_json \
       && mkdir -p /usr/local/shader_json \

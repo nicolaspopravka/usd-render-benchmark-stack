@@ -8,24 +8,16 @@
 
 ARG BASE_IMAGE
 
-# TEMPORARY: build Rez in this stage — drop when aswf-docker #467 ships it in
-# the base. The harness resolves every cell through `rez env`, so without this
-# no cell runs at all.
-FROM ${BASE_IMAGE} AS rez-builder
-COPY install_rez.sh /usr/local/bin/install_rez.sh
-ENV REZ_INSTALL_DIR=/usr/local/rez
-RUN bash -lc 'source /usr/local/bin/install_rez.sh && rez --version'
-
 FROM ${BASE_IMAGE}
-
-# TEMPORARY: Rez from rez-builder — drop when aswf-docker #467 ships it in the base.
-COPY --from=rez-builder /usr/local/rez /usr/local/rez
 
 ARG CYCLES_TAG=""
 
 # TEMPORARY: additions the ASWF base needs before the default build can work.
 # 05 installs the OSL shader includes the conan OSL package omits, so
 # WITH_CYCLES_OSL can stay at its upstream default of ON.
+#
+# This .3 pristine is built FROM stack:<cy>.2, which already carries Rez and
+# GNU time from the .2 composer, so neither is installed here.
 COPY fixers/ /usr/local/aswf/cycles-fixers/
 RUN /usr/local/aswf/cycles-fixers/05-osl-shader-includes.sh
 
@@ -36,14 +28,3 @@ RUN if [ -n "${CYCLES_TAG}" ]; then \
                 chmod +x /usr/local/aswf/build_cycles.sh && \
                 CYCLES_TAG="${CYCLES_TAG}" /usr/local/aswf/build_cycles.sh'; \
     fi
-
-# TEMPORARY: GNU time for render_script.sh — drop when aswf-docker #468 reaches
-# the base. The harness calls /usr/bin/time for every cell and the ASWF images
-# only carry the bash keyword, so without this every cell dies before usdrecord
-# starts. This is the overlay the previously published runnables were built with
-# (fix/time); the default-delegates branch did not carry it, and the demo canary
-# run 36445907951 failed all four delegates for exactly this reason.
-#
-# Kept last on purpose: it is a one-minute step, so putting it after the build
-# means changing it invalidates only this layer and not the delegate compile.
-RUN test -x /usr/bin/time || (dnf install -y time && dnf clean all && rm -rf /var/cache/dnf)
