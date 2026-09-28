@@ -25,23 +25,29 @@ set -euxo pipefail
 #     device code but no precompiled GPU kernels. Cycles compiles a missing
 #     kernel with nvcc at render time instead, which is why the CUDA toolkit is
 #     located below.
-#   - OSL works: the base's conan OSL was found (1.14.11, with oslcomp/oslexec),
-#     so WITH_CYCLES_OSL stays at its default. OpenVDB is resolved through USD's
-#     own export, because FindUSDPixar sets USD_OVERRIDE_OPENVDB and the
-#     standalone find is then skipped, so WITH_CYCLES_OPENVDB also stays.
+#   - OSL is present but incomplete, and fails late. The base's conan OSL was
+#     found (1.14.11, with oslcomp, oslexec, oslquery, oslnoise and an oslc that
+#     runs), but FindOSL.cmake requires only OSL_LIBRARIES, OSL_INCLUDE_DIRS and
+#     OSL_COMPILER, not OSL_SHADER_DIR, so configure passes and the failure
+#     appears while compiling Cycles' own OSL shaders: stdcycles.h includes
+#     stdosl.h and the conan package does not deploy OSL's shader includes.
+#     OpenVDB is resolved through USD's own export, because FindUSDPixar sets
+#     USD_OVERRIDE_OPENVDB and the standalone find is then skipped, so
+#     WITH_CYCLES_OPENVDB stays at its default.
 #
 # Three deviations from the defaults, each because the base cannot supply the
-# dependency and Cycles treats both as REQUIRED rather than degrading:
+# dependency:
 #
 #   - WITH_CYCLES_NANOVDB=OFF. Observed: run 36415517826 failed at configure
 #     with "Could NOT find NanoVDB (missing: NANOVDB_INCLUDE_DIR)" from
 #     find_package(NanoVDB REQUIRED) in external_libs.cmake. NanoVDB is not
 #     among the vfxall conan packages the images deploy.
-#   - WITH_CYCLES_OPENIMAGEDENOISE=OFF. Predicted, not yet observed: the find is
+#   - WITH_CYCLES_OPENIMAGEDENOISE=OFF. Observed on the next run: the find is
 #     find_package(OpenImageDenoise REQUIRED) a few lines further on, and while
 #     aswf-docker carries an openimagedenoise conan recipe, no ci-*/image.yaml
-#     deploys it. The next build confirms or refutes this.
-#   - WITH_LIBS_PRECOMPILED=OFF, for the reason given above.
+#     deploys it. Run 36418071124 passed that point.
+#   - WITH_CYCLES_OSL=OFF, for the reason above. This is the one failure that
+#     cannot be caught at configure time.
 #
 # PXR_ROOT selects FindUSDPixar, which loads OpenUSD's installed
 # pxrTargets.cmake, and that export references an OpenGL::GL target the ASWF
@@ -126,6 +132,7 @@ cp -a "$bundle_epoxy/lib/." "$ASWF_INSTALL_PREFIX/lib/"
     -DCMAKE_PROJECT_INCLUDE="${ASWF_INSTALL_PREFIX}/share/cycles/import_openusd_dependencies.cmake" \
     -DOPTIX_ROOT_DIR="$OPTIX_ROOT_DIR" \
     -DCUDAToolkit_ROOT="$CUDAToolkit_ROOT" \
+    -DWITH_CYCLES_OSL=OFF \
     -DWITH_CYCLES_NANOVDB=OFF \
     -DWITH_CYCLES_OPENIMAGEDENOISE=OFF \
     -DWITH_LIBS_PRECOMPILED=OFF
