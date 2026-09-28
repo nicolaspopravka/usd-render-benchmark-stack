@@ -62,15 +62,16 @@ set -euxo pipefail
 # deploy does not define. -DCMAKE_PROJECT_INCLUDE is the shim that creates it
 # first (cmake/import_openusd_dependencies.cmake); the two belong together.
 #
-# CMAKE_BUILD_TYPE is not a delegate option and is set explicitly. Cycles'
-# top-level CMakeLists sets only CMAKE_BUILD_TYPE_INIT, which seeds the ccmake
-# GUI and has no effect on a non-interactive build, so an unset build type
-# leaves no -O level at all. BUILDING.md documents the build as
-# "cmake --build build --config Release", but --config selects a configuration
-# only for multi-configuration generators and is ignored by the
-# single-configuration generators a container build uses, so the documented
-# command is unoptimised on Linux unless CMAKE_BUILD_TYPE is set as well.
-# Setting it at configure time is what build_scripts/build_usd.py does for USD.
+# CMAKE_BUILD_TYPE is not a delegate option, and is pinned here rather than left
+# to the default. Cycles' own top-level CMakeLists already sets
+# CMAKE_BUILD_TYPE_INIT to Release before project(), and CMake does seed
+# CMAKE_BUILD_TYPE from it, so an unset build type is Release here too -
+# verified by configuring a project that does only that. It is set explicitly
+# anyway because every timing in the published results depends on it, and an
+# explicit pin cannot be changed by a future default. Note that BUILDING.md's
+# "cmake --build build --config Release" is a no-op for the single-config
+# generators a container build uses; the optimisation comes from the seeded
+# build type, not from --config.
 #
 # The compiler is provided by the build: Dockerfile.pristine wraps this script
 # in the cycle year's ASWF gcc-toolset (source /opt/rh/gcc-toolset-${ASWF_DTS_VERSION}/enable).
