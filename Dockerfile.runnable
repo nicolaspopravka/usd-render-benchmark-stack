@@ -29,30 +29,6 @@ ENV PYTHONPATH=/usr/local/lib/python
 ENV PXR_PLUGINPATH_NAME=/usr/local/plugin/pxr:/opt/cycles/hydra
 # TEMPORARY: Arras session dir — drop when OpenMoonRay lands in the base.
 ENV ARRAS_SESSION_PATH=/usr/local/sessions
-# TEMPORARY: OpenMoonRay install root — drop when OpenMoonRay lands in the base.
-# OptixGPUAccelerator::createModule reads only REZ_MOONRAY_ROOT and appends
-# /shaders/OptixGPUPrograms.ptx; scene_rdl2::util::getenv returns an empty
-# string when the variable is unset, so an unset value yields the absolute path
-# /shaders/OptixGPUPrograms.ptx and the load fails silently, leaving XPU mode
-# unavailable. Not an execution setting: the image still does not select a
-# device, so this only makes the built support reachable.
-#
-# This is the value MoonRay's own installed scripts/setup.sh exports. Note that
-# rez overwrites REZ_MOONRAY_ROOT with the package directory for a package named
-# moonray, so a run through rez needs the MoonRay rez package to set it; this
-# line only covers invocations that do not go through rez.
-#
-# This and the other MoonRay lines above are duplicated from the .2 runnable on
-# purpose, not by oversight. Pristine and runnable are two parallel chains:
-# stack:.2 branches into this runnable and into the .3 pristine that adds
-# Cycles, and this runnable is built from the .3 *pristine*, not from the .2
-# runnable, so it inherits MoonRay's binaries but none of MoonRay's
-# environment. Building it from the .2 runnable instead would drop /opt/cycles
-# entirely, because that only exists in the .3 pristine. The alternative shape -
-# one linear chain per ladder rung, each .N built base -> pristine -> runnable -
-# would declare MoonRay's environment once, at the cost of rebuilding MoonRay
-# for every rung instead of inheriting the layer.
-ENV REZ_MOONRAY_ROOT=/usr/local
 
 # TEMPORARY: Export shader_json from the installed MoonRay DSOs for the Hydra
 # Ndr plugins (the runnable's analogue of the doc's setup.sh). Drop when
