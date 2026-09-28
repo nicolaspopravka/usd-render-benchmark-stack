@@ -43,18 +43,30 @@ if [ -s "${TARGET}" ]; then
     exit 0
 fi
 
-if ! command -v pkg-config >/dev/null 2>&1; then
-    echo "ERROR: no pkg-config, cannot determine the installed OSL version." >&2
+if ! command -v oslc >/dev/null 2>&1; then
+    echo "ERROR: no oslc, so the installed OSL cannot be identified or used." >&2
     echo "       Set OSL_SHADER_TAG_OVERRIDE to the release tag to install." >&2
     exit 1
 fi
 
-osl_version="$(pkg-config --modversion OSL 2>/dev/null || true)"
-if [ -z "${osl_version}" ]; then
-    echo "ERROR: pkg-config knows no OSL, so the installed version is unknown." >&2
-    echo "       Set OSL_SHADER_TAG_OVERRIDE to the release tag to install." >&2
+# Read the version out of the installed oslversion.h, the same way Cycles'
+# own FindOSL.cmake does, so this cannot disagree with the version Cycles will
+# build against. pkg-config is not an option here: the aswf conan OSL recipe
+# rmdirs lib/pkgconfig and only re-declares pkg_config_name in package_info(),
+# which is conan-graph metadata, so no OSL.pc is deployed.
+version_header="${PREFIX}/include/OSL/oslversion.h"
+if [ ! -r "${version_header}" ]; then
+    echo "ERROR: ${version_header} is missing, so the installed OSL version" >&2
+    echo "       is unknown. Set OSL_SHADER_TAG_OVERRIDE to the release tag." >&2
     exit 1
 fi
+read -r osl_major osl_minor osl_patch <<EOF
+$(sed -nE 's/^[[:space:]]*#define[[:space:]]+OSL_LIBRARY_VERSION_(MAJOR|MINOR|PATCH)[[:space:]]+([0-9]+).*/\2/p' "${version_header}" | tr '\n' ' ')
+EOF
+osl_version="${osl_major}.${osl_minor}.${osl_patch}"
+case "${osl_version}" in
+    *..*|.*|*.) echo "ERROR: could not parse the OSL version from ${version_header}" >&2; exit 1 ;;
+esac
 
 # 1.14.11 -> v1.14.11.0, and 1.14.5.1 -> v1.14.5.1. Try the zero-padded form
 # first, then the literal, and fail loudly if neither exists rather than
