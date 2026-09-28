@@ -19,10 +19,15 @@ ENV PXR_PLUGINPATH_NAME=/usr/local/plugin/pxr
 # TEMPORARY: Arras session dir — drop when OpenMoonRay lands in the base.
 ENV ARRAS_SESSION_PATH=/usr/local/sessions
 # TEMPORARY: OpenMoonRay install root — drop when OpenMoonRay lands in the base.
-# OpenMoonRay locates its OptiX GPU programs under its install root
-# (${MOONRAY_ROOT}/shaders), preferring REZ_MOONRAY_ROOT and falling back to
-# MOONRAY_ROOT. Rez sets REZ_MOONRAY_ROOT to the package directory rather than
-# the install root, so without this the GPU programs are not found and XPU mode
-# is never entered. Not an execution setting: the image still does not select a
-# device, so this only makes the built GPU support reachable.
-ENV MOONRAY_ROOT=/usr/local
+# OptixGPUAccelerator::createModule reads only REZ_MOONRAY_ROOT and appends
+# /shaders/OptixGPUPrograms.ptx; scene_rdl2::util::getenv returns an empty
+# string when the variable is unset, so an unset value yields the absolute path
+# /shaders/OptixGPUPrograms.ptx and the load fails silently, leaving XPU mode
+# unavailable. Not an execution setting: the image still does not select a
+# device, so this only makes the built support reachable.
+#
+# This is the value MoonRay's own installed scripts/setup.sh exports. Note that
+# rez overwrites REZ_MOONRAY_ROOT with the package directory for a package named
+# moonray, so a run through rez needs the MoonRay rez package to set it; this
+# line only covers invocations that do not go through rez.
+ENV REZ_MOONRAY_ROOT=/usr/local
