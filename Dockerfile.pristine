@@ -12,14 +12,6 @@ FROM ${BASE_IMAGE}
 
 ARG CYCLES_TAG=""
 
-# TEMPORARY: GNU time for render_script.sh — drop when aswf-docker #468 reaches
-# the base. The harness calls /usr/bin/time for every cell, and the ASWF images
-# only carry the bash keyword, so without this every cell dies before usdrecord
-# starts. This is the overlay the previously published runnables were built with
-# (fix/time); the default-delegates branch did not carry it, and the demo canary
-# run 36445907951 failed all four delegates for exactly this reason.
-RUN test -x /usr/bin/time || (dnf install -y time && dnf clean all && rm -rf /var/cache/dnf)
-
 COPY build_cycles.sh /usr/local/aswf/build_cycles.sh
 COPY cmake/import_openusd_dependencies.cmake /usr/local/share/cycles/import_openusd_dependencies.cmake
 RUN if [ -n "${CYCLES_TAG}" ]; then \
@@ -27,3 +19,14 @@ RUN if [ -n "${CYCLES_TAG}" ]; then \
                 chmod +x /usr/local/aswf/build_cycles.sh && \
                 CYCLES_TAG="${CYCLES_TAG}" /usr/local/aswf/build_cycles.sh'; \
     fi
+
+# TEMPORARY: GNU time for render_script.sh — drop when aswf-docker #468 reaches
+# the base. The harness calls /usr/bin/time for every cell and the ASWF images
+# only carry the bash keyword, so without this every cell dies before usdrecord
+# starts. This is the overlay the previously published runnables were built with
+# (fix/time); the default-delegates branch did not carry it, and the demo canary
+# run 36445907951 failed all four delegates for exactly this reason.
+#
+# Kept last on purpose: it is a one-minute step, so putting it after the build
+# means changing it invalidates only this layer and not the delegate compile.
+RUN test -x /usr/bin/time || (dnf install -y time && dnf clean all && rm -rf /var/cache/dnf)
