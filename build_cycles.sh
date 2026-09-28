@@ -33,29 +33,33 @@ set -euxo pipefail
 #     runtime" - if neither is set. Baking the path in at build time keeps the
 #     image self-sufficient instead of requiring every render environment to
 #     supply it.
-#   - OSL is present but incomplete, and fails late. The base's conan OSL was
-#     found (1.14.11, with oslcomp, oslexec, oslquery, oslnoise and an oslc that
-#     runs), but FindOSL.cmake requires only OSL_LIBRARIES, OSL_INCLUDE_DIRS and
-#     OSL_COMPILER, not OSL_SHADER_DIR, so configure passes and the failure
-#     appears while compiling Cycles' own OSL shaders: stdcycles.h includes
-#     stdosl.h and the conan package does not deploy OSL's shader includes.
-#     OpenVDB is resolved through USD's own export, because FindUSDPixar sets
-#     USD_OVERRIDE_OPENVDB and the standalone find is then skipped, so
-#     WITH_CYCLES_OPENVDB stays at its default.
+#   - OSL now works at its default. The conan OSL package deploys the libraries,
+#     the headers and oslc but not share/OSL/shaders, and FindOSL.cmake does not
+#     require OSL_SHADER_DIR - it is only mark_as_advanced - so without help the
+#     build passes configure and then dies compiling Cycles' own shaders on
+#     "stdosl.h: file not found". fixers/05-osl-shader-includes.sh installs that
+#     one file from the matching OSL source release, so WITH_CYCLES_OSL is no
+#     longer overridden. OpenVDB is resolved through USD's own export, because
+#     FindUSDPixar sets USD_OVERRIDE_OPENVDB and the standalone find is then
+#     skipped, so WITH_CYCLES_OPENVDB also stays at its default.
 #
-# Three deviations from the defaults, each because the base cannot supply the
+# Two deviations from the defaults, each because the base cannot supply the
 # dependency:
 #
 #   - WITH_CYCLES_NANOVDB=OFF. Observed: run 36415517826 failed at configure
 #     with "Could NOT find NanoVDB (missing: NANOVDB_INCLUDE_DIR)" from
 #     find_package(NanoVDB REQUIRED) in external_libs.cmake. NanoVDB is not
-#     among the vfxall conan packages the images deploy.
+#     among the vfxall conan packages the images deploy. A fixer could install
+#     the headers the same way 05 does; not written yet.
 #   - WITH_CYCLES_OPENIMAGEDENOISE=OFF. Observed on the next run: the find is
 #     find_package(OpenImageDenoise REQUIRED) a few lines further on, and while
 #     aswf-docker carries an openimagedenoise conan recipe, no ci-*/image.yaml
-#     deploys it. Run 36418071124 passed that point.
-#   - WITH_CYCLES_OSL=OFF, for the reason above. This is the one failure that
-#     cannot be caught at configure time.
+#     deploys it. Run 36418071124 passed that point. Satisfying this would mean
+#     building OIDN from source, which is a much larger fixer than 05.
+#
+# WITH_LIBS_PRECOMPILED=OFF is a third, kept for the reason given above: the
+# pinned bundle carries OIIO 3.0.9, Imath 3.0 and OpenEXR -3_3 alongside the
+# conan stack's 3.1.x.
 #
 # PXR_ROOT selects FindUSDPixar, which loads OpenUSD's installed
 # pxrTargets.cmake, and that export references an OpenGL::GL target the ASWF
@@ -146,7 +150,6 @@ cp -a "$bundle_epoxy/lib/." "$ASWF_INSTALL_PREFIX/lib/"
     -DOPTIX_ROOT_DIR="$OPTIX_ROOT_DIR" \
     -DCYCLES_RUNTIME_OPTIX_ROOT_DIR="$CYCLES_RUNTIME_OPTIX_ROOT_DIR" \
     -DCUDAToolkit_ROOT="$CUDAToolkit_ROOT" \
-    -DWITH_CYCLES_OSL=OFF \
     -DWITH_CYCLES_NANOVDB=OFF \
     -DWITH_CYCLES_OPENIMAGEDENOISE=OFF \
     -DWITH_LIBS_PRECOMPILED=OFF

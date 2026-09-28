@@ -8,9 +8,26 @@
 
 ARG BASE_IMAGE
 
+# TEMPORARY: build Rez in this stage — drop when aswf-docker #467 ships it in
+# the base. The harness resolves every cell through `rez env`, so without this
+# no cell runs at all.
+FROM ${BASE_IMAGE} AS rez-builder
+COPY install_rez.sh /usr/local/bin/install_rez.sh
+ENV REZ_INSTALL_DIR=/usr/local/rez
+RUN bash -lc 'source /usr/local/bin/install_rez.sh && rez --version'
+
 FROM ${BASE_IMAGE}
 
+# TEMPORARY: Rez from rez-builder — drop when aswf-docker #467 ships it in the base.
+COPY --from=rez-builder /usr/local/rez /usr/local/rez
+
 ARG CYCLES_TAG=""
+
+# TEMPORARY: additions the ASWF base needs before the default build can work.
+# 05 installs the OSL shader includes the conan OSL package omits, so
+# WITH_CYCLES_OSL can stay at its upstream default of ON.
+COPY fixers/ /usr/local/aswf/cycles-fixers/
+RUN /usr/local/aswf/cycles-fixers/05-osl-shader-includes.sh
 
 COPY build_cycles.sh /usr/local/aswf/build_cycles.sh
 COPY cmake/import_openusd_dependencies.cmake /usr/local/share/cycles/import_openusd_dependencies.cmake
