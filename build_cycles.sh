@@ -22,9 +22,17 @@ set -euxo pipefail
 # when reading the result:
 #
 #   - WITH_CYCLES_CUDA_BINARIES defaults to OFF, so the image carries OptiX
-#     device code but no precompiled GPU kernels. Cycles compiles a missing
-#     kernel with nvcc at render time instead, which is why the CUDA toolkit is
-#     located below.
+#     device code and no precompiled GPU kernels. Cycles compiles a missing
+#     kernel with nvcc at render time instead, and with no precompiled kernel
+#     that is the only path. That makes both CUDAToolkit_ROOT and
+#     CYCLES_RUNTIME_OPTIX_ROOT_DIR load-bearing rather than merely helpful:
+#     OptiXDevice::get_optix_include_dir reads OPTIX_ROOT_DIR from the
+#     environment first and the compiled-in CYCLES_RUNTIME_OPTIX_ROOT_DIR
+#     second, and returns an empty string - which makes
+#     createOptixModuleKernel fail with "Unable to compile OptiX kernels at
+#     runtime" - if neither is set. Baking the path in at build time keeps the
+#     image self-sufficient instead of requiring every render environment to
+#     supply it.
 #   - OSL is present but incomplete, and fails late. The base's conan OSL was
 #     found (1.14.11, with oslcomp, oslexec, oslquery, oslnoise and an oslc that
 #     runs), but FindOSL.cmake requires only OSL_LIBRARIES, OSL_INCLUDE_DIRS and
@@ -86,6 +94,10 @@ readonly CYCLES_INSTALL_PREFIX="/opt/cycles"
 # requires OptiX 8.0.0 or newer (find_package(OptiX 8.0.0)), and its finder
 # version-checks the optix.h it locates, so this cannot select a wrong SDK.
 readonly OPTIX_ROOT_DIR="${OPTIX_ROOT_DIR:-${ASWF_INSTALL_PREFIX}/NVIDIA-OptiX-SDK-8.0.0}"
+# Baked in because WITH_CYCLES_CUDA_BINARIES is off by default, so there is no
+# precompiled OptiX kernel in the image and the render-time nvcc path is the
+# only one. See the note in the header.
+readonly CYCLES_RUNTIME_OPTIX_ROOT_DIR="${OPTIX_ROOT_DIR}"
 readonly CUDAToolkit_ROOT="${CUDAToolkit_ROOT:-${ASWF_INSTALL_PREFIX}/cuda}"
 
 : "${CYCLES_TAG:?CYCLES_TAG is required}"
@@ -131,6 +143,7 @@ cp -a "$bundle_epoxy/lib/." "$ASWF_INSTALL_PREFIX/lib/"
     -DPXR_ROOT="$ASWF_INSTALL_PREFIX" \
     -DCMAKE_PROJECT_INCLUDE="${ASWF_INSTALL_PREFIX}/share/cycles/import_openusd_dependencies.cmake" \
     -DOPTIX_ROOT_DIR="$OPTIX_ROOT_DIR" \
+    -DCYCLES_RUNTIME_OPTIX_ROOT_DIR="$CYCLES_RUNTIME_OPTIX_ROOT_DIR" \
     -DCUDAToolkit_ROOT="$CUDAToolkit_ROOT" \
     -DWITH_CYCLES_OSL=OFF \
     -DWITH_CYCLES_NANOVDB=OFF \
