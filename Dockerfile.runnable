@@ -29,6 +29,25 @@ ENV PYTHONPATH=/usr/local/lib/python
 ENV PXR_PLUGINPATH_NAME=/usr/local/plugin/pxr:/opt/cycles/hydra
 # TEMPORARY: Arras session dir — drop when OpenMoonRay lands in the base.
 ENV ARRAS_SESSION_PATH=/usr/local/sessions
+# TEMPORARY: OpenMoonRay install root — drop when OpenMoonRay lands in the base.
+# OpenMoonRay locates its OptiX GPU programs under its install root
+# (${MOONRAY_ROOT}/shaders), preferring REZ_MOONRAY_ROOT and falling back to
+# MOONRAY_ROOT. Rez sets REZ_MOONRAY_ROOT to the package directory rather than
+# the install root, so without this the GPU programs are not found and XPU mode
+# is never entered. Not an execution setting: the image still does not select a
+# device, so this only makes the built GPU support reachable.
+#
+# This and the other MoonRay lines above are duplicated from the .2 runnable on
+# purpose, not by oversight. Pristine and runnable are two parallel chains:
+# stack:.2 branches into this runnable and into the .3 pristine that adds
+# Cycles, and this runnable is built from the .3 *pristine*, not from the .2
+# runnable, so it inherits MoonRay's binaries but none of MoonRay's
+# environment. Building it from the .2 runnable instead would drop /opt/cycles
+# entirely, because that only exists in the .3 pristine. The alternative shape -
+# one linear chain per ladder rung, each .N built base -> pristine -> runnable -
+# would declare MoonRay's environment once, at the cost of rebuilding MoonRay
+# for every rung instead of inheriting the layer.
+ENV MOONRAY_ROOT=/usr/local
 
 # TEMPORARY: Export shader_json from the installed MoonRay DSOs for the Hydra
 # Ndr plugins (the runnable's analogue of the doc's setup.sh). Drop when
@@ -36,7 +55,6 @@ ENV ARRAS_SESSION_PATH=/usr/local/sessions
 RUN if command -v rdl2_json_exporter >/dev/null 2>&1; then \
       export PATH=/usr/local/bin:$PATH \
              LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH:-} \
-             MOONRAY_ROOT=/usr/local \
              RDL2_DSO_PATH=/usr/local/rdl2dso.proxy:/usr/local/rdl2dso \
              MOONRAY_CLASS_PATH=/usr/local/shader_json \
       && mkdir -p /usr/local/shader_json \

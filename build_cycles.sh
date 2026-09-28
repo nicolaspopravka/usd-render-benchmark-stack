@@ -14,10 +14,38 @@ set -euxo pipefail
 # lib (it is a static archive in the bundle, so nothing extra is needed at
 # runtime). No duplicated libraries.
 #
-# CPU/Embree only by design: no OptiX, no OpenImageDenoise, no oneAPI/SYCL, no
-# CUDA/HIP, no OpenVDB/NanoVDB, and no OSL shading (WITH_CYCLES_OSL=OFF — the
-# conan OSL deploy ships no stdosl.h, and the benchmark scenes render through
-# Cycles' native nodes).
+# Delegate build options are left at their upstream defaults. Upstream enables
+# WITH_CYCLES_OSL, WITH_CYCLES_OPENIMAGEDENOISE, WITH_CYCLES_OPENVDB,
+# WITH_CYCLES_NANOVDB, WITH_CYCLES_ALEMBIC and the WITH_CYCLES_DEVICE_* family
+# by default, so this build only supplies what those defaults need on an ASWF
+# base: the CUDA and OptiX locators, and the PXR_ROOT that BUILDING.md's source
+# recipe uses. Three things to keep in mind when reading the result:
+#
+#   - WITH_CYCLES_CUDA_BINARIES defaults to OFF, so the image carries OptiX
+#     device code but no precompiled GPU kernels. Cycles compiles a missing
+#     kernel with nvcc at render time instead, which is why the CUDA toolkit is
+#     located below.
+#   - BUILDING.md notes that building against a source USD, which an ASWF base
+#     is, yields no OSL and no NanoVDB support. Both default to ON, so expect
+#     them to resolve off here, and note that a dependency Cycles cannot find
+#     downgrades the option with a warning rather than failing the build.
+#   - The one deliberate deviation from the defaults is
+#     WITH_LIBS_PRECOMPILED=OFF, for the reason given above.
+#
+# PXR_ROOT selects FindUSDPixar, which loads OpenUSD's installed
+# pxrTargets.cmake, and that export references an OpenGL::GL target the ASWF
+# deploy does not define. -DCMAKE_PROJECT_INCLUDE is the shim that creates it
+# first (cmake/import_openusd_dependencies.cmake); the two belong together.
+#
+# CMAKE_BUILD_TYPE is not a delegate option and is set explicitly. Cycles'
+# top-level CMakeLists sets only CMAKE_BUILD_TYPE_INIT, which seeds the ccmake
+# GUI and has no effect on a non-interactive build, so an unset build type
+# leaves no -O level at all. BUILDING.md documents the build as
+# "cmake --build build --config Release", but --config selects a configuration
+# only for multi-configuration generators and is ignored by the
+# single-configuration generators a container build uses, so the documented
+# command is unoptimised on Linux unless CMAKE_BUILD_TYPE is set as well.
+# Setting it at configure time is what build_scripts/build_usd.py does for USD.
 #
 # The compiler is provided by the build: Dockerfile.pristine wraps this script
 # in the cycle year's ASWF gcc-toolset (source /opt/rh/gcc-toolset-${ASWF_DTS_VERSION}/enable).
@@ -31,6 +59,17 @@ readonly CYCLES_LIB_URL="https://projects.blender.org/blender/lib-linux_x64.git"
 readonly BUILD_ROOT="/opt/build-cycles"
 readonly ASWF_INSTALL_PREFIX="/usr/local"
 readonly CYCLES_INSTALL_PREFIX="/opt/cycles"
+
+# CUDA and OptiX live outside CMake's default search paths in the ASWF images,
+# so the upstream device defaults need a locator. aswf-docker's install_optix.sh
+# installs every available OptiX header set as a sibling directory named
+# NVIDIA-OptiX-SDK-<version>, never merged into ${ASWF_INSTALL_PREFIX}, and
+# FindOptiX.cmake only searches that variable plus the standard prefixes, so
+# without it OptiX is not found and the device silently stays off. Cycles
+# requires OptiX 8.0.0 or newer (find_package(OptiX 8.0.0)), and its finder
+# version-checks the optix.h it locates, so this cannot select a wrong SDK.
+readonly OPTIX_ROOT_DIR="${OPTIX_ROOT_DIR:-${ASWF_INSTALL_PREFIX}/NVIDIA-OptiX-SDK-8.0.0}"
+readonly CUDAToolkit_ROOT="${CUDAToolkit_ROOT:-${ASWF_INSTALL_PREFIX}/cuda}"
 
 : "${CYCLES_TAG:?CYCLES_TAG is required}"
 
@@ -72,25 +111,11 @@ cp -a "$bundle_epoxy/lib/." "$ASWF_INSTALL_PREFIX/lib/"
   cmake -B ./build \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX="$CYCLES_INSTALL_PREFIX" \
-    -DCMAKE_PREFIX_PATH="$ASWF_INSTALL_PREFIX" \
     -DPXR_ROOT="$ASWF_INSTALL_PREFIX" \
-    -DCMAKE_PROJECT_INCLUDE=/usr/local/share/cycles/import_openusd_dependencies.cmake \
-    -DWITH_CYCLES_OSL=OFF \
-    -DWITH_LIBS_PRECOMPILED=OFF \
-    -DWITH_CYCLES_OPENVDB=OFF \
-    -DWITH_CYCLES_NANOVDB=OFF \
-    -DWITH_CYCLES_OPENIMAGEDENOISE=OFF \
-    -DWITH_CYCLES_ALEMBIC=OFF \
-    -DWITH_CYCLES_LOGGING=OFF \
-    -DWITH_CYCLES_DEVICE_ONEAPI=OFF \
-    -DWITH_CYCLES_ONEAPI_BINARIES=OFF \
-    -DWITH_CYCLES_DEVICE_CUDA=OFF \
-    -DWITH_CYCLES_CUDA_BINARIES=OFF \
-    -DWITH_CYCLES_DEVICE_HIP=OFF \
-    -DWITH_CYCLES_DEVICE_HIPRT=OFF \
-    -DWITH_CYCLES_HIP_BINARIES=OFF \
-    -DWITH_CYCLES_DEVICE_METAL=OFF \
-    -DWITH_CYCLES_DEVICE_OPTIX=OFF
+    -DCMAKE_PROJECT_INCLUDE="${ASWF_INSTALL_PREFIX}/share/cycles/import_openusd_dependencies.cmake" \
+    -DOPTIX_ROOT_DIR="$OPTIX_ROOT_DIR" \
+    -DCUDAToolkit_ROOT="$CUDAToolkit_ROOT" \
+    -DWITH_LIBS_PRECOMPILED=OFF
 
   cmake --build ./build -j"$(nproc)"
   cmake --install ./build
