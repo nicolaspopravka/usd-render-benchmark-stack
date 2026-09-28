@@ -17,11 +17,13 @@
 # incomplete. With stdosl.h present, WITH_CYCLES_OSL can stay at its upstream
 # default of ON and build_cycles.sh does not need the OFF override.
 #
-# stdosl.h is self-contained - it has no #include of its own - so installing
-# that single file from the matching OSL source release is enough. It lives at
-# src/shaders/stdosl.h in the source tree, and FindOSL looks for it under
-# ${prefix}/share/OSL/shaders (PATH_SUFFIXES "share/OSL/shaders", default
-# prefixes include /usr/local).
+# stdosl.h is the one Cycles hits first, but it is not the only header the
+# shader library needs: Cycles' own OSL shaders include their siblings, e.g.
+# node_hash.h pulls in vector2.h and vector4.h. src/shaders is what OSL installs
+# to share/OSL/shaders, so the fix installs that directory's headers. stdosl.h
+# is also what liboslcomp itself looks up at runtime, by OSL_SHADER_INSTALL_DIR
+# and then by guessing /usr/local/share/OSL/shaders/stdosl.h, so this path is
+# the one the shipped library already expects.
 #
 # Validated against OSL 1.14.11.0:
 #   OSL-1.14.11.0.tar.gz
@@ -38,8 +40,8 @@ TARGET="${TARGET_DIR}/stdosl.h"
 # v1.14.11.0. Only set this if the derivation below is wrong for your base.
 OSL_SHADER_TAG_OVERRIDE="${OSL_SHADER_TAG_OVERRIDE:-}"
 
-if [ -s "${TARGET}" ]; then
-    echo "OSL shader includes OK: ${TARGET} ($(wc -c < "${TARGET}") bytes)"
+if [ -s "${TARGET}" ] && [ -s "${TARGET_DIR}/vector2.h" ]; then
+    echo "OSL shader library OK: ${TARGET_DIR} ($(cd "${TARGET_DIR}" && ls -1 ./*.h | wc -l | tr -d ' ') headers)"
     exit 0
 fi
 
@@ -100,13 +102,27 @@ if [ -z "${src}" ]; then
 fi
 
 mkdir -p "${TARGET_DIR}"
-tar -xzf "${TMPDIR:-/tmp}/osl-shaders.tar.gz" -C "${TARGET_DIR}" --strip-components=3 "${src}"
+work="$(mktemp -d)"
+trap 'rm -rf "${work}"' EXIT
+# The archive's root directory is OSL-<version> without the v, same as the
+# asset name, even though the release tag carries it.
+tar -xzf "${TMPDIR:-/tmp}/osl-shaders.tar.gz" -C "${work}" --strip-components=1 \
+    "OSL-${used_tag#v}/src/shaders"
+# The whole header set from src/shaders, not just stdosl.h. Cycles' own OSL
+# shaders include their siblings: node_hash.h pulls in vector2.h and vector4.h
+# alongside stdcycles.h, and FindOSL only puts OSL_SHADER_DIR on the include
+# path, so they all have to be in one place. src/shaders is the shader library
+# that OSL installs to share/OSL/shaders; its .osl example sources are not
+# installed, because nothing here compiles them.
+install -m 0644 "${work}"/src/shaders/*.h "${TARGET_DIR}/"
 rm -f "${TMPDIR:-/tmp}/osl-shaders.tar.gz"
 
 if [ ! -s "${TARGET}" ]; then
-    echo "ERROR: extracted ${src} but ${TARGET} is missing or empty." >&2
+    echo "ERROR: extracted ${used_tag} but ${TARGET} is missing or empty." >&2
     exit 1
 fi
 
-echo "installed stdosl.h from OSL ${used_tag} (for the installed ${osl_version}):"
-echo "  ${TARGET} ($(wc -c < "${TARGET}") bytes)"
+installed="$(cd "${TARGET_DIR}" && ls -1 ./*.h | wc -l | tr -d ' ')"
+echo "installed the OSL ${used_tag} shader library (for the installed ${osl_version}):"
+echo "  ${TARGET_DIR}/ (${installed} headers)"
+ls -1 "${TARGET_DIR}" | sed 's/^/    /'
