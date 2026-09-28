@@ -7,6 +7,13 @@ ARG BASE_IMAGE
 
 FROM ${BASE_IMAGE}
 
+# TEMPORARY: GNU time for render_script.sh — drop when aswf-docker #468 reaches
+# the base. The harness calls /usr/bin/time for every cell and the ASWF images
+# only carry the bash keyword, so without this every cell dies before usdrecord
+# starts. This is the overlay the previously published runnables were built with
+# (fix/time).
+RUN test -x /usr/bin/time || (dnf install -y time && dnf clean all && rm -rf /var/cache/dnf)
+
 # TEMPORARY: Step-1 prereqs the base omits (install_packages.sh installs
 # git-lfs) — drop when git-lfs ships in the ASWF base images.
 COPY fixers/ /usr/local/aswf/moonray-fixers/
