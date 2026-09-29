@@ -66,29 +66,51 @@ readonly CUDAToolkit_ROOT="${CUDAToolkit_ROOT:-${ASWF_INSTALL_PREFIX}/cuda}"
 mkdir -p "$BUILD_ROOT"
 git clone --branch "$CYCLES_TAG" --depth 1 "$CYCLES_URL" "$BUILD_ROOT/cycles"
 
-# --- libepoxy from Cycles' pinned lib/linux_x64 submodule -------------------
-# The bundle commit is the gitlink the tag's `make update` would use. Resolve it
-# BEFORE cloning the bundle (older tags name it lib/linux_x86_64; some have no
-# submodule at all). No submodule -> no way to source the pinned libepoxy here.
+# --- libepoxy -------------------------------------------------------------
+# Cycles' FindEpoxy is REQUIRED whenever the Hydra delegate is built, and ASWF
+# ships GLEW via Conan and no epoxy at all. It comes from one of two places,
+# auto-detected from the tag:
+#   * tags with a lib/linux_x64 gitlink (v4.1.1+) - the pinned bundle epoxy,
+#     installed into /usr/local (a static archive, so nothing extra at runtime);
+#   * tags without one (v4.0.x and older) - no bundle exists, so the distro
+#     package is installed and left where the distro puts it.
+# Both satisfy the same find and neither duplicates a library. A per-year
+# difference worth recording: the bundle is static, the distro package is
+# shared, so a distro-epoxy year's hdCycles.so carries a runtime
+# DT_NEEDED libepoxy.so.0 (the rocky8 soname).
+#
+# The gitlink is resolved BEFORE cloning the bundle, since older tags name it
+# lib/linux_x86_64 and some have no submodule at all.
 bundle_commit="$(git -C "$BUILD_ROOT/cycles" ls-tree HEAD lib/linux_x64 2>/dev/null | awk '{print $3}')"
 if [[ -z "$bundle_commit" ]]; then
   bundle_commit="$(git -C "$BUILD_ROOT/cycles" ls-tree HEAD lib/linux_x86_64 2>/dev/null | awk '{print $3}')"
 fi
-if [[ -z "$bundle_commit" ]]; then
-  echo "ERROR: $CYCLES_TAG has no lib/linux* submodule — cannot source the pinned libepoxy" >&2
-  exit 1
-fi
-git clone --filter=blob:none "$CYCLES_LIB_URL" "$BUILD_ROOT/lib-linux_x64"
-git -C "$BUILD_ROOT/lib-linux_x64" checkout --detach "$bundle_commit"
-git -C "$BUILD_ROOT/lib-linux_x64" lfs install --skip-repo
-git -C "$BUILD_ROOT/lib-linux_x64" lfs pull -I 'epoxy/**'
 
-# The bundle's epoxy is a static archive + headers; install into /usr/local
-# (system-wide like GL, nowhere near the /opt/cycles tree). cp of a missing
-# source fails the build, so no prior layout check is needed.
-bundle_epoxy="$BUILD_ROOT/lib-linux_x64/epoxy"
-cp -a "$bundle_epoxy/include/." "$ASWF_INSTALL_PREFIX/include/"
-cp -a "$bundle_epoxy/lib/." "$ASWF_INSTALL_PREFIX/lib/"
+if [[ -n "$bundle_commit" ]]; then
+  # The bundle is LFS-materialized; git-lfs may be absent on some bases.
+  if ! command -v git-lfs >/dev/null 2>&1; then
+    dnf install -y git-lfs
+  fi
+  git clone --filter=blob:none "$CYCLES_LIB_URL" "$BUILD_ROOT/lib-linux_x64"
+  git -C "$BUILD_ROOT/lib-linux_x64" checkout --detach "$bundle_commit"
+  git -C "$BUILD_ROOT/lib-linux_x64" lfs install --skip-repo
+  git -C "$BUILD_ROOT/lib-linux_x64" lfs pull -I 'epoxy/**'
+
+  # cp of a missing source fails the build, so no prior layout check is needed.
+  bundle_epoxy="$BUILD_ROOT/lib-linux_x64/epoxy"
+  cp -a "$bundle_epoxy/include/." "$ASWF_INSTALL_PREFIX/include/"
+  cp -a "$bundle_epoxy/lib/." "$ASWF_INSTALL_PREFIX/lib/"
+  echo "Using pinned bundle libepoxy from lib-linux_x64@$bundle_commit"
+else
+  # v4.0.x's external_libs.cmake only sets CMAKE_IGNORE_PATH inside its bundle
+  # branch, so with no bundle it leaves the system paths searchable and
+  # FindEpoxy resolves epoxy/gl.h and the library from the distro locations as
+  # installed. Leaving the file where the distro put it also keeps one copy,
+  # owned by rpm, already in the loader cache.
+  dnf install -y libepoxy-devel
+  rpm -q libepoxy-devel libepoxy
+  echo "Using distro libepoxy (no lib/linux* submodule in $CYCLES_TAG)"
+fi
 
 (
   cd "$BUILD_ROOT/cycles"
