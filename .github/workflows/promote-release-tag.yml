@@ -10,10 +10,16 @@ name: promote-release-tag
 # The image is never pulled. imagetools rewrites the manifest reference, so
 # this is a registry-side copy of a tag and costs nothing but a PUT.
 #
-# Both stages are verified: the source must already resolve to the digest given,
-# and the destination must resolve to the same digest afterwards. A partial or
-# mis-typed digest fails the run rather than moving a release tag somewhere
+# Both ends are verified: the source must already resolve to the digest given,
+# and the destination must then serve the same per-platform manifests. A partial
+# or mis-typed digest fails the run rather than moving a release tag somewhere
 # unintended.
+#
+# Note the shape change this implies: imagetools create re-serialises the
+# manifest list, so promoting a single-platform build turns a plain manifest into
+# a list of one and the index digest changes even though the image does not. The
+# check therefore compares per-platform manifest digests, which is the invariant
+# that actually holds.
 
 on:
   workflow_dispatch:
@@ -97,16 +103,38 @@ jobs:
           set -euo pipefail
           docker buildx imagetools create --tag "$RELEASE" "$IMAGE@$DIGEST"
 
-      - name: Verify the release tag now resolves to that digest
+      - name: Verify the release tag now serves the same image content
         env:
+          SOURCE: ghcr.io/${{ github.repository_owner }}/${{ inputs.package }}:${{ inputs.source_tag }}
           RELEASE: ghcr.io/${{ github.repository_owner }}/${{ inputs.package }}:${{ inputs.release_tag }}
-          DIGEST: ${{ inputs.digest }}
         run: |
           set -euo pipefail
-          resolved="$(docker buildx imagetools inspect "$RELEASE" \
-            --format '{{.Manifest.Digest}}' | awk '{print $NF}')"
-          if [ "$resolved" != "$DIGEST" ]; then
-            echo "ERROR: $RELEASE resolves to $resolved after promote, expected $DIGEST" >&2
+          # Compare the per-platform manifest digests, not the index digest.
+          # imagetools create re-serialises the manifest list, so the index digest
+          # cannot survive a tag copy - and for a single-platform build it
+          # promotes a plain manifest into a list of one. The content is what has
+          # to be preserved, so that is what is compared.
+          platforms() {
+            docker buildx imagetools inspect "$1" --raw 2>/dev/null | python3 -c '
+          import json, sys
+          m = json.load(sys.stdin)
+          if "manifests" in m:
+              for e in m["manifests"]:
+                  p = e.get("platform", {})
+                  name = p.get("os", "?") + "/" + p.get("architecture", "?")
+                  if p.get("variant"):
+                      name += "/" + p["variant"]
+                  print(name + " " + e["digest"])
+          else:
+              print("single " + m.get("config", {}).get("digest", ""))
+          '
+          }
+          before="$(platforms "$SOURCE" | sort)"
+          after="$(platforms "$RELEASE" | sort)"
+          echo "source platforms:";   echo "$before" | sed 's/^/  /'
+          echo "release platforms:";  echo "$after"  | sed 's/^/  /'
+          if [ "$before" != "$after" ]; then
+            echo "ERROR: $RELEASE does not serve the same image content as $SOURCE" >&2
             exit 1
           fi
-          echo "promoted: $RELEASE -> $resolved"
+          echo "promoted: $RELEASE now serves the same content as $SOURCE"
