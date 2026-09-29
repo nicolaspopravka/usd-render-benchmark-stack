@@ -37,9 +37,10 @@ set -euxo pipefail
 #     the headers and oslc but not share/OSL/shaders, and FindOSL.cmake does not
 #     require OSL_SHADER_DIR - it is only mark_as_advanced - so without help the
 #     build passes configure and then dies compiling Cycles' own shaders on
-#     "stdosl.h: file not found". fixers/05-osl-shader-includes.sh installs that
-#     one file from the matching OSL source release, so WITH_CYCLES_OSL is no
-#     longer overridden. OpenVDB is resolved through USD's own export, because
+#     "stdosl.h: file not found". fixers/05-osl-shader-includes.sh installs
+#     src/shaders from the matching OSL source release - the whole header set,
+#     because Cycles' own shaders include their siblings, node_hash.h pulling in
+#     vector2.h and vector4.h - so WITH_CYCLES_OSL is no longer overridden. OpenVDB is resolved through USD's own export, because
 #     FindUSDPixar sets USD_OVERRIDE_OPENVDB and the standalone find is then
 #     skipped, so WITH_CYCLES_OPENVDB also stays at its default.
 #
@@ -107,20 +108,7 @@ readonly CUDAToolkit_ROOT="${CUDAToolkit_ROOT:-${ASWF_INSTALL_PREFIX}/cuda}"
 
 : "${CYCLES_TAG:?CYCLES_TAG is required}"
 
-# git-lfs is NOT installed here. This stage is built FROM stack:<cy>.2, whose
-# composer runs fixers/01-gitlfs-prereqs.sh, so git-lfs is already present and
-# an inline "if ! command -v git-lfs; then dnf install" never fires - it is dead
-# code that duplicates 01 and carries none of its DROP THIS contract.
-#
-# Assert instead, so a .3 built directly from a raw ASWF base fails here with a
-# message that names the cause, rather than much later with a confusing LFS
-# smudge error from the bundle clone below.
-command -v git-lfs >/dev/null 2>&1 || {
-    echo "ERROR: git-lfs is missing and this stage is not supposed to install it." >&2
-    echo "       Build this .3 from stack:<cy>.2 (whose composer runs" >&2
-    echo "       fixers/01-gitlfs-prereqs.sh), not from a raw ASWF base." >&2
-    exit 1
-}
+# git-lfs comes from the .2 stage, whose composer runs fixers/01-gitlfs-prereqs.sh.
 
 mkdir -p "$BUILD_ROOT"
 git clone --branch "$CYCLES_TAG" --depth 1 "$CYCLES_URL" "$BUILD_ROOT/cycles"
