@@ -107,10 +107,20 @@ readonly CUDAToolkit_ROOT="${CUDAToolkit_ROOT:-${ASWF_INSTALL_PREFIX}/cuda}"
 
 : "${CYCLES_TAG:?CYCLES_TAG is required}"
 
-# The bundle is LFS-materialized; git-lfs may be absent on some bases.
-if ! command -v git-lfs >/dev/null 2>&1; then
-  dnf install -y git-lfs
-fi
+# git-lfs is NOT installed here. This stage is built FROM stack:<cy>.2, whose
+# composer runs fixers/01-gitlfs-prereqs.sh, so git-lfs is already present and
+# an inline "if ! command -v git-lfs; then dnf install" never fires - it is dead
+# code that duplicates 01 and carries none of its DROP THIS contract.
+#
+# Assert instead, so a .3 built directly from a raw ASWF base fails here with a
+# message that names the cause, rather than much later with a confusing LFS
+# smudge error from the bundle clone below.
+command -v git-lfs >/dev/null 2>&1 || {
+    echo "ERROR: git-lfs is missing and this stage is not supposed to install it." >&2
+    echo "       Build this .3 from stack:<cy>.2 (whose composer runs" >&2
+    echo "       fixers/01-gitlfs-prereqs.sh), not from a raw ASWF base." >&2
+    exit 1
+}
 
 mkdir -p "$BUILD_ROOT"
 git clone --branch "$CYCLES_TAG" --depth 1 "$CYCLES_URL" "$BUILD_ROOT/cycles"
