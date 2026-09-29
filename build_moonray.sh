@@ -48,8 +48,14 @@ OPTIX_ROOT="${OPTIX_ROOT:-${ASWF_INSTALL_PREFIX:-/usr/local}/NVIDIA-OptiX-SDK-7.
 CUDA_ROOT="${CUDA_ROOT:-${ASWF_INSTALL_PREFIX:-/usr/local}/cuda}"
 export OPTIX_ROOT
 
-BUILD_ROOT="$(mktemp -d)"
-trap 'rm -rf "${BUILD_ROOT}"' EXIT
+# A fixed build root, not mktemp -d. The path is compiled into the artifacts -
+# compiler diagnostics and CMake's own bookkeeping both carry it - so a random
+# directory yields a different image on every build from the same commit and the
+# same base. That makes the .2 digest unstable, and any .2 rebuild then
+# invalidates the .3 built on top of it. Cycles already builds this way, at
+# /opt/build-cycles. Overridable for a caller that needs an isolated root.
+BUILD_ROOT="${MOONRAY_BUILD_ROOT:-/opt/build-moonray}"
+rm -rf "${BUILD_ROOT}"
 MOONRAY_SRC="${BUILD_ROOT}/src"
 MOONRAY_BUILD="${BUILD_ROOT}/build"
 
@@ -73,5 +79,7 @@ cmake --build "${MOONRAY_BUILD}" --parallel "${BUILD_JOBS}"
 
 # --- Step 3d: install -----------------------------------------------------
 cmake --install "${MOONRAY_BUILD}" --prefix "${CMAKE_INSTALL_PREFIX}"
+
+rm -rf "${BUILD_ROOT}"
 
 echo "OpenMoonRay ${MOONRAY_TAG} installed under ${CMAKE_INSTALL_PREFIX}"
