@@ -12,6 +12,15 @@ FROM ${BASE_IMAGE}
 
 ARG CYCLES_TAG=""
 
+# TEMPORARY: additions the ASWF base needs before the default build can work.
+# 05 installs the OSL shader includes the conan OSL package omits, so
+# WITH_CYCLES_OSL can stay at its upstream default of ON.
+#
+# This .3 pristine is built FROM stack:<cy>.2, which already carries Rez and
+# GNU time from the .2 composer, so neither is installed here.
+COPY fixers/ /usr/local/aswf/cycles-fixers/
+RUN /usr/local/aswf/cycles-fixers/05-osl-shader-includes.sh
+
 COPY build_cycles.sh /usr/local/aswf/build_cycles.sh
 COPY cmake/import_openusd_dependencies.cmake /usr/local/share/cycles/import_openusd_dependencies.cmake
 RUN if [ -n "${CYCLES_TAG}" ]; then \
