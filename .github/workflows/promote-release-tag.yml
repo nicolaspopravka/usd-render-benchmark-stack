@@ -54,6 +54,9 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 15
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Validate inputs
         env:
           PACKAGE: ${{ inputs.package }}
@@ -109,30 +112,17 @@ jobs:
           RELEASE: ghcr.io/${{ github.repository_owner }}/${{ inputs.package }}:${{ inputs.release_tag }}
         run: |
           set -euo pipefail
-          # Compare the per-platform manifest digests, not the index digest.
-          # imagetools create re-serialises the manifest list, so the index digest
-          # cannot survive a tag copy - and for a single-platform build it
-          # promotes a plain manifest into a list of one. The content is what has
-          # to be preserved, so that is what is compared.
-          platforms() {
-            docker buildx imagetools inspect "$1" --raw 2>/dev/null | python3 -c '
-          import json, sys
-          m = json.load(sys.stdin)
-          if "manifests" in m:
-              for e in m["manifests"]:
-                  p = e.get("platform", {})
-                  name = p.get("os", "?") + "/" + p.get("architecture", "?")
-                  if p.get("variant"):
-                      name += "/" + p["variant"]
-                  print(name + " " + e["digest"])
-          else:
-              print("single " + m.get("config", {}).get("digest", ""))
-          '
-          }
-          before="$(platforms "$SOURCE" | sort)"
-          after="$(platforms "$RELEASE" | sort)"
-          echo "source platforms:";   echo "$before" | sed 's/^/  /'
-          echo "release platforms:";  echo "$after"  | sed 's/^/  /'
+          # tools/registry_platforms.py rather than inline python: nesting a
+          # here-doc inside a YAML block scalar is a quoting trap, and this
+          # comparison is the one thing that must not be quietly wrong.
+          before="$(python3 tools/registry_platforms.py "$SOURCE" | sort)"
+          after="$(python3 tools/registry_platforms.py "$RELEASE" | sort)"
+          echo "source:";  echo "$before" | sed 's/^/  /'
+          echo "release:"; echo "$after"  | sed 's/^/  /'
+          if [ -z "$before" ] || [ -z "$after" ]; then
+            echo "ERROR: could not read one of the image references" >&2
+            exit 1
+          fi
           if [ "$before" != "$after" ]; then
             echo "ERROR: $RELEASE does not serve the same image content as $SOURCE" >&2
             exit 1
