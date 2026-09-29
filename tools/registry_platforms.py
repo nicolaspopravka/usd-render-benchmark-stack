@@ -1,14 +1,23 @@
 #!/usr/bin/env python3
-"""Print the per-platform manifest digests of a registry image, one per line.
+"""Print the manifest digests a registry image is served from, one per line.
 
 Used by promote-release-tag to check that a promoted release tag serves the
 same image content as the tag it was promoted from.
 
-The index digest deliberately cannot be compared: `docker buildx imagetools
-create` re-serialises the manifest list, so the index digest changes on a tag
-copy even when every platform manifest is identical, and a single-platform
-build is promoted from a plain manifest into a list of one. The per-platform
-manifest set is the invariant that actually holds.
+Only the digests are printed, and deliberately no platform labels and no
+index digest, because a promote changes the *shape* of what a tag points at:
+`docker buildx imagetools create` re-serialises the manifest list, so the index
+digest changes on a tag copy even when every manifest is identical, and a
+single-platform build is promoted from a plain manifest into a list of one. The
+set of manifest digests is the invariant that survives that, and since a
+manifest digest is platform-specific, a promote that landed the wrong platform
+still fails the comparison.
+
+Note a plain manifest cannot report its own digest from `--raw`, which is
+config data only; it is fetched with `imagetools inspect --format` instead.
+Reporting a plain manifest by its *config* digest, as an earlier version of this
+script did, compares a different kind of identifier to the one a promoted list
+reports and never matches.
 
     registry_platforms.py <image-reference>
 
@@ -27,13 +36,16 @@ def main() -> int:
         return 2
 
     reference = sys.argv[1]
-    try:
-        raw = subprocess.run(
-            ["docker", "buildx", "imagetools", "inspect", reference, "--raw"],
+    def inspect(*extra: str) -> str:
+        return subprocess.run(
+            ["docker", "buildx", "imagetools", "inspect", reference, *extra],
             capture_output=True,
             text=True,
             check=True,
         ).stdout
+
+    try:
+        raw = inspect("--raw")
         manifest = json.loads(raw)
     except (subprocess.CalledProcessError, json.JSONDecodeError) as error:
         print(f"ERROR: could not read {reference}: {error}", file=sys.stderr)
@@ -42,21 +54,21 @@ def main() -> int:
     entries = manifest.get("manifests")
     if entries:
         for entry in entries:
-            platform = entry.get("platform", {})
-            name = f"{platform.get('os', '?')}/{platform.get('architecture', '?')}"
-            if platform.get("variant"):
-                name += "/" + platform["variant"]
-            print(f"{name} {entry['digest']}")
-    else:
-        # A plain manifest: identify it by its config digest, which is stable
-        # across a re-serialisation of a list containing just this one.
-        config = manifest.get("config", {}).get("digest", "")
-        if not config:
-            print(f"ERROR: {reference} has no manifest list and no config digest",
-                  file=sys.stderr)
-            return 1
-        print(f"single {config}")
+            print(entry["digest"])
+        return 0
 
+    # A plain manifest. --raw carries config data, not the manifest's own
+    # digest, so ask the registry for that separately and take the last field:
+    # the human-readable output is "<label>  sha256:...", so the digest is last.
+    try:
+        digest = inspect("--format", "{{.Manifest.Digest}}").split()[-1]
+    except (subprocess.CalledProcessError, IndexError) as error:
+        print(f"ERROR: could not resolve {reference}: {error}", file=sys.stderr)
+        return 1
+    if not digest.startswith("sha256:"):
+        print(f"ERROR: unexpected digest {digest!r} for {reference}", file=sys.stderr)
+        return 1
+    print(digest)
     return 0
 
 
