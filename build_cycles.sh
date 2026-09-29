@@ -3,83 +3,38 @@ set -euxo pipefail
 
 # Canonical minimal Cycles Hydra build.
 #
-# Cycles is a permanent feature of this stack (ASWF images will never ship a
-# ci-cycles) and is NOT an ASWF project: it installs self-contained under
-# /opt/cycles, activated through PXR_PLUGINPATH_NAME in the runnable.
+# Cycles is not an ASWF project and no ASWF image ships one: it installs
+# self-contained under /opt/cycles, activated via PXR_PLUGINPATH_NAME in the
+# runnable. Dockerfile.pristine wraps this script in the cycle year's ASWF
+# gcc-toolset.
 #
-# Built WITHOUT Blender's precompiled lib bundle: every dependency is resolved
-# by CMake from the stack's own libraries. The single dependency the ASWF base
-# does not provide is libepoxy (Cycles' FindEpoxy) — taken from Cycles' own
-# pinned lib/linux_x64 submodule and installed into /usr/local like a system
-# lib (it is a static archive in the bundle, so nothing extra is needed at
-# runtime). No duplicated libraries.
+# Delegate options are upstream defaults except the three below, each because the
+# ASWF base cannot supply the dependency:
 #
-# Delegate build options are left at their upstream defaults wherever the ASWF
-# base can satisfy them. Upstream enables WITH_CYCLES_OSL,
-# WITH_CYCLES_OPENIMAGEDENOISE, WITH_CYCLES_OPENVDB, WITH_CYCLES_NANOVDB,
-# WITH_CYCLES_ALEMBIC and the WITH_CYCLES_DEVICE_* family by default, so this
-# build mostly only supplies the CUDA and OptiX locators. What to keep in mind
-# when reading the result:
+#   WITH_CYCLES_NANOVDB=OFF           no nanovdb in the vfxall conan packages
+#   WITH_CYCLES_OPENIMAGEDENOISE=OFF  aswf-docker has the recipe, no image deploys it
+#   WITH_LIBS_PRECOMPILED=OFF         the pinned bundle carries OIIO 3.0.9, Imath 3.0
+#                                     and OpenEXR -3_3 beside the conan stack's 3.1.x
 #
-#   - WITH_CYCLES_CUDA_BINARIES defaults to OFF, so the image carries OptiX
-#     device code and no precompiled GPU kernels. Cycles compiles a missing
-#     kernel with nvcc at render time instead, and with no precompiled kernel
-#     that is the only path. That makes both CUDAToolkit_ROOT and
-#     CYCLES_RUNTIME_OPTIX_ROOT_DIR load-bearing rather than merely helpful:
-#     OptiXDevice::get_optix_include_dir reads OPTIX_ROOT_DIR from the
-#     environment first and the compiled-in CYCLES_RUNTIME_OPTIX_ROOT_DIR
-#     second, and returns an empty string - which makes
-#     createOptixModuleKernel fail with "Unable to compile OptiX kernels at
-#     runtime" - if neither is set. Baking the path in at build time keeps the
-#     image self-sufficient instead of requiring every render environment to
-#     supply it.
-#   - OSL now works at its default. The conan OSL package deploys the libraries,
-#     the headers and oslc but not share/OSL/shaders, and FindOSL.cmake does not
-#     require OSL_SHADER_DIR - it is only mark_as_advanced - so without help the
-#     build passes configure and then dies compiling Cycles' own shaders on
-#     "stdosl.h: file not found". fixers/05-osl-shader-includes.sh installs
-#     src/shaders from the matching OSL source release - the whole header set,
-#     because Cycles' own shaders include their siblings, node_hash.h pulling in
-#     vector2.h and vector4.h - so WITH_CYCLES_OSL is no longer overridden. OpenVDB is resolved through USD's own export, because
-#     FindUSDPixar sets USD_OVERRIDE_OPENVDB and the standalone find is then
-#     skipped, so WITH_CYCLES_OPENVDB also stays at its default.
+# WITH_CYCLES_OSL also stays at its default, which needs fixers/05 to install the
+# OSL shader includes the conan package omits.
 #
-# Two deviations from the defaults, each because the base cannot supply the
-# dependency:
+# Locators, because the ASWF images keep these outside CMake's search paths:
+# the CUDA toolkit under ${prefix}/cuda, and the OptiX SDKs as sibling
+# NVIDIA-OptiX-SDK-<version> directories rather than merged into ${prefix}.
+# CYCLES_RUNTIME_OPTIX_ROOT_DIR is baked in because WITH_CYCLES_CUDA_BINARIES is
+# off by default, so there is no prebuilt kernel and the render-time nvcc path
+# is the only one; without it OptiX fails at render, not at build.
 #
-#   - WITH_CYCLES_NANOVDB=OFF. Observed: run 36415517826 failed at configure
-#     with "Could NOT find NanoVDB (missing: NANOVDB_INCLUDE_DIR)" from
-#     find_package(NanoVDB REQUIRED) in external_libs.cmake. NanoVDB is not
-#     among the vfxall conan packages the images deploy. A fixer could install
-#     the headers the same way 05 does; not written yet.
-#   - WITH_CYCLES_OPENIMAGEDENOISE=OFF. Observed on the next run: the find is
-#     find_package(OpenImageDenoise REQUIRED) a few lines further on, and while
-#     aswf-docker carries an openimagedenoise conan recipe, no ci-*/image.yaml
-#     deploys it. Run 36418071124 passed that point. Satisfying this would mean
-#     building OIDN from source, which is a much larger fixer than 05.
+# PXR_ROOT and -DCMAKE_PROJECT_INCLUDE go together: the former makes CMake load
+# OpenUSD's installed pxrTargets.cmake, which references an OpenGL::GL target the
+# ASWF deploy does not define, and the latter is the shim that defines it first.
 #
-# WITH_LIBS_PRECOMPILED=OFF is a third, kept for the reason given above: the
-# pinned bundle carries OIIO 3.0.9, Imath 3.0 and OpenEXR -3_3 alongside the
-# conan stack's 3.1.x.
-#
-# PXR_ROOT selects FindUSDPixar, which loads OpenUSD's installed
-# pxrTargets.cmake, and that export references an OpenGL::GL target the ASWF
-# deploy does not define. -DCMAKE_PROJECT_INCLUDE is the shim that creates it
-# first (cmake/import_openusd_dependencies.cmake); the two belong together.
-#
-# CMAKE_BUILD_TYPE is not a delegate option, and is pinned here rather than left
-# to the default. Cycles' own top-level CMakeLists already sets
-# CMAKE_BUILD_TYPE_INIT to Release before project(), and CMake does seed
-# CMAKE_BUILD_TYPE from it, so an unset build type is Release here too -
-# verified by configuring a project that does only that. It is set explicitly
-# anyway because every timing in the published results depends on it, and an
-# explicit pin cannot be changed by a future default. Note that BUILDING.md's
+# CMAKE_BUILD_TYPE is pinned because every published timing depends on it. It is
+# already Release by default here - Cycles seeds CMAKE_BUILD_TYPE_INIT before
+# project() - so this is a pin, not a workaround. BUILDING.md's
 # "cmake --build build --config Release" is a no-op for the single-config
-# generators a container build uses; the optimisation comes from the seeded
-# build type, not from --config.
-#
-# The compiler is provided by the build: Dockerfile.pristine wraps this script
-# in the cycle year's ASWF gcc-toolset (source /opt/rh/gcc-toolset-${ASWF_DTS_VERSION}/enable).
+# generators a container build uses.
 #
 # Inputs:
 #   CYCLES_TAG (required)  - Cycles git tag to build, e.g. v5.0.0. Tag-only by
@@ -107,8 +62,6 @@ readonly CYCLES_RUNTIME_OPTIX_ROOT_DIR="${OPTIX_ROOT_DIR}"
 readonly CUDAToolkit_ROOT="${CUDAToolkit_ROOT:-${ASWF_INSTALL_PREFIX}/cuda}"
 
 : "${CYCLES_TAG:?CYCLES_TAG is required}"
-
-# git-lfs comes from the .2 stage, whose composer runs fixers/01-gitlfs-prereqs.sh.
 
 mkdir -p "$BUILD_ROOT"
 git clone --branch "$CYCLES_TAG" --depth 1 "$CYCLES_URL" "$BUILD_ROOT/cycles"
