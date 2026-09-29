@@ -3,45 +3,33 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 # Build OpenMoonRay into the pristine stack image.
-#
 # Canonical reference: the official Rocky 9 container build
 #   https://docs.openmoonray.org/getting-started/installation/building-moonray/rocky9_container_build
+# The aswf/ci-moonray base already satisfies that guide's Steps 1-2; this script
+# is its Step 3.
 #
-# Step mapping (the aswf/ci-moonray base already satisfies Steps 1-2):
-#   Step 1  install_packages.sh --nocuda   -> satisfied by the base image
-#   Step 2  building/Rocky9 dependencies   -> deployed under ${ASWF_INSTALL_PREFIX}
-#   Step 3  this script: source -> configure -> build -> install
+# MOONRAY_USE_OPTIX is left at its upstream default, YES on Linux, so the build
+# produces XPU support and the OptiX GPU programs. That default is
+# GPU-mandatory rather than optional: find_package(CUDAToolkit REQUIRED) and
+# find_package(OptiX REQUIRED) both hard-fail, so a base without them stops at
+# configure rather than falling back to CPU.
 #
-# Delegate build options are left at their upstream defaults. MOONRAY_USE_OPTIX
-# defaults to YES on Linux, so this build produces XPU support and the OptiX GPU
-# programs rather than excluding them. Note what that default means: OpenMoonRay
-# requires both CUDA and OptiX, find_package(CUDAToolkit REQUIRED) and
-# find_package(OptiX REQUIRED), so a build without them fails at configure time
-# instead of falling back to CPU.
+# Environment-bound deltas:
+#   BUILD_QT_APPS=NO       the default is YES when REZ_QT_MAJOR_VERSION is unset,
+#                          which it is in the base, and there is no Qt here
+#   CUDAToolkit_ROOT       CUDA is under ${prefix}/cuda, not on PATH; the
+#                          superproject only fixes PATH when this is already set
+#   OPTIX_ROOT             an env var, not a CMake one: upstream's FindOptiX.cmake
+#                          is a HINTS-only find_path over $OPTIX_ROOT/include and
+#                          /usr/local/include, and the SDKs sit as sibling
+#                          NVIDIA-OptiX-SDK-<version> directories. It has no version
+#                          check, and 7.6.0 is required - mcrt_denoise uses
+#                          OptixDenoiserParams::denoiseAlpha, removed in OptiX 8
+#   cmake --install --prefix  OpenMoonRay remaps CMAKE_INSTALL_PREFIX=/usr/local
+#                          to <source>/release at configure time
 #
-# Documented deltas (environment-bound, not workarounds):
-#   - -DCMAKE_PREFIX_PATH="${ASWF_INSTALL_PREFIX}": ASWF deps live there, not
-#     /usr (matches the aswf-docker build-script convention, e.g. build_alembic.sh).
-#   - -DBUILD_QT_APPS=NO: the MoonRay cmake defaults it to YES when
-#     REZ_QT_MAJOR_VERSION is unset (it is, in the base); we do not build the GUI.
-#   - -DCUDAToolkit_ROOT: the ASWF images install CUDA under
-#     ${ASWF_INSTALL_PREFIX}/cuda, which is not on PATH. The superproject only
-#     adds the toolkit to PATH for its check_language(CUDA) when this value is
-#     already set, and find_package(CUDAToolkit REQUIRED) follows.
-#   - OPTIX_ROOT: upstream's FindOptiX.cmake is a HINTS-only find_path over
-#     $ENV{OPTIX_ROOT}/include and /usr/local/include. aswf-docker's
-#     install_optix.sh installs twelve OptiX header sets as sibling directories
-#     named NVIDIA-OptiX-SDK-<version>, never merged into ${ASWF_INSTALL_PREFIX},
-#     so the variable is required to find any of them. It is an environment
-#     variable, not a CMake one. 7.6.0 is the version OpenMoonRay documents and
-#     requires: mcrt_denoise uses OptixDenoiserParams::denoiseAlpha, which OptiX
-#     8 removed, and the finder does no version check, so pointing it at 8.0.0
-#     would configure successfully and then fail to compile.
-#   - The cmake --install --prefix is required because OpenMoonRay's CMakeLists
-#     remaps CMAKE_INSTALL_PREFIX=/usr/local to <source>/release at configure time.
-#
-# No workarounds live here. When this build fails on an ASWF-defect, the fix is
-# added as a separate RUN step in Dockerfile.pristine, driven by that evidence.
+# No workarounds live here; an ASWF-defect fix belongs in a separate RUN step in
+# Dockerfile.pristine, driven by that evidence.
 set -euo pipefail
 
 # --- Required input -------------------------------------------------------
