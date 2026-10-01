@@ -1,0 +1,170 @@
+name: probe-delegates
+
+# Does a published runnable image actually enumerate and render with each
+# delegate it claims to carry?
+#
+# run-demo answers this for GL/Storm only, because demo/run1's render_script.sh
+# asks for GL. A rebuilt stack adds a delegate, and "hdCycles.so is present with
+# zero unresolved dependencies" is not the same as "the delegate enumerates and
+# writes a frame" - a wrong PXR_PLUGINPATH_NAME or a distro-epoxy soname mismatch
+# both pass the static check and fail here. This is that gate.
+#
+# Dispatch-only. Renders a Teapot once per delegate token with stock usdrecord
+# under Xvfb/Mesa, and reports exit status and image bytes per delegate. Free:
+# it runs on the GitHub runner, not on a GPU pod.
+
+on:
+  workflow_dispatch:
+    inputs:
+      runnable_image:
+        description: "Published runnable image, e.g. ghcr.io/nicolaspopravka/usd-render-benchmark:2025.3"
+        required: true
+        type: string
+      renderers:
+        description: "Comma-separated renderer tokens to probe, or 'enumerate' to list what the image registers"
+        required: false
+        default: "enumerate"
+        type: string
+
+permissions:
+  contents: read
+  packages: read
+
+concurrency:
+  group: probe-delegates-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    env:
+      IMAGE: ${{ inputs.runnable_image }}
+      TOKENS: ${{ inputs.renderers }}
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check the image is pullable and record its digest
+        run: |
+          set -o pipefail
+          docker pull "$IMAGE"
+          docker buildx imagetools inspect "$IMAGE" --format '{{.Manifest.Digest}}'
+
+      - name: Enumerate renderers and probe each requested token
+        run: |
+          set -o pipefail
+          mkdir -p out
+          docker run --rm -v "$PWD/out:/probe-out" "$IMAGE" bash -c '
+            set -u
+            dnf install -y --disablerepo=cuda mesa-dri-drivers >/dev/null 2>&1
+
+            # GH #46: ASWF LLVM 17 is NVPTX;X86 only, so distro Mesa swrast
+            # cannot load and the Qt offscreen GL setup segfaults. Prefer the
+            # distro LLVM when present.
+            if [ -d /usr/lib64/llvm17/lib ]; then
+              export LD_LIBRARY_PATH=/usr/lib64/llvm17/lib:${LD_LIBRARY_PATH:-}
+            fi
+            # GH #45: avoid the Blosc/libzstd Mesa disk-cache abort.
+            export MESA_SHADER_CACHE_DISABLE=true
+            export LIBGL_ALWAYS_SOFTWARE=1
+
+            echo "=== delegate plugins on disk ==="
+            for d in /opt/cycles/hydra /usr/local/plugin/usd /usr/local/lib/usd; do
+              [ -d "$d" ] && ls "$d" 2>/dev/null | grep -iE "\.so$" | sed "s|^|  $d/|"
+            done
+
+            echo "=== hdrecord --help renderers ==="
+            usdrecord --help 2>&1 | head -30
+
+            echo "=== resolve each token ==="
+            for tok in Storm GL Moonray Cycles Embree; do
+              printf "  %-9s " "$tok"
+              if usdrecord --renderer "$tok" --help >/dev/null 2>&1; then
+                echo "accepted"
+              else
+                echo "not offered"
+              fi
+            done
+
+            if [ "${TOKENS}" = "enumerate" ]; then
+              echo "=== enumerate mode: stopping before render ==="
+              exit 0
+            fi
+
+            # A self-contained Teapot so the probe needs no benchmark assets and
+            # no submodule. 256x256 keeps each delegate quick.
+            cat > /probe-out/teapot.usda <<USD
+            #usda 1.0
+            (
+                metersPerUnit = 1
+                upAxis = "Y"
+            )
+            def Xform "Teapot"
+            {
+                def Cube "Body"
+                {
+                    double size = 2
+                    float3[] primvars:displayColor = [(0.8, 0.3, 0.2)]
+                    rel material:binding = </Teapot/Mat>
+                    uniform token[] xformOpOrder = ["xformOp:translate"]
+                    double3 xformOp:translate = (0, 0, 0)
+                }
+            }
+            def Material "Mat"
+            {
+                token outputs:surface.connect = </Teapot/Mat/PBRShader.outputs:surface>
+                def Shader "PBRShader"
+                {
+                    uniform token info:id = "UsdPreviewSurface"
+                    color3f inputs:diffuseColor = (0.8, 0.3, 0.2)
+                    float inputs:metallic = 0
+                    float inputs:roughness = 0.4
+                    token outputs:surface
+                }
+            }
+            USD
+
+            echo "=== render each requested token ==="
+            rc_all=0
+            IFS="," read -ra WANT <<< "${TOKENS}"
+            for tok in "${WANT[@]}"; do
+              tok="$(echo "$tok" | tr -d "[:space:]")"
+              [ -z "$tok" ] && continue
+              out="/probe-out/${tok}.jpg"
+              rm -f "$out"
+              echo "--- ${tok}"
+              xvfb-run -a usdrecord --renderer "$tok" \
+                --width 256 --height 256 --camera "Teapot" \
+                /probe-out/teapot.usda "$out" > "/probe-out/${tok}.log" 2>&1
+              rc=$?
+              bytes=$( [ -f "$out" ] && wc -c < "$out" || echo 0 )
+              printf "    exit=%s bytes=%s " "$rc" "$bytes"
+              if [ "$rc" -eq 0 ] && [ "$bytes" -gt 0 ]; then
+                echo "RESULT=$tok OK"
+              else
+                echo "RESULT=$tok FAIL"
+                rc_all=1
+              fi
+              grep -iE "error|cannot|undefined|no such" "/probe-out/${tok}.log" | head -5 | sed "s/^/      /" || true
+            done
+            echo "=== summary ==="
+            for f in /probe-out/*.log; do
+              [ -f "$f" ] || continue
+              printf "  %s " "$(basename "$f")"
+              grep -oE "RESULT=\S+ (OK|FAIL)" "$f" | tail -1
+            done
+            exit $rc_all
+          '
+
+      - name: Upload probe outputs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: delegate-probe
+          path: out
+          if-no-files-found: warn
