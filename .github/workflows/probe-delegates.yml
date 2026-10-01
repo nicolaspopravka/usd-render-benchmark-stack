@@ -6,12 +6,20 @@ name: probe-delegates
 # run-demo answers this for GL/Storm only, because demo/run1's render_script.sh
 # asks for GL. A rebuilt stack adds a delegate, and "hdCycles.so is present with
 # zero unresolved dependencies" is not the same as "the delegate enumerates and
-# writes a frame" - a wrong PXR_PLUGINPATH_NAME or a distro-epoxy soname mismatch
-# both pass the static check and fail here. This is that gate.
+# writes a frame" - a wrong PXR_PLUGINPATH_NAME, or the CY2023 distro-epoxy
+# soname sitting where the bundle would have been, both pass every static check
+# and fail here. This is that gate.
 #
-# Dispatch-only. Renders a Teapot once per delegate token with stock usdrecord
-# under Xvfb/Mesa, and reports exit status and image bytes per delegate. Free:
-# it runs on the GitHub runner, not on a GPU pod.
+# The scene is written on the host into the bind-mounted output directory, not
+# with a heredoc inside the container script. A heredoc there is a trap: the
+# container script is a single-quoted YAML block scalar, so the heredoc body is
+# indented and the terminator never matches, the rest of the script is swallowed
+# as file content, and `bash -n` still passes. The scene is written here instead.
+#
+# Renders a Teapot once per delegate token with stock usdrecord under Xvfb/Mesa
+# and reports exit status plus image bytes. Free: GitHub runner, not a GPU pod.
+# Cycles is CPU here, the same device the benchmark uses, so this exercises the
+# delegate rather than only loading the plugin.
 
 on:
   workflow_dispatch:
@@ -21,16 +29,15 @@ on:
         required: true
         type: string
       renderers:
-        description: "Comma-separated renderer tokens to probe, or 'enumerate' to list what the image registers"
+        description: "Comma-separated renderer tokens, or 'enumerate' to list what the image registers"
         required: false
         default: "enumerate"
         type: string
 
   # workflow_dispatch resolves against the default branch, so this workflow
   # cannot be dispatched from its own branch before it is merged. The push
-  # trigger is the branch-scoped path, same as the GH13 probe: pushing this
-  # branch self-runs the gate over the images named below. Remove this block
-  # once the workflow lands on the default branch.
+  # trigger is the branch-scoped path, the same pattern the GH13 probe uses.
+  # Remove this block once the workflow lands on the default branch.
   push:
     branches:
       - opencode/delegate-probe
@@ -59,6 +66,9 @@ jobs:
             runnable_image: ghcr.io/nicolaspopravka/usd-render-benchmark:2024.3-default
     env:
       IMAGE: ${{ inputs.runnable_image || matrix.runnable_image }}
+      # On the CY2023-CY2025 composites "Storm" is not offered; "GL" is the
+      # token that resolves to HdStorm. So the default is a known-good control
+      # plus the delegate under test, not Storm.
       TOKENS: ${{ inputs.renderers || 'GL,Cycles' }}
     steps:
       - name: Log in to GHCR
@@ -74,10 +84,49 @@ jobs:
           docker pull "$IMAGE"
           docker buildx imagetools inspect "$IMAGE" --format '{{.Manifest.Digest}}'
 
+      - name: Write the probe scene
+        run: |
+          mkdir -p out
+          cat > out/teapot.usda <<'USD'
+          #usda 1.0
+          (
+              metersPerUnit = 1
+              upAxis = "Y"
+          )
+          def Xform "Teapot"
+          {
+              def Cube "Body"
+              {
+                  double size = 2
+                  float3[] primvars:displayColor = [(0.8, 0.3, 0.2)]
+                  rel material:binding = </Teapot/Mat>
+              }
+              def Camera "Cam"
+              {
+                  token projection = "perspective"
+                  float focalLength = 50
+                  float2 clippingRange = (0.1, 1000)
+                  double3 xformOp:translate = (0, 0, 6)
+                  uniform token[] xformOpOrder = ["xformOp:translate"]
+              }
+          }
+          def Material "Mat"
+          {
+              token outputs:surface.connect = </Teapot/Mat/PBRShader.outputs:surface>
+              def Shader "PBRShader"
+              {
+                  uniform token info:id = "UsdPreviewSurface"
+                  color3f inputs:diffuseColor = (0.8, 0.3, 0.2)
+                  float inputs:metallic = 0
+                  float inputs:roughness = 0.4
+                  token outputs:surface
+              }
+          }
+          USD
+
       - name: Enumerate renderers and probe each requested token
         run: |
           set -o pipefail
-          mkdir -p out
           docker run --rm -v "$PWD/out:/probe-out" -e TOKENS "$IMAGE" bash -c '
             set -u
             dnf install -y --disablerepo=cuda mesa-dri-drivers >/dev/null 2>&1
@@ -97,12 +146,9 @@ jobs:
               [ -d "$d" ] && ls "$d" 2>/dev/null | grep -iE "\.so$" | sed "s|^|  $d/|"
             done
 
-            echo "=== hdrecord --help renderers ==="
-            usdrecord --help 2>&1 | head -30
+            echo "=== renderer tokens this image offers ==="
+            usdrecord --help 2>&1 | grep -A1 -- "--renderer" | tail -1
 
-            # On the CY2023-CY2025 composites "Storm" is not offered; "GL" is
-            # the token that resolves to HdStorm. Recorded so the default token
-            # list is not mistaken for a missing Storm.
             echo "=== resolve each token ==="
             for tok in Storm GL Moonray Cycles Embree; do
               printf "  %-9s " "$tok"
@@ -118,38 +164,10 @@ jobs:
               exit 0
             fi
 
-            # A self-contained Teapot so the probe needs no benchmark assets and
-            # no submodule. 256x256 keeps each delegate quick.
-            cat > /probe-out/teapot.usda <<USD
-            #usda 1.0
-            (
-                metersPerUnit = 1
-                upAxis = "Y"
-            )
-            def Xform "Teapot"
-            {
-                def Cube "Body"
-                {
-                    double size = 2
-                    float3[] primvars:displayColor = [(0.8, 0.3, 0.2)]
-                    rel material:binding = </Teapot/Mat>
-                    uniform token[] xformOpOrder = ["xformOp:translate"]
-                    double3 xformOp:translate = (0, 0, 0)
-                }
-            }
-            def Material "Mat"
-            {
-                token outputs:surface.connect = </Teapot/Mat/PBRShader.outputs:surface>
-                def Shader "PBRShader"
-                {
-                    uniform token info:id = "UsdPreviewSurface"
-                    color3f inputs:diffuseColor = (0.8, 0.3, 0.2)
-                    float inputs:metallic = 0
-                    float inputs:roughness = 0.4
-                    token outputs:surface
-                }
-            }
-            USD
+            if [ ! -f /probe-out/teapot.usda ]; then
+              echo "FATAL: probe scene missing at /probe-out/teapot.usda"
+              exit 2
+            fi
 
             echo "=== render each requested token ==="
             rc_all=0
@@ -157,28 +175,36 @@ jobs:
             for tok in "${WANT[@]}"; do
               tok="$(echo "$tok" | tr -d "[:space:]")"
               [ -z "$tok" ] && continue
-              out="/probe-out/${tok}.jpg"
-              rm -f "$out"
+              img="/probe-out/${tok}.jpg"
+              lg="/probe-out/${tok}.log"
+              rm -f "$img" "$lg"
               echo "--- ${tok}"
-              xvfb-run -a usdrecord --renderer "$tok" \
-                --width 256 --height 256 --camera "Teapot" \
-                /probe-out/teapot.usda "$out" > "/probe-out/${tok}.log" 2>&1
+              xvfb-run -a usdrecord --renderer "$tok" --imageWidth 256 \
+                --camera "/Teapot/Cam" /probe-out/teapot.usda "$img" > "$lg" 2>&1
               rc=$?
-              bytes=$( [ -f "$out" ] && wc -c < "$out" || echo 0 )
+              bytes=0
+              [ -f "$img" ] && bytes=$(wc -c < "$img")
               printf "    exit=%s bytes=%s " "$rc" "$bytes"
               if [ "$rc" -eq 0 ] && [ "$bytes" -gt 0 ]; then
-                echo "RESULT=$tok OK"
+                echo "RESULT=${tok} OK"
+                echo "OK" > "/probe-out/${tok}.result"
               else
-                echo "RESULT=$tok FAIL"
+                echo "RESULT=${tok} FAIL"
+                echo "FAIL" > "/probe-out/${tok}.result"
                 rc_all=1
               fi
-              grep -iE "error|cannot|undefined|no such" "/probe-out/${tok}.log" | head -5 | sed "s/^/      /" || true
+              grep -iE "error|cannot|undefined|no such|fatal" "$lg" | head -6 | sed "s/^/      /" || true
             done
             echo "=== summary ==="
-            for f in /probe-out/*.log; do
-              [ -f "$f" ] || continue
-              printf "  %s " "$(basename "$f")"
-              grep -oE "RESULT=\S+ (OK|FAIL)" "$f" | tail -1
+            for tok in "${WANT[@]}"; do
+              tok="$(echo "$tok" | tr -d "[:space:]")"
+              [ -z "$tok" ] && continue
+              printf "  %-8s " "$tok"
+              res="$(cat "/probe-out/${tok}.result" 2>/dev/null || echo MISSING)"
+              printf "%s" "$res"
+              [ -f "/probe-out/${tok}.jpg" ] && \
+                printf "  %s bytes" "$(wc -c < "/probe-out/${tok}.jpg")"
+              echo
             done
             exit $rc_all
           '
@@ -187,6 +213,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: delegate-probe
+          name: delegate-probe-${{ matrix.label || 'dispatch' }}
           path: out
           if-no-files-found: warn
