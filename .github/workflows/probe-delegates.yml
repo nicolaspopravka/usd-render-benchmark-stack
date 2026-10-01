@@ -33,6 +33,11 @@ on:
         required: false
         default: "enumerate"
         type: string
+      scenes:
+        description: "Benchmark branch to render real scenes from, or 'teapot' for the built-in probe scene. Empty skips scene renders."
+        required: false
+        default: "teapot"
+        type: string
 
   # workflow_dispatch resolves against the default branch, so this workflow
   # cannot be dispatched from its own branch before it is merged. The push
@@ -62,8 +67,10 @@ jobs:
         include:
           - label: cy2023
             runnable_image: ghcr.io/nicolaspopravka/usd-render-benchmark:2023.3-default
+            scenes: cy2023-3-default
           - label: cy2024
             runnable_image: ghcr.io/nicolaspopravka/usd-render-benchmark:2024.3-default
+            scenes: cy2024-3-default
     env:
       IMAGE: ${{ inputs.runnable_image || matrix.runnable_image }}
       # On the CY2023-CY2025 composites "Storm" is not offered; "GL" is the
@@ -76,6 +83,7 @@ jobs:
       # still covered by the token-resolution loop below, which confirms it
       # registers. Actual MoonRay renders come from the GPU pod runs.
       TOKENS: ${{ inputs.renderers || 'GL,Cycles' }}
+      SCENES: ${{ inputs.scenes || matrix.scenes }}
     steps:
       - name: Log in to GHCR
         uses: docker/login-action@v3
@@ -201,6 +209,64 @@ jobs:
               fi
               grep -iE "error|cannot|undefined|no such|fatal" "$lg" | head -6 | sed "s/^/      /" || true
             done
+            # Real benchmark scenes, with image statistics rather than a byte
+            # count. A byte count proves a frame was written; it does not prove
+            # the frame has content, and this project's history is full of
+            # renders that exited 0 and were flat or black - prebuilt chess_set
+            # at 206 colours, one docker build at exactly 1 unique colour. The
+            # unique-colour count is the check that catches that; oiiotool ships
+            # in the ASWF images.
+            #
+            # Scenes come from the usd-wg assets repo at the commit this project
+            # pins, sparse-checked so the probe does not pull 700 MB. A benchmark
+            # workshop branch is not usable here: opencode/* never goes to a
+            # remote, and the harness on those branches is year-specific anyway -
+            # only the scene content is wanted, and that is year-independent.
+            if [ -n "${SCENES}" ] && [ "${SCENES}" != "teapot" ]; then
+              echo "=== real benchmark scenes (Cycles and GL) ==="
+              if [ ! -d /probe-out/assets/.git ]; then
+                git clone -q --filter=blob:none --no-checkout \
+                  https://github.com/usd-wg/assets.git /probe-out/assets 2>/dev/null || true
+                if [ -d /probe-out/assets/.git ]; then
+                  git -C /probe-out/assets sparse-checkout init --cone >/dev/null 2>&1 || true
+                  git -C /probe-out/assets sparse-checkout set \
+                    full_assets/McUsd full_assets/OpenChessSet >/dev/null 2>&1 || true
+                  git -C /probe-out/assets checkout -q 907d5f17bbe933fc14441a3f3ab69a5bd8abe32a \
+                    >/dev/null 2>&1 || git -C /probe-out/assets checkout -q >/dev/null 2>&1 || true
+                fi
+              fi
+              A=/probe-out/assets/full_assets
+              if [ ! -f "$A/McUsd/McUsd.usda" ]; then
+                echo "  assets clone failed - cannot check scene content"
+              else
+                for tok in Cycles GL; do
+                  for sc in McUsd chess_set; do
+                    case "$sc" in
+                      McUsd)     usd="$A/McUsd/McUsd.usda";                    cam="/McUsd/Camera" ;;
+                      chess_set) usd="$A/OpenChessSet/chess_set.usda";          cam="main_cam" ;;
+                    esac
+                    img="/probe-out/scene-${sc}-${tok}.jpg"
+                    lg="/probe-out/scene-${sc}-${tok}.log"
+                    rm -f "$img"
+                    xvfb-run -a usdrecord --renderer "$tok" --imageWidth 320 \
+                      --camera "$cam" "$usd" "$img" > "$lg" 2>&1
+                    rc=$?
+                    printf "  %-10s %-7s exit=%s " "$sc" "$tok" "$rc"
+                    if [ -f "$img" ]; then
+                      printf "bytes=%-7s " "$(wc -c < "$img")"
+                      printf "mean/min/max: "
+                      oiiotool --stats "$img" 2>/dev/null \
+                        | grep -oE "(mean|min|max) [0-9.eE+-]+" | tr "\n" " "
+                      printf " unique-rgba=%s\n" \
+                        "$(oiiotool "$img" --dumpdata 2>/dev/null | tr " " "\n" | sort -u | grep -c .)"
+                    else
+                      echo "NO FRAME"
+                    fi
+                  done
+                done
+              fi
+            fi
+
             echo "=== summary ==="
             for tok in "${WANT[@]}"; do
               tok="$(echo "$tok" | tr -d "[:space:]")"
