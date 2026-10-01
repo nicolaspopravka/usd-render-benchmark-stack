@@ -1,0 +1,290 @@
+name: probe-delegates
+
+# Does a published runnable image actually enumerate and render with each
+# delegate it claims to carry?
+#
+# run-demo answers this for GL/Storm only, because demo/run1's render_script.sh
+# asks for GL. A rebuilt stack adds a delegate, and "hdCycles.so is present with
+# zero unresolved dependencies" is not the same as "the delegate enumerates and
+# writes a frame" - a wrong PXR_PLUGINPATH_NAME, or the CY2023 distro-epoxy
+# soname sitting where the bundle would have been, both pass every static check
+# and fail here. This is that gate.
+#
+# The scene is written on the host into the bind-mounted output directory, not
+# with a heredoc inside the container script. A heredoc there is a trap: the
+# container script is a single-quoted YAML block scalar, so the heredoc body is
+# indented and the terminator never matches, the rest of the script is swallowed
+# as file content, and `bash -n` still passes. The scene is written here instead.
+#
+# Renders a Teapot once per delegate token with stock usdrecord under Xvfb/Mesa
+# and reports exit status plus image bytes. Free: GitHub runner, not a GPU pod.
+# Cycles is CPU here, the same device the benchmark uses, so this exercises the
+# delegate rather than only loading the plugin.
+
+on:
+  workflow_dispatch:
+    inputs:
+      runnable_image:
+        description: "Published runnable image, e.g. ghcr.io/nicolaspopravka/usd-render-benchmark:2025.3"
+        required: true
+        type: string
+      renderers:
+        description: "Comma-separated renderer tokens, or 'enumerate' to list what the image registers"
+        required: false
+        default: "enumerate"
+        type: string
+      scenes:
+        description: "Benchmark branch to render real scenes from, or 'teapot' for the built-in probe scene. Empty skips scene renders."
+        required: false
+        default: "teapot"
+        type: string
+
+  # workflow_dispatch resolves against the default branch, so this workflow
+  # cannot be dispatched from its own branch before it is merged. The push
+  # trigger is the branch-scoped path, the same pattern the GH13 probe uses.
+  # Remove this block once the workflow lands on the default branch.
+  push:
+    branches:
+      - opencode/delegate-probe
+    paths:
+      - '.github/workflows/probe-delegates.yml'
+
+permissions:
+  contents: read
+  packages: read
+
+concurrency:
+  group: probe-delegates-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: cy2023
+            runnable_image: ghcr.io/nicolaspopravka/usd-render-benchmark:2023.3-default
+            scenes: cy2023-3-default
+          - label: cy2024
+            runnable_image: ghcr.io/nicolaspopravka/usd-render-benchmark:2024.3-default
+            scenes: cy2024-3-default
+    env:
+      IMAGE: ${{ inputs.runnable_image || matrix.runnable_image }}
+      # On the CY2023-CY2025 composites "Storm" is not offered; "GL" is the
+      # token that resolves to HdStorm. So the default is a known-good control
+      # plus the delegate under test, not Storm.
+      #
+      # MoonRay is deliberately NOT render-probed here. It needs a CUDA/OptiX
+      # device and the Arras client/worker split, neither of which a GitHub
+      # runner has, so a failure here would say nothing about the image. It is
+      # still covered by the token-resolution loop below, which confirms it
+      # registers. Actual MoonRay renders come from the GPU pod runs.
+      TOKENS: ${{ inputs.renderers || 'GL,Cycles' }}
+      SCENES: ${{ inputs.scenes || matrix.scenes }}
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check the image is pullable and record its digest
+        run: |
+          set -o pipefail
+          docker pull "$IMAGE"
+          docker buildx imagetools inspect "$IMAGE" --format '{{.Manifest.Digest}}'
+
+      - name: Write the probe scene
+        run: |
+          mkdir -p out
+          cat > out/teapot.usda <<'USD'
+          #usda 1.0
+          (
+              metersPerUnit = 1
+              upAxis = "Y"
+          )
+          def Xform "Teapot"
+          {
+              def Cube "Body"
+              {
+                  double size = 2
+                  float3[] primvars:displayColor = [(0.8, 0.3, 0.2)]
+                  rel material:binding = </Teapot/Mat>
+              }
+              def Camera "Cam"
+              {
+                  token projection = "perspective"
+                  float focalLength = 50
+                  float2 clippingRange = (0.1, 1000)
+                  double3 xformOp:translate = (0, 0, 6)
+                  uniform token[] xformOpOrder = ["xformOp:translate"]
+              }
+          }
+          def Material "Mat"
+          {
+              token outputs:surface.connect = </Teapot/Mat/PBRShader.outputs:surface>
+              def Shader "PBRShader"
+              {
+                  uniform token info:id = "UsdPreviewSurface"
+                  color3f inputs:diffuseColor = (0.8, 0.3, 0.2)
+                  float inputs:metallic = 0
+                  float inputs:roughness = 0.4
+                  token outputs:surface
+              }
+          }
+          USD
+
+      - name: Enumerate renderers and probe each requested token
+        run: |
+          set -o pipefail
+          docker run --rm -v "$PWD/out:/probe-out" -e TOKENS "$IMAGE" bash -c '
+            set -u
+            dnf install -y --disablerepo=cuda mesa-dri-drivers >/dev/null 2>&1
+
+            # GH #46: ASWF LLVM 17 is NVPTX;X86 only, so distro Mesa swrast
+            # cannot load and the Qt offscreen GL setup segfaults. Prefer the
+            # distro LLVM when present.
+            if [ -d /usr/lib64/llvm17/lib ]; then
+              export LD_LIBRARY_PATH=/usr/lib64/llvm17/lib:${LD_LIBRARY_PATH:-}
+            fi
+            # GH #45: avoid the Blosc/libzstd Mesa disk-cache abort.
+            export MESA_SHADER_CACHE_DISABLE=true
+            export LIBGL_ALWAYS_SOFTWARE=1
+
+            echo "=== delegate plugins on disk ==="
+            for d in /opt/cycles/hydra /usr/local/plugin/usd /usr/local/lib/usd; do
+              [ -d "$d" ] && ls "$d" 2>/dev/null | grep -iE "\.so$" | sed "s|^|  $d/|"
+            done
+
+            echo "=== renderer tokens this image offers ==="
+            usdrecord --help 2>&1 | grep -A1 -- "--renderer" | tail -1
+
+            echo "=== resolve each token ==="
+            for tok in Storm GL Moonray Cycles Embree; do
+              printf "  %-9s " "$tok"
+              if usdrecord --renderer "$tok" --help >/dev/null 2>&1; then
+                echo "accepted"
+              else
+                echo "not offered"
+              fi
+            done
+
+            if [ "${TOKENS}" = "enumerate" ]; then
+              echo "=== enumerate mode: stopping before render ==="
+              exit 0
+            fi
+
+            if [ ! -f /probe-out/teapot.usda ]; then
+              echo "FATAL: probe scene missing at /probe-out/teapot.usda"
+              exit 2
+            fi
+
+            echo "=== render each requested token ==="
+            rc_all=0
+            IFS="," read -ra WANT <<< "${TOKENS}"
+            for tok in "${WANT[@]}"; do
+              tok="$(echo "$tok" | tr -d "[:space:]")"
+              [ -z "$tok" ] && continue
+              img="/probe-out/${tok}.jpg"
+              lg="/probe-out/${tok}.log"
+              rm -f "$img" "$lg"
+              echo "--- ${tok}"
+              xvfb-run -a usdrecord --renderer "$tok" --imageWidth 256 \
+                --camera "/Teapot/Cam" /probe-out/teapot.usda "$img" > "$lg" 2>&1
+              rc=$?
+              bytes=0
+              [ -f "$img" ] && bytes=$(wc -c < "$img")
+              printf "    exit=%s bytes=%s " "$rc" "$bytes"
+              if [ "$rc" -eq 0 ] && [ "$bytes" -gt 0 ]; then
+                echo "RESULT=${tok} OK"
+                echo "OK" > "/probe-out/${tok}.result"
+              else
+                echo "RESULT=${tok} FAIL"
+                echo "FAIL" > "/probe-out/${tok}.result"
+                rc_all=1
+              fi
+              grep -iE "error|cannot|undefined|no such|fatal" "$lg" | head -6 | sed "s/^/      /" || true
+            done
+            # Real benchmark scenes, with image statistics rather than a byte
+            # count. A byte count proves a frame was written; it does not prove
+            # the frame has content, and this project's history is full of
+            # renders that exited 0 and were flat or black - prebuilt chess_set
+            # at 206 colours, one docker build at exactly 1 unique colour. The
+            # unique-colour count is the check that catches that; oiiotool ships
+            # in the ASWF images.
+            #
+            # Scenes come from the usd-wg assets repo at the commit this project
+            # pins, sparse-checked so the probe does not pull 700 MB. A benchmark
+            # workshop branch is not usable here: opencode/* never goes to a
+            # remote, and the harness on those branches is year-specific anyway -
+            # only the scene content is wanted, and that is year-independent.
+            if [ -n "${SCENES}" ] && [ "${SCENES}" != "teapot" ]; then
+              echo "=== real benchmark scenes (Cycles and GL) ==="
+              if [ ! -d /probe-out/assets/.git ]; then
+                git clone -q --filter=blob:none --no-checkout \
+                  https://github.com/usd-wg/assets.git /probe-out/assets 2>/dev/null || true
+                if [ -d /probe-out/assets/.git ]; then
+                  git -C /probe-out/assets sparse-checkout init --cone >/dev/null 2>&1 || true
+                  git -C /probe-out/assets sparse-checkout set \
+                    full_assets/McUsd full_assets/OpenChessSet >/dev/null 2>&1 || true
+                  git -C /probe-out/assets checkout -q 907d5f17bbe933fc14441a3f3ab69a5bd8abe32a \
+                    >/dev/null 2>&1 || git -C /probe-out/assets checkout -q >/dev/null 2>&1 || true
+                fi
+              fi
+              A=/probe-out/assets/full_assets
+              if [ ! -f "$A/McUsd/McUsd.usda" ]; then
+                echo "  assets clone failed - cannot check scene content"
+              else
+                for tok in Cycles GL; do
+                  for sc in McUsd chess_set; do
+                    case "$sc" in
+                      McUsd)     usd="$A/McUsd/McUsd.usda";                    cam="/McUsd/Camera" ;;
+                      chess_set) usd="$A/OpenChessSet/chess_set.usda";          cam="main_cam" ;;
+                    esac
+                    img="/probe-out/scene-${sc}-${tok}.jpg"
+                    lg="/probe-out/scene-${sc}-${tok}.log"
+                    rm -f "$img"
+                    xvfb-run -a usdrecord --renderer "$tok" --imageWidth 320 \
+                      --camera "$cam" "$usd" "$img" > "$lg" 2>&1
+                    rc=$?
+                    printf "  %-10s %-7s exit=%s " "$sc" "$tok" "$rc"
+                    if [ -f "$img" ]; then
+                      printf "bytes=%-7s " "$(wc -c < "$img")"
+                      printf "mean/min/max: "
+                      oiiotool --stats "$img" 2>/dev/null \
+                        | grep -oE "(mean|min|max) [0-9.eE+-]+" | tr "\n" " "
+                      printf " unique-rgba=%s\n" \
+                        "$(oiiotool "$img" --dumpdata 2>/dev/null | tr " " "\n" | sort -u | grep -c .)"
+                    else
+                      echo "NO FRAME"
+                    fi
+                  done
+                done
+              fi
+            fi
+
+            echo "=== summary ==="
+            for tok in "${WANT[@]}"; do
+              tok="$(echo "$tok" | tr -d "[:space:]")"
+              [ -z "$tok" ] && continue
+              printf "  %-8s " "$tok"
+              res="$(cat "/probe-out/${tok}.result" 2>/dev/null || echo MISSING)"
+              printf "%s" "$res"
+              [ -f "/probe-out/${tok}.jpg" ] && \
+                printf "  %s bytes" "$(wc -c < "/probe-out/${tok}.jpg")"
+              echo
+            done
+            exit $rc_all
+          '
+
+      - name: Upload probe outputs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: delegate-probe-${{ matrix.label || 'dispatch' }}
+          path: out
+          if-no-files-found: warn
