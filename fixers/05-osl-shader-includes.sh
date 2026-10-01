@@ -26,8 +26,8 @@
 # the one the shipped library already expects.
 #
 # Validated against OSL 1.14.11.0, 1.13.11.0 and 1.12.14.0.
-#   OSL-1.14.11.0.tar.gz
-#   sha256 3155fc5c3ad4a2026dd23fb9e7b77e936ac299f4bf1e7b332971471ca21ab714
+#   v1.14.11.0 tag archive (not the separately published release asset)
+#   observed sha256 3f528f1c131cebda0896ffefa714f7bc34dd7ee21675605cf1ec155eccb1da05
 #
 # DROP THIS when the ASWF OSL conan package deploys share/OSL/shaders.
 set -euo pipefail
@@ -81,12 +81,9 @@ fi
 
 src=""
 used_tag=""
-archive=""
 # Fetch the source from the tag archive rather than a release asset. OSL
-# stopped publishing OSL-<version>.tar.gz assets after 1.14.5.0 - every 1.12.x
-# and 1.13.x release has no assets at all - so a release-asset URL 404s for
-# those versions even though the tag exists. GitHub's generated tag archive
-# exists for every tag, which makes this one uniform path.
+# 1.12.14.0 and 1.13.11.0 asset URLs fail even though the tags exist; 1.14.11.0
+# does have a release asset. Generated tag archives provide a common source.
 for tag in "${tags[@]}"; do
     url="https://github.com/AcademySoftwareFoundation/OpenShadingLanguage/archive/refs/tags/${tag}.tar.gz"
     echo "trying ${url}"
@@ -97,7 +94,6 @@ for tag in "${tags[@]}"; do
         if [ -n "${member}" ]; then
             src="${member}"
             used_tag="${tag}"
-            archive="yes"
             break
         fi
     fi
@@ -113,8 +109,7 @@ fi
 mkdir -p "${TARGET_DIR}"
 work="$(mktemp -d)"
 trap 'rm -rf "${work}"' EXIT
-# The archive's root directory is OSL-<version> without the v, same as the
-# asset name, even though the release tag carries it.
+# The generated archive root is OpenShadingLanguage-<tag without leading v>.
 tar -xzf "${TMPDIR:-/tmp}/osl-shaders.tar.gz" -C "${work}" --strip-components=1 \
     "OpenShadingLanguage-${used_tag#v}/src/shaders"
 # The whole header set from src/shaders, not just stdosl.h. Cycles' own OSL

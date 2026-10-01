@@ -16,44 +16,21 @@ set -euxo pipefail
 #   WITH_LIBS_PRECOMPILED=OFF         the pinned bundle carries OIIO 3.0.9, Imath 3.0
 #                                     and OpenEXR -3_3 beside the conan stack's 3.1.x
 #
-# WITH_CYCLES_OSL stays at its upstream default (ON), which needs fixers/05 to
-# install the OSL shader includes the conan package omits.
+# Python3_ROOT_DIR locates the Python required by USD's pxrConfig.cmake;
+# the CY2023 configure otherwise fails its exact 3.10.20 lookup (benchmark #53).
 #
-# Three additions, all from measured build failures rather than preference:
+# WITH_CYCLES_OSL and WITH_CYCLES_OPENVDB default to ON. Select OFF explicitly
+# for the affected CY2023/CY2024 builds:
+# - OSL: oslc cannot load required LLVM runtime libraries in the tested default
+#   images (#54). ASWF's OSL Clang-major pins are 15/17; these observations do
+#   not show a binary that disagrees with those pins. Fixer 05 restores shader
+#   headers, but does not repair runtime dependency loading.
+# - OpenVDB: ASWF disables delayed loading, and older Cycles calls its setter
+#   without a guard (#56). The option does affect OpenVDB's Conan package ID.
+#   Defining OPENVDB_USE_DELAYED_LOADING only in the consumer cannot add the
+#   missing library API. Disabling OpenVDB also disables Cycles volume support.
 #
-#   Python3_ROOT_DIR   Cycles asks find_package(Python3 EXACT 3.10.20), and the
-#                      base's own USD pxrConfig.cmake asks for the same patch
-#                      version, but CMake does not resolve /usr/local on its
-#                      own: it finds libpython3.10.so, derives the version from
-#                      the filename, then fails to resolve the headers. Passing
-#                      the install prefix is a documented CMake variable and
-#                      changes no source. Benchmark GH #53, fixed in
-#                      nico/fix/cycles-python-locator.
-#
-#   WITH_CYCLES_OSL    Off for CY2023 and CY2024. aswf-docker builds OSL against
-#                      a newer LLVM than the same image deploys: CY2023 oslc
-#                      needs libLLVM-15.so and the image ships 14, CY2024 needs
-#                      libLTO.so.17 and ships 16, CY2025 matches at 18 and builds
-#                      OSL on. The deployed OSL binary also matches neither the
-#                      declared ASWF_OSL_CLANG_VERSION pin nor the LLVM beside it,
-#                      which is why the mismatch is in the artifact. Benchmark
-#                      GH #54. Both years' published .3 images are already
-#                      OSL-off, so this preserves the existing posture.
-#
-#   WITH_CYCLES_OPENVDB Off for CY2023 and CY2024. aswf-docker's OpenVDB recipe
-#                      sets use_delayed_loading=False against OpenVDB's own
-#                      default of ON, and omits the option from package_id, so
-#                      every image ships an OpenVDB whose io::File lacks the
-#                      delayed-loading setter Cycles' Hydra volume loader calls
-#                      unguarded before v4.4.0. Compiling it away is not a fix:
-#                      OPENVDB_USE_DELAYED_LOADING is a library-build setting, so
-#                      defining it at the consumer compiles and then fails to
-#                      link. Benchmark GH #56. The cost is Moana Island's VDB
-#                      volume data on those two years, which is a documented
-#                      per-year deviation and not a delegate defect.
-#
-# Both delegate values default to ON, so a year that needs neither says nothing
-# and CY2025 is unaffected.
+# Neither option is automatically selected from the year or image tag.
 #
 # Locators, because the ASWF images keep these outside CMake's search paths:
 # the CUDA toolkit under ${prefix}/cuda, and the OptiX SDKs as sibling
@@ -81,8 +58,7 @@ readonly CYCLES_LIB_URL="https://projects.blender.org/blender/lib-linux_x64.git"
 readonly BUILD_ROOT="/opt/build-cycles"
 readonly ASWF_INSTALL_PREFIX="/usr/local"
 readonly CYCLES_INSTALL_PREFIX="/opt/cycles"
-# ON is the upstream default and what CY2025 builds. Only a year whose ASWF base
-# cannot support the delegate passes OFF; see the header.
+# Explicit compatibility overrides; defaults retain OSL and OpenVDB support.
 readonly WITH_CYCLES_OSL="${WITH_CYCLES_OSL:-ON}"
 readonly WITH_CYCLES_OPENVDB="${WITH_CYCLES_OPENVDB:-ON}"
 
