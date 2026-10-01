@@ -59,7 +59,7 @@ jobs:
             runnable_image: ghcr.io/nicolaspopravka/usd-render-benchmark:2024.3-default
     env:
       IMAGE: ${{ inputs.runnable_image || matrix.runnable_image }}
-      TOKENS: ${{ inputs.renderers || 'Storm,Cycles' }}
+      TOKENS: ${{ inputs.renderers || 'GL,Cycles' }}
     steps:
       - name: Log in to GHCR
         uses: docker/login-action@v3
@@ -78,7 +78,7 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p out
-          docker run --rm -v "$PWD/out:/probe-out" "$IMAGE" bash -c '
+          docker run --rm -v "$PWD/out:/probe-out" -e TOKENS "$IMAGE" bash -c '
             set -u
             dnf install -y --disablerepo=cuda mesa-dri-drivers >/dev/null 2>&1
 
@@ -100,6 +100,9 @@ jobs:
             echo "=== hdrecord --help renderers ==="
             usdrecord --help 2>&1 | head -30
 
+            # On the CY2023-CY2025 composites "Storm" is not offered; "GL" is
+            # the token that resolves to HdStorm. Recorded so the default token
+            # list is not mistaken for a missing Storm.
             echo "=== resolve each token ==="
             for tok in Storm GL Moonray Cycles Embree; do
               printf "  %-9s " "$tok"
