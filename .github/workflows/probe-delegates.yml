@@ -69,6 +69,12 @@ jobs:
       # On the CY2023-CY2025 composites "Storm" is not offered; "GL" is the
       # token that resolves to HdStorm. So the default is a known-good control
       # plus the delegate under test, not Storm.
+      #
+      # MoonRay is deliberately NOT render-probed here. It needs a CUDA/OptiX
+      # device and the Arras client/worker split, neither of which a GitHub
+      # runner has, so a failure here would say nothing about the image. It is
+      # still covered by the token-resolution loop below, which confirms it
+      # registers. Actual MoonRay renders come from the GPU pod runs.
       TOKENS: ${{ inputs.renderers || 'GL,Cycles' }}
     steps:
       - name: Log in to GHCR
