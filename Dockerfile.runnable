@@ -7,14 +7,12 @@ ARG PRISTINE_IMAGE
 
 FROM ${PRISTINE_IMAGE}
 
-# Image identity, restated from Dockerfile.pristine with this package's own
-# name. The values are normally inherited, because this workflow builds FROM the
-# pristine image; they are set again so the overlay is still correct when
-# pristine_image points at a raw ASWF base, which the workflow permits. The
-# build args are re-declared here because they do not cross FROM. See
-# Dockerfile.pristine for why version is a build arg and why created/revision
-# are left alone.
-ARG IMAGE_TAG=""
+# Image identity, same block as Dockerfile.pristine with this package's name.
+# Repeated so the overlay is correct even when built FROM a raw ASWF base.
+ARG IMAGE_VERSION=""
+ARG BUILD_CREATED=""
+ARG BASE_NAME=""
+ARG BASE_DIGEST=""
 LABEL org.opencontainers.image.title="usd-render-benchmark: Hydra render delegate benchmark images" \
       org.opencontainers.image.description="Benchmark images that render USD scenes with Hydra render delegates: Storm, plus MoonRay, Cycles or Embree depending on the tag. The image supplies the software environment; a benchmark run branch supplies the harness, scenes and outputs." \
       org.opencontainers.image.name="usd-render-benchmark" \
@@ -22,7 +20,11 @@ LABEL org.opencontainers.image.title="usd-render-benchmark: Hydra render delegat
       org.opencontainers.image.url="https://github.com/nicolaspopravka/usd-render-benchmark" \
       org.opencontainers.image.authors="Nicolas Popravka" \
       org.opencontainers.image.vendor="usd-render-benchmark" \
-      org.opencontainers.image.version="${IMAGE_TAG}"
+      org.opencontainers.image.version="${IMAGE_VERSION}" \
+      org.opencontainers.image.created="${BUILD_CREATED}" \
+      org.opencontainers.image.revision="" \
+      org.opencontainers.image.base.name="${BASE_NAME}" \
+      org.opencontainers.image.base.digest="${BASE_DIGEST}"
 
 ENV REZ_PACKAGES_PATH=./packages
 

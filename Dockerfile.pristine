@@ -10,33 +10,13 @@ ARG BASE_IMAGE
 
 FROM ${BASE_IMAGE}
 
-# Image identity. The ASWF base ships aswf/ci-moonray's own OCI labels, and an
-# image inherits its base's labels, so without this both GHCR packages present
-# themselves as MoonRay build dependencies that do *not* contain MoonRay —
-# which is the opposite of what these images are. build-runnable.yml FROMs this
-# image, so the runnable package inherits the values set here; it repeats them
-# with its own image.name in case its input is a raw ASWF base.
-#
-# version is a build arg because it is the one inherited value that is simply
-# false: an image tagged 2025.3 is built from an ASWF base tagged 2025.8, and
-# without this it advertises version 2025.8. It defaults to empty so a bare
-# `docker build` states nothing rather than claiming a version it was not given.
-#
-# created and revision are deliberately NOT overridden. The base's "dev"
-# placeholders are empty rather than false, and both workflows already record
-# the digest they pushed and verify the tag resolves to it. Set them here if
-# that trade ever changes.
-#
-# The io.aswf.docker.versions.* and com.vfxplatform.version labels inherited
-# from the base are accurate and are left alone, as is maintainer, which names
-# NVIDIA for the inherited CUDA layer.
-#
-# org.opencontainers.image.licenses is deliberately absent. This repository has
-# no LICENSE file, so any value would be a claim nothing backs -- the obvious
-# candidate, MIT, is the benchmark repo's license, not this one's. The base sets
-# no licenses label either, so leaving it out asserts nothing. Add the label in
-# the same commit that adds a LICENSE here, not before.
-ARG IMAGE_TAG=""
+# Image identity, overriding the ASWF base's labels, which we inherit. version
+# is a build arg because the base's value is the ASWF version, not ours.
+# Rationale for every key, set or absent: usd-render-benchmark PLANS.md 61.8.
+ARG IMAGE_VERSION=""
+ARG BUILD_CREATED=""
+ARG BASE_NAME=""
+ARG BASE_DIGEST=""
 LABEL org.opencontainers.image.title="usd-render-benchmark: Hydra render delegate benchmark images" \
       org.opencontainers.image.description="Benchmark images that render USD scenes with Hydra render delegates: Storm, plus MoonRay, Cycles or Embree depending on the tag. The image supplies the software environment; a benchmark run branch supplies the harness, scenes and outputs." \
       org.opencontainers.image.name="usd-render-benchmark-stack" \
@@ -44,7 +24,11 @@ LABEL org.opencontainers.image.title="usd-render-benchmark: Hydra render delegat
       org.opencontainers.image.url="https://github.com/nicolaspopravka/usd-render-benchmark" \
       org.opencontainers.image.authors="Nicolas Popravka" \
       org.opencontainers.image.vendor="usd-render-benchmark" \
-      org.opencontainers.image.version="${IMAGE_TAG}"
+      org.opencontainers.image.version="${IMAGE_VERSION}" \
+      org.opencontainers.image.created="${BUILD_CREATED}" \
+      org.opencontainers.image.revision="" \
+      org.opencontainers.image.base.name="${BASE_NAME}" \
+      org.opencontainers.image.base.digest="${BASE_DIGEST}"
 
 ARG CYCLES_TAG=""
 ARG WITH_CYCLES_OSL="ON"
