@@ -30,6 +30,12 @@ FROM ${BASE_IMAGE}
 # The io.aswf.docker.versions.* and com.vfxplatform.version labels inherited
 # from the base are accurate and are left alone, as is maintainer, which names
 # NVIDIA for the inherited CUDA layer.
+#
+# org.opencontainers.image.licenses is deliberately absent. This repository has
+# no LICENSE file, so any value would be a claim nothing backs -- the obvious
+# candidate, MIT, is the benchmark repo's license, not this one's. The base sets
+# no licenses label either, so leaving it out asserts nothing. Add the label in
+# the same commit that adds a LICENSE here, not before.
 ARG IMAGE_TAG=""
 LABEL org.opencontainers.image.title="usd-render-benchmark: Hydra render delegate benchmark images" \
       org.opencontainers.image.description="Benchmark images that render USD scenes with Hydra render delegates: Storm, plus MoonRay, Cycles or Embree depending on the tag. The image supplies the software environment; a benchmark run branch supplies the harness, scenes and outputs." \
@@ -38,7 +44,6 @@ LABEL org.opencontainers.image.title="usd-render-benchmark: Hydra render delegat
       org.opencontainers.image.url="https://github.com/nicolaspopravka/usd-render-benchmark" \
       org.opencontainers.image.authors="Nicolas Popravka" \
       org.opencontainers.image.vendor="usd-render-benchmark" \
-      org.opencontainers.image.licenses="MIT" \
       org.opencontainers.image.version="${IMAGE_TAG}"
 
 ARG CYCLES_TAG=""

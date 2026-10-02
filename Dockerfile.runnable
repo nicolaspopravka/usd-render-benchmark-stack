@@ -22,7 +22,6 @@ LABEL org.opencontainers.image.title="usd-render-benchmark: Hydra render delegat
       org.opencontainers.image.url="https://github.com/nicolaspopravka/usd-render-benchmark" \
       org.opencontainers.image.authors="Nicolas Popravka" \
       org.opencontainers.image.vendor="usd-render-benchmark" \
-      org.opencontainers.image.licenses="MIT" \
       org.opencontainers.image.version="${IMAGE_TAG}"
 
 ENV REZ_PACKAGES_PATH=./packages
