@@ -17,20 +17,20 @@ FROM ${BASE_IMAGE}
 # image, so the runnable package inherits the values set here; it repeats them
 # with its own image.name in case its input is a raw ASWF base.
 #
-# version/created/revision are set from build args, because Docker has no way to
-# *unset* a label: omitting them would leave the base's placeholders, which is
-# how a 2025.3 image came to advertise version 2025.8. The defaults are empty so
-# a bare `docker build` states nothing rather than inheriting a wrong claim. Both
-# workflows pass all three, so a published image names its own tag, build time
-# and repository commit. Note that SOURCE_REVISION makes the digest depend on
-# the commit, not just the content — deliberate, and the only cost here.
+# version is a build arg because it is the one inherited value that is simply
+# false: an image tagged 2025.3 is built from an ASWF base tagged 2025.8, and
+# without this it advertises version 2025.8. It defaults to empty so a bare
+# `docker build` states nothing rather than claiming a version it was not given.
+#
+# created and revision are deliberately NOT overridden. The base's "dev"
+# placeholders are empty rather than false, and both workflows already record
+# the digest they pushed and verify the tag resolves to it. Set them here if
+# that trade ever changes.
 #
 # The io.aswf.docker.versions.* and com.vfxplatform.version labels inherited
 # from the base are accurate and are left alone, as is maintainer, which names
 # NVIDIA for the inherited CUDA layer.
 ARG IMAGE_TAG=""
-ARG BUILD_CREATED=""
-ARG SOURCE_REVISION=""
 LABEL org.opencontainers.image.title="usd-render-benchmark: Hydra render delegate benchmark images" \
       org.opencontainers.image.description="Benchmark images that render USD scenes with Hydra render delegates: Storm, plus MoonRay, Cycles or Embree depending on the tag. The image supplies the software environment; a benchmark run branch supplies the harness, scenes and outputs." \
       org.opencontainers.image.name="usd-render-benchmark-stack" \
@@ -39,9 +39,7 @@ LABEL org.opencontainers.image.title="usd-render-benchmark: Hydra render delegat
       org.opencontainers.image.authors="Nicolas Popravka" \
       org.opencontainers.image.vendor="usd-render-benchmark" \
       org.opencontainers.image.licenses="MIT" \
-      org.opencontainers.image.version="${IMAGE_TAG}" \
-      org.opencontainers.image.created="${BUILD_CREATED}" \
-      org.opencontainers.image.revision="${SOURCE_REVISION}"
+      org.opencontainers.image.version="${IMAGE_TAG}"
 
 ARG CYCLES_TAG=""
 ARG WITH_CYCLES_OSL="ON"
