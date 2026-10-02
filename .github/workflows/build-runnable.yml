@@ -16,6 +16,11 @@ on:
         description: "Tag for the published runnable image, e.g. 2027"
         required: true
         type: string
+      image_version:
+        description: "Value for org.opencontainers.image.version. Defaults to the image_tag."
+        required: false
+        default: ""
+        type: string
 
 permissions:
   contents: read
