@@ -54,11 +54,15 @@ jobs:
       - name: Build + push runnable
         env:
           PRISTINE_IMAGE_INPUT: ${{ inputs.pristine_image }}
+          IMAGE_TAG: ${{ inputs.image_tag }}
         run: |
           set -o pipefail
           docker buildx build --provenance=false \
             --file Dockerfile.runnable \
             --build-arg PRISTINE_IMAGE="$PRISTINE_IMAGE_INPUT" \
+            --build-arg IMAGE_TAG="$IMAGE_TAG" \
+            --build-arg BUILD_CREATED="$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --build-arg SOURCE_REVISION="$GITHUB_SHA" \
             --tag "$RUNNABLE_IMAGE" \
             --metadata-file .buildx-metadata.json \
             --push \
