@@ -16,6 +16,11 @@ on:
         description: "Tag for the published runnable image, e.g. 2027"
         required: true
         type: string
+      image_version:
+        description: "Value for org.opencontainers.image.version. Defaults to the image_tag."
+        required: false
+        default: ""
+        type: string
 
 permissions:
   contents: read
@@ -54,11 +59,26 @@ jobs:
       - name: Build + push runnable
         env:
           PRISTINE_IMAGE_INPUT: ${{ inputs.pristine_image }}
+          IMAGE_TAG: ${{ inputs.image_tag }}
+          IMAGE_VERSION: ${{ inputs.image_version }}
         run: |
           set -o pipefail
+          VERSION="${IMAGE_VERSION:-$IMAGE_TAG}"
+          BASE_NAME="$PRISTINE_IMAGE_INPUT"
+          BASE_DIGEST=""
+          case "$PRISTINE_IMAGE_INPUT" in *@*) BASE_DIGEST="${PRISTINE_IMAGE_INPUT##*@}" ;; esac
+          case "$BASE_NAME" in
+            */*) host="${BASE_NAME%%/*}"
+                 case "$host" in *.*|*:*|localhost) ;; *) BASE_NAME="docker.io/$BASE_NAME" ;; esac ;;
+            *)   BASE_NAME="docker.io/$BASE_NAME" ;;
+          esac
           docker buildx build --provenance=false \
             --file Dockerfile.runnable \
             --build-arg PRISTINE_IMAGE="$PRISTINE_IMAGE_INPUT" \
+            --build-arg IMAGE_VERSION="$VERSION" \
+            --build-arg BUILD_CREATED="$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --build-arg BASE_NAME="$BASE_NAME" \
+            --build-arg BASE_DIGEST="$BASE_DIGEST" \
             --tag "$RUNNABLE_IMAGE" \
             --metadata-file .buildx-metadata.json \
             --push \
