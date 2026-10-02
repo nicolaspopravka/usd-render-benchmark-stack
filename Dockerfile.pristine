@@ -12,7 +12,8 @@ FROM ${BASE_IMAGE}
 
 # Image identity, overriding the ASWF base's labels, which we inherit. version
 # is a build arg because the base's value is the ASWF version, not ours.
-# Rationale for every key, set or absent: usd-render-benchmark PLANS.md 61.8.
+# image.name is not a predefined OCI annotation and the namespace is reserved;
+# it is kept as a legacy label because it is the only thing naming the package.
 ARG IMAGE_VERSION=""
 ARG BUILD_CREATED=""
 ARG BASE_NAME=""

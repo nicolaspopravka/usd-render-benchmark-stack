@@ -64,7 +64,7 @@ jobs:
         run: |
           set -o pipefail
           VERSION="${IMAGE_VERSION:-$IMAGE_TAG}"
-          BASE_NAME="${PRISTINE_IMAGE_INPUT%@*}"
+          BASE_NAME="$PRISTINE_IMAGE_INPUT"
           BASE_DIGEST=""
           case "$PRISTINE_IMAGE_INPUT" in *@*) BASE_DIGEST="${PRISTINE_IMAGE_INPUT##*@}" ;; esac
           case "$BASE_NAME" in

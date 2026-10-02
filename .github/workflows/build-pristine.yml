@@ -89,7 +89,7 @@ jobs:
         run: |
           set -o pipefail
           VERSION="${IMAGE_VERSION:-$IMAGE_TAG}"
-          BASE_NAME="${BASE_IMAGE%@*}"
+          BASE_NAME="$BASE_IMAGE"
           BASE_DIGEST=""
           case "$BASE_IMAGE" in *@*) BASE_DIGEST="${BASE_IMAGE##*@}" ;; esac
           case "$BASE_NAME" in
