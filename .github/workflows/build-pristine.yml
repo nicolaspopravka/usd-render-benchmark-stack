@@ -22,6 +22,22 @@ on:
         required: false
         default: ""
         type: string
+      with_cycles_osl:
+        description: "Build Cycles with OSL (OFF for the affected CY2023/CY2024 bases)."
+        required: true
+        default: "ON"
+        type: choice
+        options:
+          - "ON"
+          - "OFF"
+      with_cycles_openvdb:
+        description: "Build Cycles with OpenVDB (OFF for older Cycles without delayed-loading guards)."
+        required: true
+        default: "ON"
+        type: choice
+        options:
+          - "ON"
+          - "OFF"
 
 permissions:
   contents: read
@@ -61,12 +77,16 @@ jobs:
         env:
           BASE_IMAGE: ${{ inputs.base_image }}
           CYCLES_TAG: ${{ inputs.cycles_tag }}
+          WITH_CYCLES_OSL: ${{ inputs.with_cycles_osl }}
+          WITH_CYCLES_OPENVDB: ${{ inputs.with_cycles_openvdb }}
         run: |
           set -o pipefail
           docker buildx build --provenance=false \
             --file Dockerfile.pristine \
             --build-arg BASE_IMAGE="$BASE_IMAGE" \
             --build-arg CYCLES_TAG="$CYCLES_TAG" \
+            --build-arg WITH_CYCLES_OSL="$WITH_CYCLES_OSL" \
+            --build-arg WITH_CYCLES_OPENVDB="$WITH_CYCLES_OPENVDB" \
             --tag "$PRISTINE_IMAGE" \
             --metadata-file .buildx-metadata.json \
             --push \

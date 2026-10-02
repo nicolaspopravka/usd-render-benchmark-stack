@@ -11,10 +11,13 @@ ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
 ARG CYCLES_TAG=""
+ARG WITH_CYCLES_OSL="ON"
+ARG WITH_CYCLES_OPENVDB="ON"
 
 # TEMPORARY: additions the ASWF base needs before the default build can work.
 # 05 installs the OSL shader includes the conan OSL package omits, so
-# WITH_CYCLES_OSL can stay at its upstream default of ON.
+# WITH_CYCLES_OSL defaults to ON; select OFF explicitly for bases whose OSL
+# compiler cannot load its runtime dependencies.
 #
 # This .3 pristine is built FROM stack:<cy>.2, which already carries Rez and
 # GNU time from the .2 composer, so neither is installed here.
@@ -26,5 +29,8 @@ COPY cmake/import_openusd_dependencies.cmake /usr/local/share/cycles/import_open
 RUN if [ -n "${CYCLES_TAG}" ]; then \
       bash -lc 'source /opt/rh/gcc-toolset-${ASWF_DTS_VERSION}/enable && \
                 chmod +x /usr/local/aswf/build_cycles.sh && \
-                CYCLES_TAG="${CYCLES_TAG}" /usr/local/aswf/build_cycles.sh'; \
+                CYCLES_TAG="${CYCLES_TAG}" \
+                WITH_CYCLES_OSL="${WITH_CYCLES_OSL}" \
+                WITH_CYCLES_OPENVDB="${WITH_CYCLES_OPENVDB}" \
+                /usr/local/aswf/build_cycles.sh'; \
     fi

@@ -25,9 +25,9 @@
 # and then by guessing /usr/local/share/OSL/shaders/stdosl.h, so this path is
 # the one the shipped library already expects.
 #
-# Validated against OSL 1.14.11.0:
-#   OSL-1.14.11.0.tar.gz
-#   sha256 3155fc5c3ad4a2026dd23fb9e7b77e936ac299f4bf1e7b332971471ca21ab714
+# Validated against OSL 1.14.11.0, 1.13.11.0 and 1.12.14.0.
+#   v1.14.11.0 tag archive (not the separately published release asset)
+#   observed sha256 3f528f1c131cebda0896ffefa714f7bc34dd7ee21675605cf1ec155eccb1da05
 #
 # DROP THIS when the ASWF OSL conan package deploys share/OSL/shaders.
 set -euo pipefail
@@ -80,12 +80,17 @@ else
 fi
 
 src=""
+used_tag=""
+# Fetch the source from the tag archive rather than a release asset. OSL
+# 1.12.14.0 and 1.13.11.0 asset URLs fail even though the tags exist; 1.14.11.0
+# does have a release asset. Generated tag archives provide a common source.
 for tag in "${tags[@]}"; do
-    # The release tag carries a leading v; the asset name does not.
-    url="https://github.com/AcademySoftwareFoundation/OpenShadingLanguage/releases/download/${tag}/OSL-${tag#v}.tar.gz"
+    url="https://github.com/AcademySoftwareFoundation/OpenShadingLanguage/archive/refs/tags/${tag}.tar.gz"
     echo "trying ${url}"
-    if curl --location --fail --silent --show-error --max-time 600 -o "${TMPDIR:-/tmp}/osl-shaders.tar.gz" "${url}"; then
-        member="$(tar -tzf "${TMPDIR:-/tmp}/osl-shaders.tar.gz" 2>/dev/null | grep -E '/src/shaders/stdosl\.h$' | head -1 || true)"
+    if curl --location --fail --silent --show-error --max-time 900 \
+         -o "${TMPDIR:-/tmp}/osl-shaders.tar.gz" "${url}"; then
+        member="$(tar -tzf "${TMPDIR:-/tmp}/osl-shaders.tar.gz" 2>/dev/null \
+                 | grep -E '/src/shaders/stdosl\.h$' | head -1 || true)"
         if [ -n "${member}" ]; then
             src="${member}"
             used_tag="${tag}"
@@ -104,10 +109,9 @@ fi
 mkdir -p "${TARGET_DIR}"
 work="$(mktemp -d)"
 trap 'rm -rf "${work}"' EXIT
-# The archive's root directory is OSL-<version> without the v, same as the
-# asset name, even though the release tag carries it.
+# The generated archive root is OpenShadingLanguage-<tag without leading v>.
 tar -xzf "${TMPDIR:-/tmp}/osl-shaders.tar.gz" -C "${work}" --strip-components=1 \
-    "OSL-${used_tag#v}/src/shaders"
+    "OpenShadingLanguage-${used_tag#v}/src/shaders"
 # The whole header set from src/shaders, not just stdosl.h. Cycles' own OSL
 # shaders include their siblings: node_hash.h pulls in vector2.h and vector4.h
 # alongside stdcycles.h, and FindOSL only puts OSL_SHADER_DIR on the include
@@ -123,6 +127,6 @@ if [ ! -s "${TARGET}" ]; then
 fi
 
 installed="$(cd "${TARGET_DIR}" && ls -1 ./*.h | wc -l | tr -d ' ')"
-echo "installed the OSL ${used_tag} shader library (for the installed ${osl_version}):"
+echo "installed the OSL ${used_tag} shader library (for the installed ${osl_version}, via the tag archive):"
 echo "  ${TARGET_DIR}/ (${installed} headers)"
 ls -1 "${TARGET_DIR}" | sed 's/^/    /'
