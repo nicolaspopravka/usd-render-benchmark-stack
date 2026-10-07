@@ -67,11 +67,22 @@ git -C "${MOONRAY_SRC}" rev-parse HEAD   # recorded for evidence; not asserted
 git -C "${MOONRAY_SRC}" lfs pull
 
 # --- Step 3b: configure ---------------------------------------------------
+# CMake 4 removed compatibility with cmake_minimum_required() < 3.5, which
+# the pinned cmake_modules FindTBB.cmake (and other old modules in the tree)
+# still declare, and it dropped the FindTBB module behind CMP0167. The ASWF
+# CY2026+ images ship CMake 4 while older years ship 3.x, so the flags are
+# added only when cmake --version reports 4/5 and the 3.x configure stays
+# byte-identical.
+POLICY_ARGS=()
+if cmake --version | grep -qE '^cmake version (4|5)\.'; then
+    POLICY_ARGS=(-DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_POLICY_DEFAULT_CMP0167=NEW)
+fi
 cmake -S "${MOONRAY_SRC}" -B "${MOONRAY_BUILD}" \
     -DCMAKE_PREFIX_PATH="${ASWF_INSTALL_PREFIX}" \
     -DCUDAToolkit_ROOT="${CUDA_ROOT}" \
     -DPYTHON_EXECUTABLE=python3 \
     -DBOOST_PYTHON_COMPONENT_NAME="python${ASWF_PYTHON_MAJOR_MINOR_VERSION//./}" \
+    "${POLICY_ARGS[@]}" \
     -DBUILD_QT_APPS=NO
 
 # --- Step 3c: build -------------------------------------------------------
