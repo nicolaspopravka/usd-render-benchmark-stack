@@ -58,6 +58,11 @@ on:
         required: false
         default: ""
         type: string
+      cuda_host_compiler:
+        description: "Path to nvcc's host C++ compiler (empty = nvcc's default). CY2026 needs /usr/bin/g++: the image pairs CUDA 12.9 with gcc-toolset-14, outside nvcc's supported host range."
+        required: false
+        default: ""
+        type: string
 
 permissions:
   contents: read
@@ -102,6 +107,7 @@ jobs:
           WITH_CYCLES_OPENVDB: ${{ inputs.with_cycles_openvdb }}
           MOONRAY_TAG: ${{ inputs.moonray_tag }}
           MOONRAY_REPO: ${{ inputs.moonray_repo }}
+          CUDA_HOST_COMPILER: ${{ inputs.cuda_host_compiler }}
           IMAGE_TAG: ${{ inputs.image_tag }}
           IMAGE_VERSION: ${{ inputs.image_version }}
         run: |
@@ -124,6 +130,7 @@ jobs:
             --build-arg WITH_CYCLES_OPENVDB="$WITH_CYCLES_OPENVDB" \
             --build-arg MOONRAY_TAG="$MOONRAY_TAG" \
             --build-arg MOONRAY_REPO="$MOONRAY_REPO" \
+            --build-arg CUDA_HOST_COMPILER="$CUDA_HOST_COMPILER" \
             --build-arg IMAGE_VERSION="$VERSION" \
             --build-arg BUILD_CREATED="$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             --build-arg BASE_NAME="$BASE_NAME" \

@@ -38,6 +38,7 @@ ARG WITH_CYCLES_OPENVDB="ON"
 
 ARG MOONRAY_REPO=""
 ARG MOONRAY_TAG=""
+ARG CUDA_HOST_COMPILER=""
 
 # TEMPORARY: additions the ASWF base needs before the default build can work.
 # 05 installs the OSL shader includes the conan OSL package omits, so
@@ -77,5 +78,6 @@ RUN if [ -n "${MOONRAY_TAG}" ]; then \
       /usr/local/aswf/moonray-fixers/03-ispc.sh && \
       MOONRAY_REPO_URL="${MOONRAY_REPO}" \
       MOONRAY_TAG="${MOONRAY_TAG}" \
+      CUDA_HOST_COMPILER="${CUDA_HOST_COMPILER}" \
       bash /usr/local/aswf/build_moonray.sh; \
     fi
