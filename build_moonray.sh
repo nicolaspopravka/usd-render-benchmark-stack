@@ -32,9 +32,9 @@
 #                          tops out below gcc-toolset-14, whose <type_traits>
 #                          uses intrinsics CUDA 12.9's cicc rejects
 #                          (OptixGPUPrograms.ptx fails to compile), so the
-#                          CY2026 base passes the system gcc. Empty = let
-#                          nvcc pair with the PATH default (works on the
-#                          CMake-3.x-era years)
+#                          CY2026 recipe passes the g++ of the toolset its
+#                          fixer 04 installs. Empty = let nvcc pair with the
+#                          PATH default (works on the CMake-3.x-era years)
 #   cmake --install --prefix  OpenMoonRay remaps CMAKE_INSTALL_PREFIX=/usr/local
 #                          to <source>/release at configure time
 #
