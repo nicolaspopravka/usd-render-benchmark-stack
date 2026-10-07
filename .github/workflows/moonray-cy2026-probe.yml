@@ -42,6 +42,10 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Host compiler matrix
+        shell: bash
+        run: bash probe/host_compiler_probe.sh
+
       - name: Source build
         shell: bash
         run: bash probe/job_a_source_build.sh
