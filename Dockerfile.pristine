@@ -32,6 +32,7 @@ LABEL org.opencontainers.image.title="usd-render-benchmark: Hydra render delegat
       org.opencontainers.image.base.digest="${BASE_DIGEST}"
 
 ARG CYCLES_TAG=""
+ARG CYCLES_REPO=""
 ARG WITH_CYCLES_OSL="ON"
 ARG WITH_CYCLES_OPENVDB="ON"
 
@@ -51,6 +52,7 @@ RUN if [ -n "${CYCLES_TAG}" ]; then \
       bash -lc 'source /opt/rh/gcc-toolset-${ASWF_DTS_VERSION}/enable && \
                 chmod +x /usr/local/aswf/build_cycles.sh && \
                 CYCLES_TAG="${CYCLES_TAG}" \
+                CYCLES_REPO="${CYCLES_REPO}" \
                 WITH_CYCLES_OSL="${WITH_CYCLES_OSL}" \
                 WITH_CYCLES_OPENVDB="${WITH_CYCLES_OPENVDB}" \
                 /usr/local/aswf/build_cycles.sh'; \

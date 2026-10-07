@@ -23,7 +23,12 @@ on:
         default: ""
         type: string
       cycles_tag:
-        description: "Cycles git tag to build (e.g. v5.0.0). Empty = pure retag."
+        description: "Cycles ref to build: a git tag (e.g. v5.0.0), or a branch name when cycles_repo points at a fork. Empty = pure retag."
+        required: false
+        default: ""
+        type: string
+      cycles_repo:
+        description: "Git URL Cycles is cloned from. Default: upstream Blender cycles. Set when cycles_tag names a ref that exists only on a fork."
         required: false
         default: ""
         type: string
@@ -82,6 +87,7 @@ jobs:
         env:
           BASE_IMAGE: ${{ inputs.base_image }}
           CYCLES_TAG: ${{ inputs.cycles_tag }}
+          CYCLES_REPO: ${{ inputs.cycles_repo }}
           WITH_CYCLES_OSL: ${{ inputs.with_cycles_osl }}
           WITH_CYCLES_OPENVDB: ${{ inputs.with_cycles_openvdb }}
           IMAGE_TAG: ${{ inputs.image_tag }}
@@ -101,6 +107,7 @@ jobs:
             --file Dockerfile.pristine \
             --build-arg BASE_IMAGE="$BASE_IMAGE" \
             --build-arg CYCLES_TAG="$CYCLES_TAG" \
+            --build-arg CYCLES_REPO="$CYCLES_REPO" \
             --build-arg WITH_CYCLES_OSL="$WITH_CYCLES_OSL" \
             --build-arg WITH_CYCLES_OPENVDB="$WITH_CYCLES_OPENVDB" \
             --build-arg IMAGE_VERSION="$VERSION" \

@@ -50,10 +50,16 @@ set -euxo pipefail
 # generators a container build uses.
 #
 # Inputs:
-#   CYCLES_TAG (required)  - Cycles git tag to build, e.g. v5.0.0. Tag-only by
-#                            design (MoonRay/Embree convention); no commit assert.
+#   CYCLES_TAG (required)  - Cycles ref to build: a tag (e.g. v5.0.0), or a
+#                            branch name when CYCLES_REPO points at a fork.
+#                            No commit assert; the resolved SHA is echoed to
+#                            the build log after the clone.
+#   CYCLES_REPO (optional) - Git URL to clone CYCLES_TAG from. Default is the
+#                            upstream Blender cycles repo; set it when the ref
+#                            exists only on a fork. Record the value with any
+#                            recorded result.
 
-readonly CYCLES_URL="https://projects.blender.org/blender/cycles.git"
+readonly CYCLES_URL="${CYCLES_REPO:-https://projects.blender.org/blender/cycles.git}"
 readonly CYCLES_LIB_URL="https://projects.blender.org/blender/lib-linux_x64.git"
 readonly BUILD_ROOT="/opt/build-cycles"
 readonly ASWF_INSTALL_PREFIX="/usr/local"
@@ -81,6 +87,7 @@ readonly CUDAToolkit_ROOT="${CUDAToolkit_ROOT:-${ASWF_INSTALL_PREFIX}/cuda}"
 
 mkdir -p "$BUILD_ROOT"
 git clone --branch "$CYCLES_TAG" --depth 1 "$CYCLES_URL" "$BUILD_ROOT/cycles"
+echo "Cycles source: ${CYCLES_URL} @ ${CYCLES_TAG} = $(git -C "$BUILD_ROOT/cycles" rev-parse HEAD)"
 
 # --- libepoxy -------------------------------------------------------------
 # Cycles' FindEpoxy is REQUIRED whenever the Hydra delegate is built, and ASWF
