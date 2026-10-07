@@ -25,6 +25,13 @@
 #                          NVIDIA-OptiX-SDK-<version> directories. It has no version
 #                          check, and 7.6.0 is required - mcrt_denoise uses
 #                          OptixDenoiserParams::denoiseAlpha, removed in OptiX 8
+#   CUDA_HOST_COMPILER     optional CMAKE_CUDA_HOST_COMPILER: nvcc's supported
+#                          host-gcc range tops out below gcc-toolset-14, whose
+#                          <type_traits> uses intrinsics CUDA 12.9's cicc
+#                          rejects (OptixGPUPrograms.ptx fails to compile), so
+#                          the CY2026 base passes the system gcc. Empty = let
+#                          nvcc pair with the PATH default (works on the
+#                          CMake-3.x-era years)
 #   cmake --install --prefix  OpenMoonRay remaps CMAKE_INSTALL_PREFIX=/usr/local
 #                          to <source>/release at configure time
 #
@@ -77,11 +84,16 @@ POLICY_ARGS=()
 if cmake --version | grep -qE '^cmake version (4|5)\.'; then
     POLICY_ARGS=(-DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_POLICY_DEFAULT_CMP0167=NEW)
 fi
+HOST_ARGS=()
+if [ -n "${CUDA_HOST_COMPILER:-}" ]; then
+    HOST_ARGS=(-DCMAKE_CUDA_HOST_COMPILER="${CUDA_HOST_COMPILER}")
+fi
 cmake -S "${MOONRAY_SRC}" -B "${MOONRAY_BUILD}" \
     -DCMAKE_PREFIX_PATH="${ASWF_INSTALL_PREFIX}" \
     -DCUDAToolkit_ROOT="${CUDA_ROOT}" \
     -DPYTHON_EXECUTABLE=python3 \
     -DBOOST_PYTHON_COMPONENT_NAME="python${ASWF_PYTHON_MAJOR_MINOR_VERSION//./}" \
+    "${HOST_ARGS[@]}" \
     "${POLICY_ARGS[@]}" \
     -DBUILD_QT_APPS=NO
 
