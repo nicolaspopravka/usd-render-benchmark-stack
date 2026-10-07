@@ -80,6 +80,17 @@ These overrides disable Cycles OSL shading and volume support; they are not
 source fixes. ASWF's OpenVDB setting is being discussed in
 [#488](https://github.com/AcademySoftwareFoundation/aswf-docker/issues/488).
 
+To add MoonRay, set `moonray_tag` to the required source ref (a tag such as
+`v2026.29.1`, or a branch name). The source is cloned from `moonray_repo`
+(default: the upstream OpenMoonRay/openmoonray repo); set `moonray_repo` when
+`moonray_tag` names a branch that exists only on a fork, and record the repo,
+the ref and the resolved commit — the build log echoes the exact SHA after the
+clone. Before the build runs the three MoonRay fixers (git-lfs, the deployed
+OpenUSD cmake exports, a runnable ispc); each is a no-op when its gap is not
+present. The build script also detects CMake 4 and adds the policy flags the
+older modules in the OpenMoonRay tree require, so the same script works on
+the CMake 3.x and CMake 4 ASWF lines.
+
 The current Cycles recipe expects a prepared per-year `.2` base when building
 the multi-delegate environments. That base supplies the other delegate
 (MoonRay or Embree, depending on the year), Rez and GNU
