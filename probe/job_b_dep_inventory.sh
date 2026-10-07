@@ -117,7 +117,9 @@ EOS
 fi
 
 echo "--- provision + fixers + build + verify, all inside ${STACK_IMAGE}"
-docker run --rm -v "${PWD}/probe:/probe" -w /probe "${STACK_IMAGE}" bash -lc '
+# Two mounts: the repo root carries fixers/ and build_moonray.sh, probe/
+# carries the probe scripts and the provisioned files.
+docker run --rm -v "${PWD}:/repo" -v "${PWD}/probe:/probe" -w /repo "${STACK_IMAGE}" bash -lc '
 set -euo pipefail
 
 if [ -d /probe/out/provision/usr ]; then
@@ -130,14 +132,14 @@ echo "--- presence matrix after provisioning (STRICT)"
 STRICT=1 bash /probe/presence_check.sh
 
 echo "--- fixers"
-bash /probe/fixers/01-gitlfs-prereqs.sh
-bash /probe/fixers/02-openusd-cmake-exports.sh
-bash /probe/fixers/03-ispc.sh
+bash /repo/fixers/01-gitlfs-prereqs.sh
+bash /repo/fixers/02-openusd-cmake-exports.sh
+bash /repo/fixers/03-ispc.sh
 
 echo "--- build_moonray.sh"
 MOONRAY_REPO_URL="'"${MOONRAY_REPO_URL}"'" \
 MOONRAY_TAG="'"${MOONRAY_TAG}"'" \
-    bash /probe/build_moonray.sh
+    bash /repo/build_moonray.sh
 
 echo "--- verification"
 bash /probe/verify_moonray.sh
