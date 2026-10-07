@@ -36,6 +36,9 @@ ARG CYCLES_REPO=""
 ARG WITH_CYCLES_OSL="ON"
 ARG WITH_CYCLES_OPENVDB="ON"
 
+ARG MOONRAY_REPO=""
+ARG MOONRAY_TAG=""
+
 # TEMPORARY: additions the ASWF base needs before the default build can work.
 # 05 installs the OSL shader includes the conan OSL package omits, so
 # WITH_CYCLES_OSL defaults to ON; select OFF explicitly for bases whose OSL
@@ -56,4 +59,23 @@ RUN if [ -n "${CYCLES_TAG}" ]; then \
                 WITH_CYCLES_OSL="${WITH_CYCLES_OSL}" \
                 WITH_CYCLES_OPENVDB="${WITH_CYCLES_OPENVDB}" \
                 /usr/local/aswf/build_cycles.sh'; \
+    fi
+
+# TEMPORARY: build OpenMoonRay into the pristine stack — drop when the ASWF
+# base images ship OpenMoonRay (ASWF pins ASWF_MOONRAY_VERSION=3.6.0.1; the
+# script rebuilds the tagged release against this base). MOONRAY_TAG empty
+# keeps this a pure retag. The three fixers are MoonRay's own ASWF gaps
+# (git-lfs, the deployed OpenUSD cmake exports, the unrunnable deployed ispc);
+# each is a no-op when its gap is not present.
+COPY fixers/01-gitlfs-prereqs.sh fixers/02-openusd-cmake-exports.sh \
+     fixers/03-ispc.sh /usr/local/aswf/moonray-fixers/
+COPY build_moonray.sh /usr/local/aswf/build_moonray.sh
+RUN if [ -n "${MOONRAY_TAG}" ]; then \
+      chmod +x /usr/local/aswf/moonray-fixers/*.sh /usr/local/aswf/build_moonray.sh && \
+      /usr/local/aswf/moonray-fixers/01-gitlfs-prereqs.sh && \
+      /usr/local/aswf/moonray-fixers/02-openusd-cmake-exports.sh && \
+      /usr/local/aswf/moonray-fixers/03-ispc.sh && \
+      MOONRAY_REPO_URL="${MOONRAY_REPO}" \
+      MOONRAY_TAG="${MOONRAY_TAG}" \
+      bash /usr/local/aswf/build_moonray.sh; \
     fi

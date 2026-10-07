@@ -48,6 +48,16 @@ on:
         options:
           - "ON"
           - "OFF"
+      moonray_tag:
+        description: "OpenMoonRay ref to build: a git tag (e.g. v2026.29.1), or a branch name when moonray_repo points at a fork. Empty = no MoonRay build."
+        required: false
+        default: ""
+        type: string
+      moonray_repo:
+        description: "Git URL OpenMoonRay is cloned from. Default: upstream OpenMoonRay/openmoonray. Set when moonray_tag names a ref that exists only on a fork."
+        required: false
+        default: ""
+        type: string
 
 permissions:
   contents: read
@@ -90,6 +100,8 @@ jobs:
           CYCLES_REPO: ${{ inputs.cycles_repo }}
           WITH_CYCLES_OSL: ${{ inputs.with_cycles_osl }}
           WITH_CYCLES_OPENVDB: ${{ inputs.with_cycles_openvdb }}
+          MOONRAY_TAG: ${{ inputs.moonray_tag }}
+          MOONRAY_REPO: ${{ inputs.moonray_repo }}
           IMAGE_TAG: ${{ inputs.image_tag }}
           IMAGE_VERSION: ${{ inputs.image_version }}
         run: |
@@ -110,6 +122,8 @@ jobs:
             --build-arg CYCLES_REPO="$CYCLES_REPO" \
             --build-arg WITH_CYCLES_OSL="$WITH_CYCLES_OSL" \
             --build-arg WITH_CYCLES_OPENVDB="$WITH_CYCLES_OPENVDB" \
+            --build-arg MOONRAY_TAG="$MOONRAY_TAG" \
+            --build-arg MOONRAY_REPO="$MOONRAY_REPO" \
             --build-arg IMAGE_VERSION="$VERSION" \
             --build-arg BUILD_CREATED="$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             --build-arg BASE_NAME="$BASE_NAME" \
