@@ -65,7 +65,11 @@ image reference. The base or pristine image may therefore use a tag, a digest,
 or both without changing the requested output tag. The same `image_tag` can be
 passed unchanged from the pristine build to the runnable build.
 
-To add Cycles, set `cycles_tag` to the required source tag. The
+To add Cycles, set `cycles_tag` to the required source ref. The source is
+cloned from `cycles_repo` (default: the upstream Blender cycles repo); set
+`cycles_repo` when `cycles_tag` names a branch that exists only on a fork,
+and record the repo, the ref and the resolved commit — the build log echoes
+the exact SHA after the clone. The
 `with_cycles_osl` and `with_cycles_openvdb` inputs both default to `ON`.
 For the tested CY2023/CY2024 bases with Cycles v4.0.2/v4.3.0, select both
 as `OFF`: OSL's compiler lacks its required LLVM runtime libraries
@@ -77,7 +81,8 @@ source fixes. ASWF's OpenVDB setting is being discussed in
 [#488](https://github.com/AcademySoftwareFoundation/aswf-docker/issues/488).
 
 The current Cycles recipe expects a prepared per-year `.2` base when building
-the multi-delegate environments. That base supplies MoonRay, Rez and GNU
+the multi-delegate environments. That base supplies the other delegate
+(MoonRay or Embree, depending on the year), Rez and GNU
 `time`; this Dockerfile does not build or install them. A plain ASWF base is
 not interchangeable with that prepared image. Pin the chosen input digest
 and record its build recipe. The runnable overlay adds plugin search paths,
