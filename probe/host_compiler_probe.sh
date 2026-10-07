@@ -35,7 +35,8 @@ cat > /tmp/hosttest.cu <<"CU"
 #include <type_traits>
 struct S { int a; double b; };
 __global__ void kern(S* s) {
-    static_assert(std::is_nothrow_constructible<S, int, double>::value, "");
+    volatile bool b = std::is_nothrow_constructible<S>::value;
+    (void)b;
     (void)s;
 }
 CU
@@ -46,10 +47,11 @@ try() {
     if "${NVCC}" "$@" -ptx -o /tmp/hosttest.ptx /tmp/hosttest.cu 2>/tmp/hosttest.err; then
         echo "OK    ${label}"
     else
-        echo "FAIL  ${label}: $(tail -1 /tmp/hosttest.err)"
+        echo "FAIL  ${label}:"
+        grep -m2 "error" /tmp/hosttest.err || tail -2 /tmp/hosttest.err
     fi
 }
-try "default (PATH)" ""
+try "default (PATH)"
 for g in /usr/bin/g++ /usr/bin/gcc /opt/rh/gcc-toolset-*/root/usr/bin/g++; do
     [ -x "$g" ] && try "-ccbin ${g}" -ccbin "${g}"
 done

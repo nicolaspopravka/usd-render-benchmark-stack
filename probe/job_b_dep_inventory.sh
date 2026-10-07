@@ -140,14 +140,23 @@ bash /repo/fixers/02-openusd-cmake-exports.sh
 bash /repo/fixers/03-ispc.sh
 
 echo "--- build_moonray.sh"
+BUILD_RC=0
 MOONRAY_REPO_URL="'"${MOONRAY_REPO_URL}"'" \
 MOONRAY_TAG="'"${MOONRAY_TAG}"'" \
 CUDA_HOST_COMPILER="'"${CUDA_HOST_COMPILER}"'" \
-    bash /repo/build_moonray.sh
+    bash /repo/build_moonray.sh || BUILD_RC=$?
 
-echo "--- verification"
-bash /probe/verify_moonray.sh
-echo "=== JOB B PASS"
+if [ "${BUILD_RC}" -eq 0 ]; then
+    echo "--- verification"
+    bash /probe/verify_moonray.sh
+    echo "=== JOB B PASS"
+else
+    echo "--- diagnostics after failed build (BUILD_RC=${BUILD_RC})"
+    echo "passed CUDA_HOST_COMPILER="'"${CUDA_HOST_COMPILER:-<unset>}"'
+    grep -E "^CMAKE_CUDA" /opt/build-moonray/build/CMakeCache.txt 2>/dev/null || echo "(no CMakeCache)"
+    grep -rho -m2 -- "--compiler-bindir=[^ \"]*\|-ccbin=[^ \"]*" /opt/build-moonray/build 2>/dev/null | sort -u | head -3 || echo "(no -ccbin in build tree)"
+    exit "${BUILD_RC}"
+fi
 '
 
 echo "=== Job B finished"
