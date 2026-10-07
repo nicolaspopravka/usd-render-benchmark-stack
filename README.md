@@ -89,10 +89,13 @@ clone. Before the build runs the three MoonRay fixers (git-lfs, the deployed
 OpenUSD cmake exports, a runnable ispc); each is a no-op when its gap is not
 present. The build script also detects CMake 4 and adds the policy flags the
 older modules in the OpenMoonRay tree require, so the same script works on
-the CMake 3.x and CMake 4 ASWF lines. `cuda_host_compiler` optionally points
-nvcc at a supported host gcc — the CY2026 image pairs CUDA 12.9 with
-gcc-toolset-14, outside nvcc's supported host range, so that year passes
-`/usr/bin/g++`; empty keeps nvcc's default pairing.
+the CMake 3.x and CMake 4 ASWF lines. `moonray_toolset` optionally builds
+MoonRay with a different gcc-toolset: the CY2026 image's default
+gcc-toolset-14 is outside CUDA 12.9's supported host range for nvcc and has
+dropped the transitive standard-library includes the MoonRay sources rely
+on, so that year passes `gcc-toolset-12` (installed by a fixer, and used for
+the C/C++ compilers and nvcc's host); empty keeps the image default, which
+is what every CMake-3.x-era year uses.
 
 The current Cycles recipe expects a prepared per-year `.2` base when building
 the multi-delegate environments. That base supplies the other delegate

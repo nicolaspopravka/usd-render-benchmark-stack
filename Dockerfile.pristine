@@ -38,7 +38,7 @@ ARG WITH_CYCLES_OPENVDB="ON"
 
 ARG MOONRAY_REPO=""
 ARG MOONRAY_TAG=""
-ARG CUDA_HOST_COMPILER=""
+ARG MOONRAY_TOOLSET=""
 
 # TEMPORARY: additions the ASWF base needs before the default build can work.
 # 05 installs the OSL shader includes the conan OSL package omits, so
@@ -65,19 +65,26 @@ RUN if [ -n "${CYCLES_TAG}" ]; then \
 # TEMPORARY: build OpenMoonRay into the pristine stack — drop when the ASWF
 # base images ship OpenMoonRay (ASWF pins ASWF_MOONRAY_VERSION=3.6.0.1; the
 # script rebuilds the tagged release against this base). MOONRAY_TAG empty
-# keeps this a pure retag. The three fixers are MoonRay's own ASWF gaps
-# (git-lfs, the deployed OpenUSD cmake exports, the unrunnable deployed ispc);
-# each is a no-op when its gap is not present.
+# keeps this a pure retag. The four fixers are MoonRay's own gaps (git-lfs,
+# the deployed OpenUSD cmake exports, the unrunnable deployed ispc, and — when
+# MOONRAY_TOOLSET is set — the compiler toolset the build runs with); each is
+# a no-op when its gap is not present.
 COPY fixers/01-gitlfs-prereqs.sh fixers/02-openusd-cmake-exports.sh \
-     fixers/03-ispc.sh /usr/local/aswf/moonray-fixers/
+     fixers/03-ispc.sh fixers/04-moonray-toolset.sh /usr/local/aswf/moonray-fixers/
 COPY build_moonray.sh /usr/local/aswf/build_moonray.sh
 RUN if [ -n "${MOONRAY_TAG}" ]; then \
       chmod +x /usr/local/aswf/moonray-fixers/*.sh /usr/local/aswf/build_moonray.sh && \
       /usr/local/aswf/moonray-fixers/01-gitlfs-prereqs.sh && \
       /usr/local/aswf/moonray-fixers/02-openusd-cmake-exports.sh && \
       /usr/local/aswf/moonray-fixers/03-ispc.sh && \
+      MOONRAY_TOOLSET="${MOONRAY_TOOLSET}" \
+      /usr/local/aswf/moonray-fixers/04-moonray-toolset.sh && \
+      if [ -n "${MOONRAY_TOOLSET}" ]; then \
+        export CC="/opt/rh/${MOONRAY_TOOLSET}/root/usr/bin/gcc" \
+               CXX="/opt/rh/${MOONRAY_TOOLSET}/root/usr/bin/g++" \
+               CUDA_HOST_COMPILER="/opt/rh/${MOONRAY_TOOLSET}/root/usr/bin/g++"; \
+      fi; \
       MOONRAY_REPO_URL="${MOONRAY_REPO}" \
       MOONRAY_TAG="${MOONRAY_TAG}" \
-      CUDA_HOST_COMPILER="${CUDA_HOST_COMPILER}" \
       bash /usr/local/aswf/build_moonray.sh; \
     fi
