@@ -14,9 +14,15 @@ cd "$(dirname "$0")/.."
 IMAGE="aswf/ci-moonray:2026.6@sha256:57acaa6ae00e83a9862ae7b0ba1a2cea53dc6855a86d43a7ead9795266d3a7e7"
 MOONRAY_REPO_URL="https://github.com/nicolaspopravka/openmoonray.git"
 MOONRAY_TAG="usd26-moonray"
-# nvcc 12.9 cannot host-compile with gcc-toolset-14; the rocky8 base's
-# system gcc 8.5 is inside the supported range (see host_compiler_probe).
-CUDA_HOST_COMPILER="/usr/bin/g++"
+# The image default (gcc-toolset-14) is twice wrong for MoonRay: nvcc 12.9
+# cannot host-compile with GCC 14, and GCC 13+ dropped the transitive
+# standard-library includes the sources rely on (68 files / 7 submodules at
+# the pins). gcc-toolset-12 answers both; fixer 04 installs it.
+MOONRAY_TOOLSET="gcc-toolset-12"
+TOOLSET_BIN="/opt/rh/${MOONRAY_TOOLSET}/root/usr/bin"
+CC="${TOOLSET_BIN}/gcc"
+CXX="${TOOLSET_BIN}/g++"
+CUDA_HOST_COMPILER="${TOOLSET_BIN}/g++"
 
 mkdir -p probe/out
 LOG="probe/out/job_a_source_build.log"
@@ -32,12 +38,15 @@ echo "--- fixers"
 bash /probe/fixers/01-gitlfs-prereqs.sh
 bash /probe/fixers/02-openusd-cmake-exports.sh
 bash /probe/fixers/03-ispc.sh
+MOONRAY_TOOLSET="'"${MOONRAY_TOOLSET}"'" bash /probe/fixers/04-moonray-toolset.sh
 
 echo "--- dependency presence (informational on this base)"
 bash /probe/presence_check.sh || true
 
 echo "--- build_moonray.sh"
 BUILD_RC=0
+CC="'"${CC}"'" \
+CXX="'"${CXX}"'" \
 MOONRAY_REPO_URL="'"${MOONRAY_REPO_URL}"'" \
 MOONRAY_TAG="'"${MOONRAY_TAG}"'" \
 CUDA_HOST_COMPILER="'"${CUDA_HOST_COMPILER}"'" \
@@ -49,6 +58,7 @@ if [ "${BUILD_RC}" -eq 0 ]; then
     echo "=== JOB A PASS"
 else
     echo "--- diagnostics after failed build (BUILD_RC=${BUILD_RC})"
+    echo "passed CC="'"${CC}"' CXX="'"${CXX}"'
     echo "passed CUDA_HOST_COMPILER="'"${CUDA_HOST_COMPILER:-<unset>}"'
     grep -E "^CMAKE_CUDA" /opt/build-moonray/build/CMakeCache.txt 2>/dev/null || echo "(no CMakeCache)"
     grep -rho -m2 -- "--compiler-bindir=[^ \"]*\|-ccbin=[^ \"]*" /opt/build-moonray/build 2>/dev/null | sort -u | head -3 || echo "(no -ccbin in build tree)"
