@@ -27,8 +27,9 @@ which -a gcc g++ cc c++ 2>/dev/null || true
 for g in /usr/bin/gcc /usr/bin/g++ /opt/rh/gcc-toolset-*/root/usr/bin/gcc /opt/rh/gcc-toolset-*/root/usr/bin/g++; do
     [ -x "$g" ] && echo "$g -> $($g --version 2>/dev/null | head -1)"
 done
-echo "--- nvcc"
-nvcc --version | tail -2
+NVCC="$(command -v nvcc || echo /usr/local/cuda/bin/nvcc)"
+echo "--- nvcc: ${NVCC}"
+"${NVCC}" --version | tail -2
 
 cat > /tmp/hosttest.cu <<"CU"
 #include <type_traits>
@@ -42,7 +43,7 @@ CU
 echo "--- nvcc host-compiler matrix (trivial type_traits TU)"
 try() {
     local label="$1"; shift
-    if nvcc "$@" -ptx -o /tmp/hosttest.ptx /tmp/hosttest.cu 2>/tmp/hosttest.err; then
+    if "${NVCC}" "$@" -ptx -o /tmp/hosttest.ptx /tmp/hosttest.cu 2>/tmp/hosttest.err; then
         echo "OK    ${label}"
     else
         echo "FAIL  ${label}: $(tail -1 /tmp/hosttest.err)"

@@ -27,6 +27,9 @@ STACK_IMAGE="ghcr.io/nicolaspopravka/usd-render-benchmark-stack:2026.3"
 MOON_IMAGE="aswf/ci-moonray:2026.6@sha256:57acaa6ae00e83a9862ae7b0ba1a2cea53dc6855a86d43a7ead9795266d3a7e7"
 MOONRAY_REPO_URL="https://github.com/nicolaspopravka/openmoonray.git"
 MOONRAY_TAG="usd26-moonray"
+# nvcc 12.9 cannot host-compile with gcc-toolset-14; the rocky8 base's
+# system gcc 8.5 is inside the supported range (see host_compiler_probe).
+CUDA_HOST_COMPILER="/usr/bin/g++"
 
 mkdir -p probe/out
 LOG="probe/out/job_b_dep_inventory.log"
@@ -139,6 +142,7 @@ bash /repo/fixers/03-ispc.sh
 echo "--- build_moonray.sh"
 MOONRAY_REPO_URL="'"${MOONRAY_REPO_URL}"'" \
 MOONRAY_TAG="'"${MOONRAY_TAG}"'" \
+CUDA_HOST_COMPILER="'"${CUDA_HOST_COMPILER}"'" \
     bash /repo/build_moonray.sh
 
 echo "--- verification"
