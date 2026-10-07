@@ -90,14 +90,20 @@ if [ -n "${MISSING}" ]; then
             exit 1
         fi
         echo ">>> ${name}"
-        # shellcheck disable=SC2086
-        docker run --rm -i "${MOON_IMAGE}" bash -s -- ${pats} <<'EOS' | tar -xf - -C probe/out/provision
+        # Host only word-splits (read -ra): every glob is expanded inside the
+        # container, where the paths actually exist. Non-existent literals
+        # (an absent optional path) are filtered by the existence check
+        # instead of reaching tar, which is what broke the first attempt.
+        read -ra pat_arr <<< "${pats}"
+        docker run --rm -i "${MOON_IMAGE}" bash -s -- "${pat_arr[@]}" <<'EOS' | tar -xf - -C probe/out/provision
 set -euo pipefail
-shopt -s nullglob
 files=()
 for pat in "$@"; do
-    # unquoted expansion = glob; nullglob drops non-matching patterns
-    files+=(${pat})
+    for f in ${pat}; do          # unquoted = container-side glob expansion
+        if [ -e "${f}" ]; then
+            files+=("${f}")
+        fi
+    done
 done
 if [ "${#files[@]}" -eq 0 ]; then
     echo "NO FILES for patterns: $*" >&2

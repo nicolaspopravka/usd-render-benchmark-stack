@@ -24,7 +24,7 @@ chk() {
 
 # --- MoonRay-only libraries (ASWF conan packages; ci-vfxall does not ship
 # --- these, ci-moonray does; locations cover /usr/local deploy + system paths)
-chk jsoncpp          '[ -e /usr/local/include/jsoncpp/json/json.h ] && compgen -G "/usr/local/lib*/libjsoncpp*"'
+chk jsoncpp          '( [ -e /usr/local/include/jsoncpp/json/json.h ] || [ -e /usr/local/include/json/json.h ] ) && compgen -G "/usr/local/lib*/libjsoncpp*"'
 chk glfw             '[ -e /usr/local/include/GLFW/glfw3.h ] && compgen -G "/usr/local/lib*/libglfw*"'
 chk lua              '( compgen -G "/usr/local/include/lua.h" || compgen -G "/usr/local/include/lua*/lua.h" ) && compgen -G "/usr/local/lib*/liblua*"'
 chk libmicrohttpd    '[ -e /usr/local/include/microhttpd.h ] && compgen -G "/usr/local/lib*/libmicrohttpd*"'
