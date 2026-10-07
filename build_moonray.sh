@@ -25,11 +25,14 @@
 #                          NVIDIA-OptiX-SDK-<version> directories. It has no version
 #                          check, and 7.6.0 is required - mcrt_denoise uses
 #                          OptixDenoiserParams::denoiseAlpha, removed in OptiX 8
-#   CUDA_HOST_COMPILER     optional CMAKE_CUDA_HOST_COMPILER: nvcc's supported
-#                          host-gcc range tops out below gcc-toolset-14, whose
-#                          <type_traits> uses intrinsics CUDA 12.9's cicc
-#                          rejects (OptixGPUPrograms.ptx fails to compile), so
-#                          the CY2026 base passes the system gcc. Empty = let
+#   CUDA_HOST_COMPILER     optional nvcc host C++ compiler for both the CMake
+#                          compiler-id test and the generated nvcc rules
+#                          (CMAKE_CUDA_HOST_COMPILER + --compiler-bindir in
+#                          CMAKE_CUDA_FLAGS). nvcc's supported host-gcc range
+#                          tops out below gcc-toolset-14, whose <type_traits>
+#                          uses intrinsics CUDA 12.9's cicc rejects
+#                          (OptixGPUPrograms.ptx fails to compile), so the
+#                          CY2026 base passes the system gcc. Empty = let
 #                          nvcc pair with the PATH default (works on the
 #                          CMake-3.x-era years)
 #   cmake --install --prefix  OpenMoonRay remaps CMAKE_INSTALL_PREFIX=/usr/local
@@ -86,7 +89,13 @@ if cmake --version | grep -qE '^cmake version (4|5)\.'; then
 fi
 HOST_ARGS=()
 if [ -n "${CUDA_HOST_COMPILER:-}" ]; then
-    HOST_ARGS=(-DCMAKE_CUDA_HOST_COMPILER="${CUDA_HOST_COMPILER}")
+    # Two mechanisms on purpose. CMAKE_CUDA_HOST_COMPILER is what CMake uses
+    # for the compiler-id test; in CMake 4 it is NOT added to the generated
+    # nvcc build rules, which otherwise pair with whatever gcc PATH offers
+    # first (the toolset on ASWF images). CMAKE_CUDA_FLAGS reaches every
+    # real nvcc invocation, so the rules are the part that must carry it.
+    HOST_ARGS=(-DCMAKE_CUDA_HOST_COMPILER="${CUDA_HOST_COMPILER}" \
+               "-DCMAKE_CUDA_FLAGS=--compiler-bindir=${CUDA_HOST_COMPILER}")
 fi
 cmake -S "${MOONRAY_SRC}" -B "${MOONRAY_BUILD}" \
     -DCMAKE_PREFIX_PATH="${ASWF_INSTALL_PREFIX}" \
