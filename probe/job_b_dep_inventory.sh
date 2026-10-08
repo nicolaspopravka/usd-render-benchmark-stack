@@ -68,6 +68,7 @@ patterns_for() {
 
 echo "=== Job B: stack image ${STACK_IMAGE}"
 echo "=== moonray dep source image ${MOON_IMAGE}"
+echo "=== compilers: CC=${CC} CXX=${CXX} CUDA_HOST_COMPILER=${CUDA_HOST_COMPILER} (MOONRAY_TOOLSET=${MOONRAY_TOOLSET})"
 docker pull "${STACK_IMAGE}"
 docker pull "${MOON_IMAGE}"
 
@@ -161,8 +162,6 @@ if [ "${BUILD_RC}" -eq 0 ]; then
     echo "=== JOB B PASS"
 else
     echo "--- diagnostics after failed build (BUILD_RC=${BUILD_RC})"
-    echo "passed CC="'"${CC}"' CXX="'"${CXX}"'
-    echo "passed CUDA_HOST_COMPILER="'"${CUDA_HOST_COMPILER:-<unset>}"'
     grep -E "^CMAKE_CUDA" /opt/build-moonray/build/CMakeCache.txt 2>/dev/null || echo "(no CMakeCache)"
     grep -rho -m2 -- "--compiler-bindir=[^ \"]*\|-ccbin=[^ \"]*" /opt/build-moonray/build 2>/dev/null | sort -u | head -3 || echo "(no -ccbin in build tree)"
     exit "${BUILD_RC}"

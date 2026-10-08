@@ -30,6 +30,7 @@ exec > >(tee "${LOG}") 2>&1
 
 echo "=== Job A: source build on ${IMAGE}"
 echo "=== source: ${MOONRAY_REPO_URL} @ ${MOONRAY_TAG}"
+echo "=== compilers: CC=${CC} CXX=${CXX} CUDA_HOST_COMPILER=${CUDA_HOST_COMPILER} (MOONRAY_TOOLSET=${MOONRAY_TOOLSET})"
 docker pull "${IMAGE}"
 
 docker run --rm -v "${PWD}:/probe" -w /probe "${IMAGE}" bash -lc '
@@ -58,8 +59,6 @@ if [ "${BUILD_RC}" -eq 0 ]; then
     echo "=== JOB A PASS"
 else
     echo "--- diagnostics after failed build (BUILD_RC=${BUILD_RC})"
-    echo "passed CC="'"${CC}"' CXX="'"${CXX}"'
-    echo "passed CUDA_HOST_COMPILER="'"${CUDA_HOST_COMPILER:-<unset>}"'
     grep -E "^CMAKE_CUDA" /opt/build-moonray/build/CMakeCache.txt 2>/dev/null || echo "(no CMakeCache)"
     grep -rho -m2 -- "--compiler-bindir=[^ \"]*\|-ccbin=[^ \"]*" /opt/build-moonray/build 2>/dev/null | sort -u | head -3 || echo "(no -ccbin in build tree)"
     exit "${BUILD_RC}"
