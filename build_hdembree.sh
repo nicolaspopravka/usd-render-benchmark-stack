@@ -28,9 +28,6 @@
 # hdEmbree enabled.
 set -euo pipefail
 
-source "$(dirname "${BASH_SOURCE[0]}")/build-support/vfx-cxx.sh"
-vfx_cxx_init embree
-
 # --- Required input -------------------------------------------------------
 OPENUSD_TAG="${OPENUSD_TAG:?OPENUSD_TAG required, e.g. v26.08}"
 
@@ -41,20 +38,22 @@ BUILD_JOBS="${BUILD_JOBS:-$(nproc)}"
 
 CONSUMER_DIR="/usr/local/aswf/cmake/hdembree-consumer"
 
-BUILD_ROOT="$(mktemp -d)"
-trap 'vfx_finish "$?"; rm -rf "${BUILD_ROOT}"' EXIT
+BUILD_ROOT="${HDEMBREE_BUILD_ROOT:-/opt/build-hdembree}"
 OPENUSD_SRC="${BUILD_ROOT}/openusd"
 OPENUSD_BUILD="${BUILD_ROOT}/build"
 
 # --- source ---------------------------------------------------------------
-vfx_run checkout git clone --branch "${OPENUSD_TAG}" --depth 1 \
+git clone --branch "${OPENUSD_TAG}" --depth 1 \
     "${OPENUSD_REPO_URL}" "${OPENUSD_SRC}"
-vfx_record_source "${OPENUSD_SRC}"
+git -C "${OPENUSD_SRC}" rev-parse HEAD   # recorded for evidence; not asserted
 
 # --- configure ------------------------------------------------------------
 # CMAKE_PREFIX_PATH lets find_package(pxr) resolve /usr/local/pxrConfig.cmake.
-vfx_configure "${OPENUSD_BUILD}" cmake -S "${CONSUMER_DIR}" -B "${OPENUSD_BUILD}" \
-    "${VFX_CMAKE_ARGS[@]}" \
+cmake -S "${CONSUMER_DIR}" -B "${OPENUSD_BUILD}" \
+    -DCMAKE_CXX_STANDARD="${VFX_CXX_STANDARD:?Select the annual C++ standard in the image environment}" \
+    -DCMAKE_CXX_STANDARD_REQUIRED=ON \
+    -DCMAKE_CXX_EXTENSIONS=OFF \
+    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
     -DCMAKE_PREFIX_PATH="${CMAKE_INSTALL_PREFIX}" \
     -DHDEMBREE_SOURCE_DIR="${OPENUSD_SRC}/pxr/imaging/plugin/hdEmbree" \
     -DUSD_INCLUDE_DIR="${CMAKE_INSTALL_PREFIX}/include" \
@@ -63,13 +62,9 @@ vfx_configure "${OPENUSD_BUILD}" cmake -S "${CONSUMER_DIR}" -B "${OPENUSD_BUILD}
     -DCMAKE_INSTALL_RPATH="${CMAKE_INSTALL_PREFIX}/lib"
 
 # --- build ----------------------------------------------------------------
-vfx_verify_commands "${OPENUSD_BUILD}"
-vfx_run compile-link cmake --build "${OPENUSD_BUILD}" --verbose --parallel "${BUILD_JOBS}"
+cmake --build "${OPENUSD_BUILD}" --verbose --parallel "${BUILD_JOBS}"
 
 # --- install --------------------------------------------------------------
-vfx_run install cmake --install "${OPENUSD_BUILD}"
-PYTHONPATH="/usr/local/lib/python${PYTHONPATH:+:$PYTHONPATH}" \
-    vfx_check_plugin HdEmbreeRendererPlugin
-vfx_complete
+cmake --install "${OPENUSD_BUILD}"
 
 echo "hdEmbree ${OPENUSD_TAG} installed under ${CMAKE_INSTALL_PREFIX}/plugin/usd"

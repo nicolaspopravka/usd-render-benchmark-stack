@@ -29,4 +29,11 @@ ARG OPENUSD_TAG
 ARG VFX_PLATFORM_YEAR
 COPY build-support/ /usr/local/aswf/build-support/
 RUN VFX_PLATFORM_YEAR="${VFX_PLATFORM_YEAR}" VFX_BASE_IMAGE="${BASE_IMAGE}" \
-    OPENUSD_TAG="${OPENUSD_TAG}" /usr/local/aswf/build_hdembree.sh
+    OPENUSD_TAG="${OPENUSD_TAG}" \
+    bash -euc 'source /usr/local/aswf/build-support/vfx-cxx.sh; \
+               vfx_cxx_environment; \
+               PYTHONPATH="/usr/local/lib/python${PYTHONPATH:+:$PYTHONPATH}" \
+               bash /usr/local/aswf/build-support/validate-build.sh embree \
+                 /opt/build-hdembree/openusd /opt/build-hdembree/build HdEmbreeRendererPlugin \
+                 bash -x /usr/local/aswf/build_hdembree.sh; \
+               rm -rf /opt/build-hdembree'
