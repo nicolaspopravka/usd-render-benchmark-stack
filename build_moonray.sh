@@ -97,7 +97,14 @@ if [ -n "${CUDA_HOST_COMPILER:-}" ]; then
     HOST_ARGS=(-DCMAKE_CUDA_HOST_COMPILER="${CUDA_HOST_COMPILER}" \
                "-DCMAKE_CUDA_FLAGS=--compiler-bindir=${CUDA_HOST_COMPILER}")
 fi
+CXX_ARGS=()
+if [ -n "${VFX_CXX_STANDARD:-}" ]; then
+    CXX_ARGS=(-DCMAKE_CXX_STANDARD="$VFX_CXX_STANDARD"
+              -DCMAKE_CXX_STANDARD_REQUIRED=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON)
+fi
+
 cmake -S "${MOONRAY_SRC}" -B "${MOONRAY_BUILD}" \
+    ${CXX_ARGS[@]+"${CXX_ARGS[@]}"} \
     -DCMAKE_PREFIX_PATH="${ASWF_INSTALL_PREFIX}" \
     -DCUDAToolkit_ROOT="${CUDA_ROOT}" \
     -DPYTHON_EXECUTABLE=python3 \
@@ -111,7 +118,5 @@ cmake --build "${MOONRAY_BUILD}" --parallel "${BUILD_JOBS}"
 
 # --- Step 3d: install -----------------------------------------------------
 cmake --install "${MOONRAY_BUILD}" --prefix "${CMAKE_INSTALL_PREFIX}"
-
-rm -rf "${BUILD_ROOT}"
 
 echo "OpenMoonRay ${MOONRAY_TAG} installed under ${CMAKE_INSTALL_PREFIX}"

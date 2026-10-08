@@ -135,10 +135,17 @@ else
   echo "Using distro libepoxy (no lib/linux* submodule in $CYCLES_TAG)"
 fi
 
+CXX_ARGS=()
+if [ -n "${VFX_CXX_STANDARD:-}" ]; then
+    CXX_ARGS=(-DCMAKE_CXX_STANDARD="$VFX_CXX_STANDARD"
+              -DCMAKE_CXX_STANDARD_REQUIRED=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON)
+fi
+
 (
   cd "$BUILD_ROOT/cycles"
 
   cmake -B ./build \
+    ${CXX_ARGS[@]+"${CXX_ARGS[@]}"} \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX="$CYCLES_INSTALL_PREFIX" \
     -DPXR_ROOT="$ASWF_INSTALL_PREFIX" \
@@ -156,5 +163,3 @@ fi
   cmake --build ./build -j"$(nproc)"
   cmake --install ./build
 )
-
-rm -rf "$BUILD_ROOT"
