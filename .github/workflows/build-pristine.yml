@@ -59,7 +59,7 @@ on:
         default: ""
         type: string
       moonray_toolset:
-        description: "Optional gcc-toolset (e.g. gcc-toolset-12) MoonRay builds with. Empty = the image's default compiler. CY2026 needs it: the default gcc-toolset-14 is outside CUDA 12.9's host range and dropped the transitive includes MoonRay relies on."
+        description: "Optional gcc-toolset (e.g. gcc-toolset-12) MoonRay builds with. Empty = the image's default compiler. CY2026/CY2027 pass gcc-toolset-12: on CY2026 the default gcc-toolset-14 is outside CUDA 12.9's host range, and on both years GCC 13+ has dropped the transitive includes MoonRay relies on."
         required: false
         default: ""
         type: string

@@ -85,17 +85,19 @@ To add MoonRay, set `moonray_tag` to the required source ref (a tag such as
 (default: the upstream OpenMoonRay/openmoonray repo); set `moonray_repo` when
 `moonray_tag` names a branch that exists only on a fork, and record the repo,
 the ref and the resolved commit — the build log echoes the exact SHA after the
-clone. Before the build runs the three MoonRay fixers (git-lfs, the deployed
-OpenUSD cmake exports, a runnable ispc); each is a no-op when its gap is not
-present. The build script also detects CMake 4 and adds the policy flags the
+clone. Before the build run the MoonRay fixers (git-lfs, the deployed
+OpenUSD cmake exports, a runnable ispc, and — when `moonray_toolset` is
+set — the toolset itself); each is a no-op when its gap is not present.
+The build script also detects CMake 4 and adds the policy flags the
 older modules in the OpenMoonRay tree require, so the same script works on
 the CMake 3.x and CMake 4 ASWF lines. `moonray_toolset` optionally builds
-MoonRay with a different gcc-toolset: the CY2026 image's default
-gcc-toolset-14 is outside CUDA 12.9's supported host range for nvcc and has
-dropped the transitive standard-library includes the MoonRay sources rely
-on, so that year passes `gcc-toolset-12` (installed by a fixer, and used for
-the C/C++ compilers and nvcc's host); empty keeps the image default, which
-is what every CMake-3.x-era year uses.
+MoonRay with a different gcc-toolset: on CY2026 the image's default
+gcc-toolset-14 is outside CUDA 12.9's supported host range for nvcc, and
+on both the CY2026 and CY2027 lines GCC 13+ has dropped the transitive
+standard-library includes the MoonRay sources rely on, so those years pass
+`gcc-toolset-12` (installed by a fixer, and used for the C/C++ compilers
+and nvcc's host); empty keeps the image default, which is what every
+CMake-3.x-era year uses.
 
 The current Cycles recipe expects a prepared per-year `.2` base when building
 the multi-delegate environments. That base supplies the other delegate
