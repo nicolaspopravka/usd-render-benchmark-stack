@@ -13,6 +13,16 @@ on:
         description: "Base image to build from, e.g. aswf/ci-vfxall:2027@sha256:..."
         required: true
         type: string
+      vfx_platform_year:
+        description: "Annual C++ target for delegate builds (not a whole-image compliance claim)."
+        required: true
+        type: choice
+        options:
+          - "2023"
+          - "2024"
+          - "2025"
+          - "2026"
+          - "2027"
       image_tag:
         description: "Tag for the published stack image, e.g. 2027"
         required: true
@@ -59,7 +69,7 @@ on:
         default: ""
         type: string
       moonray_toolset:
-        description: "Optional gcc-toolset (e.g. gcc-toolset-12) MoonRay builds with. Empty = the image's default compiler. CY2026 needs it: the default gcc-toolset-14 is outside CUDA 12.9's host range and dropped the transitive includes MoonRay relies on."
+        description: "Optional matching annual gcc-toolset for MoonRay and its CUDA host compiler. Empty = annual host settings; conflicting toolset overrides fail before provisioning."
         required: false
         default: ""
         type: string
@@ -101,6 +111,7 @@ jobs:
       - name: Build + push pristine
         env:
           BASE_IMAGE: ${{ inputs.base_image }}
+          VFX_PLATFORM_YEAR: ${{ inputs.vfx_platform_year }}
           CYCLES_TAG: ${{ inputs.cycles_tag }}
           CYCLES_REPO: ${{ inputs.cycles_repo }}
           WITH_CYCLES_OSL: ${{ inputs.with_cycles_osl }}
@@ -121,9 +132,10 @@ jobs:
                  case "$host" in *.*|*:*|localhost) ;; *) BASE_NAME="docker.io/$BASE_NAME" ;; esac ;;
             *)   BASE_NAME="docker.io/$BASE_NAME" ;;
           esac
-          docker buildx build --provenance=false \
+          docker buildx build --progress=plain --provenance=false \
             --file Dockerfile.pristine \
             --build-arg BASE_IMAGE="$BASE_IMAGE" \
+            --build-arg VFX_PLATFORM_YEAR="$VFX_PLATFORM_YEAR" \
             --build-arg CYCLES_TAG="$CYCLES_TAG" \
             --build-arg CYCLES_REPO="$CYCLES_REPO" \
             --build-arg WITH_CYCLES_OSL="$WITH_CYCLES_OSL" \

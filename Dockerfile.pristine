@@ -9,6 +9,8 @@
 ARG BASE_IMAGE
 
 FROM ${BASE_IMAGE}
+ARG BASE_IMAGE
+ARG VFX_PLATFORM_YEAR
 
 # Image identity, overriding the ASWF base's labels, which we inherit. version
 # is a build arg because the base's value is the ASWF version, not ours.
@@ -51,10 +53,12 @@ COPY fixers/ /usr/local/aswf/cycles-fixers/
 RUN /usr/local/aswf/cycles-fixers/05-osl-shader-includes.sh
 
 COPY build_cycles.sh /usr/local/aswf/build_cycles.sh
+COPY build-support/ /usr/local/aswf/build-support/
 COPY cmake/import_openusd_dependencies.cmake /usr/local/share/cycles/import_openusd_dependencies.cmake
 RUN if [ -n "${CYCLES_TAG}" ]; then \
-      bash -lc 'source /opt/rh/gcc-toolset-${ASWF_DTS_VERSION}/enable && \
-                chmod +x /usr/local/aswf/build_cycles.sh && \
+      bash -lc 'chmod +x /usr/local/aswf/build_cycles.sh && \
+                VFX_PLATFORM_YEAR="${VFX_PLATFORM_YEAR}" \
+                VFX_BASE_IMAGE="${BASE_IMAGE}" \
                 CYCLES_TAG="${CYCLES_TAG}" \
                 CYCLES_REPO="${CYCLES_REPO}" \
                 WITH_CYCLES_OSL="${WITH_CYCLES_OSL}" \
@@ -72,6 +76,12 @@ RUN if [ -n "${CYCLES_TAG}" ]; then \
 COPY fixers/01-gitlfs-prereqs.sh fixers/02-openusd-cmake-exports.sh \
      fixers/03-ispc.sh fixers/04-moonray-toolset.sh /usr/local/aswf/moonray-fixers/
 COPY build_moonray.sh /usr/local/aswf/build_moonray.sh
+# Reject a conflicting host toolset before the existing provisioning fixer runs.
+RUN if [ -n "${MOONRAY_TAG}" ]; then \
+      VFX_PLATFORM_YEAR="${VFX_PLATFORM_YEAR}" MOONRAY_TOOLSET="${MOONRAY_TOOLSET}" \
+      bash -euc 'source /usr/local/aswf/build-support/vfx-cxx.sh; \
+                 vfx_select_year; vfx_check_requested_toolset "${MOONRAY_TOOLSET}"'; \
+    fi
 RUN if [ -n "${MOONRAY_TAG}" ]; then \
       chmod +x /usr/local/aswf/moonray-fixers/*.sh /usr/local/aswf/build_moonray.sh && \
       /usr/local/aswf/moonray-fixers/01-gitlfs-prereqs.sh && \
@@ -84,6 +94,8 @@ RUN if [ -n "${MOONRAY_TAG}" ]; then \
                CXX="/opt/rh/${MOONRAY_TOOLSET}/root/usr/bin/g++" \
                CUDA_HOST_COMPILER="/opt/rh/${MOONRAY_TOOLSET}/root/usr/bin/g++"; \
       fi; \
+      VFX_PLATFORM_YEAR="${VFX_PLATFORM_YEAR}" VFX_BASE_IMAGE="${BASE_IMAGE}" \
+      MOONRAY_TOOLSET="${MOONRAY_TOOLSET}" \
       MOONRAY_REPO_URL="${MOONRAY_REPO}" \
       MOONRAY_TAG="${MOONRAY_TAG}" \
       bash /usr/local/aswf/build_moonray.sh; \
