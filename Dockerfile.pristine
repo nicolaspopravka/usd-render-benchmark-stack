@@ -25,4 +25,11 @@ RUN /usr/local/aswf/moonray-fixers/04-openvdb-config.sh
 COPY cmake/hdembree-consumer /usr/local/aswf/cmake/hdembree-consumer
 COPY build_hdembree.sh /usr/local/aswf/build_hdembree.sh
 ARG OPENUSD_TAG
-RUN OPENUSD_TAG="${OPENUSD_TAG}" /usr/local/aswf/build_hdembree.sh
+ARG CXX_CONFORMANCE="off"
+COPY build-support/ /usr/local/aswf/build-support/
+RUN OPENUSD_TAG="${OPENUSD_TAG}" \
+    bash -ec 'source /usr/local/aswf/build-support/vfx-cxx.sh; \
+              vfx_cxx_environment; \
+              bash /usr/local/aswf/build_hdembree.sh; \
+              vfx_cxx_check /opt/build-hdembree/build; \
+              rm -rf /opt/build-hdembree'

@@ -38,8 +38,7 @@ BUILD_JOBS="${BUILD_JOBS:-$(nproc)}"
 
 CONSUMER_DIR="/usr/local/aswf/cmake/hdembree-consumer"
 
-BUILD_ROOT="$(mktemp -d)"
-trap 'rm -rf "${BUILD_ROOT}"' EXIT
+BUILD_ROOT="${HDEMBREE_BUILD_ROOT:-/opt/build-hdembree}"
 OPENUSD_SRC="${BUILD_ROOT}/openusd"
 OPENUSD_BUILD="${BUILD_ROOT}/build"
 
@@ -50,7 +49,14 @@ git -C "${OPENUSD_SRC}" rev-parse HEAD   # recorded for evidence; not asserted
 
 # --- configure ------------------------------------------------------------
 # CMAKE_PREFIX_PATH lets find_package(pxr) resolve /usr/local/pxrConfig.cmake.
+CXX_ARGS=()
+if [ -n "${VFX_CXX_STANDARD:-}" ]; then
+    CXX_ARGS=(-DCMAKE_CXX_STANDARD="$VFX_CXX_STANDARD"
+              -DCMAKE_CXX_STANDARD_REQUIRED=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON)
+fi
+
 cmake -S "${CONSUMER_DIR}" -B "${OPENUSD_BUILD}" \
+    ${CXX_ARGS[@]+"${CXX_ARGS[@]}"} \
     -DCMAKE_PREFIX_PATH="${CMAKE_INSTALL_PREFIX}" \
     -DHDEMBREE_SOURCE_DIR="${OPENUSD_SRC}/pxr/imaging/plugin/hdEmbree" \
     -DUSD_INCLUDE_DIR="${CMAKE_INSTALL_PREFIX}/include" \

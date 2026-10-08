@@ -13,6 +13,18 @@ on:
         description: "Base image to build from, e.g. aswf/ci-vfxall:2027@sha256:..."
         required: true
         type: string
+      cxx_conformance:
+        description: "Optional annual host C++ profile; off preserves existing compiler choices and defaults."
+        required: false
+        default: "off"
+        type: choice
+        options:
+          - "off"
+          - "2023"
+          - "2024"
+          - "2025"
+          - "2026"
+          - "2027"
       image_tag:
         description: "Tag for the published stack image, e.g. 2027.2"
         required: true
@@ -59,12 +71,14 @@ jobs:
       - name: Build + push pristine
         env:
           BASE_IMAGE: ${{ inputs.base_image }}
+          CXX_CONFORMANCE: ${{ inputs.cxx_conformance }}
           OPENUSD_TAG: ${{ inputs.openusd_tag }}
         run: |
           set -o pipefail
-          docker buildx build --provenance=false \
+          docker buildx build --progress=plain --provenance=false \
             --file Dockerfile.pristine \
             --build-arg BASE_IMAGE="$BASE_IMAGE" \
+            --build-arg CXX_CONFORMANCE="${CXX_CONFORMANCE:-off}" \
             --build-arg OPENUSD_TAG="$OPENUSD_TAG" \
             --tag "$PRISTINE_IMAGE" \
             --metadata-file .buildx-metadata.json \
