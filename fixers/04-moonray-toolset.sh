@@ -33,3 +33,26 @@ if [ ! -x "${GXX}" ]; then
 fi
 test -x "${GXX}"
 echo "${MOONRAY_TOOLSET} ready: $("${GXX}" --version | head -1)"
+
+# -latomic: the toolset's compiler must be able to link it. The minimal
+# toolset RPM set does not ship the unversioned link (probe run
+# 37685853941: ld cannot find -latomic while linking the test binaries),
+# so provide it from the devel package if one exists, else as a symlink
+# to the base's runtime library.
+if [ "$("${GXX}" -print-file-name=libatomic.so)" = "libatomic.so" ]; then
+    dnf -y install --quiet libatomic libatomic-devel 2>/dev/null || \
+        dnf -y install --quiet libatomic 2>/dev/null || true
+fi
+if [ "$("${GXX}" -print-file-name=libatomic.so)" = "libatomic.so" ]; then
+    for d in "/opt/rh/${MOONRAY_TOOLSET}/root/usr/lib64" /usr/lib64; do
+        if [ -e "${d}/libatomic.so.1" ] && [ ! -e "${d}/libatomic.so" ]; then
+            ln -s libatomic.so.1 "${d}/libatomic.so"
+        fi
+    done
+fi
+ATOMIC="$("${GXX}" -print-file-name=libatomic.so)"
+if [ "${ATOMIC}" = "libatomic.so" ]; then
+    echo "FATAL: no linkable libatomic.so for ${MOONRAY_TOOLSET}" >&2
+    exit 1
+fi
+echo "libatomic: ${ATOMIC}"
