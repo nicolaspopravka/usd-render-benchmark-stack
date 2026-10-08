@@ -28,6 +28,9 @@
 # hdEmbree enabled.
 set -euo pipefail
 
+source "$(dirname "${BASH_SOURCE[0]}")/build-support/vfx-cxx.sh"
+vfx_cxx_init embree
+
 # --- Required input -------------------------------------------------------
 OPENUSD_TAG="${OPENUSD_TAG:?OPENUSD_TAG required, e.g. v26.08}"
 
@@ -39,18 +42,19 @@ BUILD_JOBS="${BUILD_JOBS:-$(nproc)}"
 CONSUMER_DIR="/usr/local/aswf/cmake/hdembree-consumer"
 
 BUILD_ROOT="$(mktemp -d)"
-trap 'rm -rf "${BUILD_ROOT}"' EXIT
+trap 'vfx_finish "$?"; rm -rf "${BUILD_ROOT}"' EXIT
 OPENUSD_SRC="${BUILD_ROOT}/openusd"
 OPENUSD_BUILD="${BUILD_ROOT}/build"
 
 # --- source ---------------------------------------------------------------
-git clone --branch "${OPENUSD_TAG}" --depth 1 \
+vfx_run checkout git clone --branch "${OPENUSD_TAG}" --depth 1 \
     "${OPENUSD_REPO_URL}" "${OPENUSD_SRC}"
-git -C "${OPENUSD_SRC}" rev-parse HEAD   # recorded for evidence; not asserted
+vfx_record_source "${OPENUSD_SRC}"
 
 # --- configure ------------------------------------------------------------
 # CMAKE_PREFIX_PATH lets find_package(pxr) resolve /usr/local/pxrConfig.cmake.
-cmake -S "${CONSUMER_DIR}" -B "${OPENUSD_BUILD}" \
+vfx_configure "${OPENUSD_BUILD}" cmake -S "${CONSUMER_DIR}" -B "${OPENUSD_BUILD}" \
+    "${VFX_CMAKE_ARGS[@]}" \
     -DCMAKE_PREFIX_PATH="${CMAKE_INSTALL_PREFIX}" \
     -DHDEMBREE_SOURCE_DIR="${OPENUSD_SRC}/pxr/imaging/plugin/hdEmbree" \
     -DUSD_INCLUDE_DIR="${CMAKE_INSTALL_PREFIX}/include" \
@@ -59,9 +63,13 @@ cmake -S "${CONSUMER_DIR}" -B "${OPENUSD_BUILD}" \
     -DCMAKE_INSTALL_RPATH="${CMAKE_INSTALL_PREFIX}/lib"
 
 # --- build ----------------------------------------------------------------
-cmake --build "${OPENUSD_BUILD}" --parallel "${BUILD_JOBS}"
+vfx_verify_commands "${OPENUSD_BUILD}"
+vfx_run compile-link cmake --build "${OPENUSD_BUILD}" --verbose --parallel "${BUILD_JOBS}"
 
 # --- install --------------------------------------------------------------
-cmake --install "${OPENUSD_BUILD}"
+vfx_run install cmake --install "${OPENUSD_BUILD}"
+PYTHONPATH="/usr/local/lib/python${PYTHONPATH:+:$PYTHONPATH}" \
+    vfx_check_plugin HdEmbreeRendererPlugin
+vfx_complete
 
 echo "hdEmbree ${OPENUSD_TAG} installed under ${CMAKE_INSTALL_PREFIX}/plugin/usd"
