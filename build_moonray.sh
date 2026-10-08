@@ -42,9 +42,6 @@
 # Dockerfile.pristine, driven by that evidence.
 set -euo pipefail
 
-source "$(dirname "${BASH_SOURCE[0]}")/build-support/vfx-cxx.sh"
-vfx_cxx_init moonray
-
 # --- Required input -------------------------------------------------------
 MOONRAY_TAG="${MOONRAY_TAG:?MOONRAY_TAG required, e.g. v2026.29.1}"
 
@@ -74,10 +71,10 @@ MOONRAY_BUILD="${BUILD_ROOT}/build"
 
 # --- Step 3a: source ------------------------------------------------------
 # The superproject references 19 submodules; some track files via LFS.
-vfx_run checkout git clone --branch "${MOONRAY_TAG}" --recurse-submodules \
+git clone --branch "${MOONRAY_TAG}" --recurse-submodules \
     "${MOONRAY_REPO_URL}" "${MOONRAY_SRC}"
-vfx_record_source "${MOONRAY_SRC}"
-vfx_run lfs git -C "${MOONRAY_SRC}" lfs pull
+git -C "${MOONRAY_SRC}" rev-parse HEAD   # recorded for evidence; not asserted
+git -C "${MOONRAY_SRC}" lfs pull
 
 # --- Step 3b: configure ---------------------------------------------------
 # CMake 4 removed compatibility with cmake_minimum_required() < 3.5, which
@@ -100,8 +97,11 @@ if [ -n "${CUDA_HOST_COMPILER:-}" ]; then
     HOST_ARGS=(-DCMAKE_CUDA_HOST_COMPILER="${CUDA_HOST_COMPILER}" \
                "-DCMAKE_CUDA_FLAGS=--compiler-bindir=${CUDA_HOST_COMPILER}")
 fi
-vfx_configure "${MOONRAY_BUILD}" cmake -S "${MOONRAY_SRC}" -B "${MOONRAY_BUILD}" \
-    "${VFX_CMAKE_ARGS[@]}" \
+cmake -S "${MOONRAY_SRC}" -B "${MOONRAY_BUILD}" \
+    -DCMAKE_CXX_STANDARD="${VFX_CXX_STANDARD:?Select the annual C++ standard in the image environment}" \
+    -DCMAKE_CXX_STANDARD_REQUIRED=ON \
+    -DCMAKE_CXX_EXTENSIONS=OFF \
+    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
     -DCMAKE_PREFIX_PATH="${ASWF_INSTALL_PREFIX}" \
     -DCUDAToolkit_ROOT="${CUDA_ROOT}" \
     -DPYTHON_EXECUTABLE=python3 \
@@ -111,16 +111,9 @@ vfx_configure "${MOONRAY_BUILD}" cmake -S "${MOONRAY_SRC}" -B "${MOONRAY_BUILD}"
     -DBUILD_QT_APPS=NO
 
 # --- Step 3c: build -------------------------------------------------------
-vfx_verify_commands "${MOONRAY_BUILD}"
-vfx_run compile-link cmake --build "${MOONRAY_BUILD}" --verbose --parallel "${BUILD_JOBS}"
+cmake --build "${MOONRAY_BUILD}" --verbose --parallel "${BUILD_JOBS}"
 
 # --- Step 3d: install -----------------------------------------------------
-vfx_run install cmake --install "${MOONRAY_BUILD}" --prefix "${CMAKE_INSTALL_PREFIX}"
-PYTHONPATH="/usr/local/lib/python${PYTHONPATH:+:$PYTHONPATH}" \
-PXR_PLUGINPATH_NAME="${CMAKE_INSTALL_PREFIX}/plugin/pxr${PXR_PLUGINPATH_NAME:+:$PXR_PLUGINPATH_NAME}" \
-    vfx_check_plugin HdMoonrayRendererPlugin
-vfx_complete
-
-rm -rf "${BUILD_ROOT}"
+cmake --install "${MOONRAY_BUILD}" --prefix "${CMAKE_INSTALL_PREFIX}"
 
 echo "OpenMoonRay ${MOONRAY_TAG} installed under ${CMAKE_INSTALL_PREFIX}"

@@ -1,15 +1,12 @@
 #!/usr/bin/env bash
 set -euxo pipefail
 
-source "$(dirname "${BASH_SOURCE[0]}")/build-support/vfx-cxx.sh"
-vfx_cxx_init cycles
-
 # Canonical minimal Cycles Hydra build.
 #
 # Cycles is not an ASWF project and no ASWF image ships one: it installs
 # self-contained under /opt/cycles, activated via PXR_PLUGINPATH_NAME in the
-# runnable. The shared helper selects the annual ASWF GCC toolset and verifies
-# effective host C++ settings before compilation.
+# runnable. Dockerfile.pristine wraps this script in the cycle year's ASWF
+# gcc-toolset.
 #
 # Delegate options are upstream defaults except the three below, each because the
 # ASWF base cannot supply the dependency:
@@ -89,8 +86,7 @@ readonly CUDAToolkit_ROOT="${CUDAToolkit_ROOT:-${ASWF_INSTALL_PREFIX}/cuda}"
 : "${CYCLES_TAG:?CYCLES_TAG is required}"
 
 mkdir -p "$BUILD_ROOT"
-vfx_run checkout git clone --branch "$CYCLES_TAG" --depth 1 "$CYCLES_URL" "$BUILD_ROOT/cycles"
-vfx_record_source "$BUILD_ROOT/cycles"
+git clone --branch "$CYCLES_TAG" --depth 1 "$CYCLES_URL" "$BUILD_ROOT/cycles"
 echo "Cycles source: ${CYCLES_URL} @ ${CYCLES_TAG} = $(git -C "$BUILD_ROOT/cycles" rev-parse HEAD)"
 
 # --- libepoxy -------------------------------------------------------------
@@ -142,8 +138,11 @@ fi
 (
   cd "$BUILD_ROOT/cycles"
 
-  vfx_configure "$BUILD_ROOT/cycles/build" cmake -B ./build \
-    "${VFX_CMAKE_ARGS[@]}" \
+  cmake -B ./build \
+    -DCMAKE_CXX_STANDARD="${VFX_CXX_STANDARD:?Select the annual C++ standard in the image environment}" \
+    -DCMAKE_CXX_STANDARD_REQUIRED=ON \
+    -DCMAKE_CXX_EXTENSIONS=OFF \
+    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX="$CYCLES_INSTALL_PREFIX" \
     -DPXR_ROOT="$ASWF_INSTALL_PREFIX" \
@@ -158,14 +157,6 @@ fi
     -DWITH_CYCLES_OPENIMAGEDENOISE=OFF \
     -DWITH_LIBS_PRECOMPILED=OFF
 
-  vfx_verify_commands "$BUILD_ROOT/cycles/build"
-  vfx_run compile-link cmake --build ./build --verbose -j"$(nproc)"
-  vfx_run install cmake --install ./build
+  cmake --build ./build --verbose -j"$(nproc)"
+  cmake --install ./build
 )
-
-PYTHONPATH="/usr/local/lib/python${PYTHONPATH:+:$PYTHONPATH}" \
-PXR_PLUGINPATH_NAME="/opt/cycles/hydra${PXR_PLUGINPATH_NAME:+:$PXR_PLUGINPATH_NAME}" \
-    vfx_check_plugin HdCyclesPlugin
-vfx_complete
-
-rm -rf "$BUILD_ROOT"

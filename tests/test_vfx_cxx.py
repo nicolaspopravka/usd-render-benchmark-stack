@@ -14,6 +14,7 @@ from unittest.mock import Mock, patch
 ROOT = Path(__file__).resolve().parents[1]
 HELPER = ROOT / 'build-support/vfx-cxx.sh'
 CHECKER = ROOT / 'build-support/vfx_cxx.py'
+VALIDATOR = ROOT / 'build-support/validate-build.sh'
 spec = importlib.util.spec_from_file_location('vfx_cxx', CHECKER)
 checker = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(checker)
@@ -43,6 +44,23 @@ class SettingsTests(unittest.TestCase):
         return {'directory': str(self.directory), 'file': source,
                 'arguments': [compiler, *flags, '-c', source]}
 
+    def fixture_compiler(self):
+        compiler = self.directory / 'gcc-fixture'
+        compiler.write_text('#!/usr/bin/env python3\nimport os,sys\n'
+                            'if "-dumpfullversion" in sys.argv: print("14.2.1")\n'
+                            'elif "-dM" in sys.argv: print("#define __GNUC__ 14\\n#define _GLIBCXX_USE_CXX11_ABI 1")\n'
+                            f'else: os.execv({shutil.which("c++")!r}, [{shutil.which("c++")!r}, *sys.argv[1:]])\n')
+        compiler.chmod(0o755)
+        return compiler
+
+    def validate_build(self, source, command, compiler=None, **environment):
+        evidence = source / 'evidence'
+        return subprocess.run(['bash', str(VALIDATOR), 'fixture', str(source), str(source / 'build'),
+                               'FixtureRenderer', *command],
+                              env={**os.environ, 'VFX_PLATFORM_YEAR': '2026',
+                                   'CXX': str(compiler or self.fixture_compiler()),
+                                   'VFX_EVIDENCE_DIR': str(evidence), **environment}, text=True, capture_output=True)
+
     def test_years(self):
         for year in range(2023, 2028):
             with self.subTest(year=year):
@@ -66,30 +84,25 @@ class SettingsTests(unittest.TestCase):
                                    requested, VFX_PLATFORM_YEAR=year)
                 self.assertEqual(result.returncode == 0, accepted, result.stderr)
 
-    def test_conflicting_toolset_retains_finding(self):
-        result = self.bash('set -euo pipefail; source "$1"; vfx_cxx_init moonray',
-                           VFX_PLATFORM_YEAR='2026', MOONRAY_TOOLSET='gcc-toolset-12',
-                           VFX_EVIDENCE_DIR=str(self.directory))
+    def test_conflicting_toolset_fails_before_activation(self):
+        result = self.bash('set -euo pipefail; source "$1"; vfx_cxx_environment gcc-toolset-12',
+                           VFX_PLATFORM_YEAR='2026', VFX_TOOLSET_ROOT=str(self.directory / 'missing'))
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn('phase=toolset-request', (self.directory / 'outcome.txt').read_text())
-        self.assertIn('conflicts with CY2026', result.stdout)
+        self.assertIn('conflicts with CY2026', result.stderr)
+        self.assertNotIn('missing annual compiler', result.stderr)
 
-    def test_missing_toolset_preserves_finding(self):
-        if Path('/opt/rh/gcc-toolset-14/enable').exists():
-            self.skipTest('fixture expects no Linux Software Collections on this host')
-        result = self.bash('set -euo pipefail; source "$1"; vfx_cxx_init fixture',
-                           VFX_PLATFORM_YEAR='2026', VFX_EVIDENCE_DIR=str(self.directory))
+    def test_missing_toolset_is_not_substituted(self):
+        result = self.bash('set -euo pipefail; source "$1"; vfx_cxx_environment',
+                           VFX_PLATFORM_YEAR='2026', VFX_TOOLSET_ROOT=str(self.directory / 'missing'))
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn('phase=toolset', (self.directory / 'outcome.txt').read_text())
-        self.assertIn('cxx_standard=20', result.stdout)
+        self.assertIn('missing annual compiler', result.stderr)
 
-    def test_missing_year_preserves_finding(self):
-        result = self.bash('set -euo pipefail; source "$1"; vfx_cxx_init fixture',
-                           VFX_PLATFORM_YEAR='', VFX_EVIDENCE_DIR=str(self.directory))
+    def test_missing_year_fails_environment_selection(self):
+        result = self.bash('set -euo pipefail; source "$1"; vfx_cxx_environment', VFX_PLATFORM_YEAR='')
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn('phase=year', (self.directory / 'outcome.txt').read_text())
+        self.assertIn('VFX_PLATFORM_YEAR', result.stderr)
 
-    def test_toolset_activation_and_cmake_arguments(self):
+    def test_toolset_activation_exports_environment(self):
         toolsets = self.directory / 'toolsets'
         toolset = toolsets / 'gcc-toolset-14'
         toolset.mkdir(parents=True)
@@ -97,28 +110,20 @@ class SettingsTests(unittest.TestCase):
         binaries.mkdir()
         for name in ['gcc', 'g++']:
             compiler = binaries / name
-            compiler.write_text('#!/usr/bin/env python3\nimport sys\n'
-                                'print("14.2.1" if "-dumpfullversion" in sys.argv else '
-                                '"#define __GNUC__ 14\\n#define _GLIBCXX_USE_CXX11_ABI 1")\n')
+            compiler.write_text('#!/bin/sh\nexit 0\n')
             compiler.chmod(0o755)
         enable = toolset / 'enable'
         enable.write_text(f'export PATH="{binaries}:$PATH"\n')
-        evidence = self.directory / 'evidence'
-        result = self.bash('set -euo pipefail; source "$1"; vfx_cxx_init fixture; printf "%s\\n" "${VFX_CMAKE_ARGS[@]}"',
-                           VFX_PLATFORM_YEAR='2026', VFX_EVIDENCE_DIR=str(evidence),
-                           VFX_TOOLSET_ROOT=str(toolsets))
+        result = self.bash('set -euo pipefail; source "$1"; vfx_cxx_environment; '
+                           'printf "%s %s %s" "$VFX_CXX_STANDARD" "$CC" "$CXX"',
+                           VFX_PLATFORM_YEAR='2026', VFX_TOOLSET_ROOT=str(toolsets))
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn('-DCMAKE_CXX_STANDARD=20', result.stdout)
-        self.assertIn('-DCMAKE_CXX_STANDARD_REQUIRED=ON', result.stdout)
-        self.assertIn('-DCMAKE_CXX_EXTENSIONS=OFF', result.stdout)
-        self.assertIn('-DCMAKE_CXX_COMPILER=' + str(binaries / 'g++'), result.stdout)
-        self.assertEqual(json.loads((evidence / 'compiler.json').read_text())['version'], '14.2.1')
+        self.assertEqual(result.stdout, f'20 {binaries}/gcc {binaries}/g++')
         enable.write_text('return 31\n')
-        failed = self.bash('set -euo pipefail; source "$1"; vfx_cxx_init fixture',
-                           VFX_PLATFORM_YEAR='2026', VFX_EVIDENCE_DIR=str(evidence),
-                           VFX_TOOLSET_ROOT=str(toolsets))
-        self.assertNotEqual(failed.returncode, 0)
-        self.assertIn('activation-failed', (evidence / 'outcome.txt').read_text())
+        failed = self.bash('set -euo pipefail; source "$1"; vfx_cxx_environment',
+                           VFX_PLATFORM_YEAR='2026', VFX_TOOLSET_ROOT=str(toolsets))
+        self.assertEqual(failed.returncode, 31)
+        self.assertIn('activation failed', failed.stderr)
 
     def test_standard_and_abi(self):
         for standard in [17, 20]:
@@ -184,12 +189,12 @@ class SettingsTests(unittest.TestCase):
                                     text=True, capture_output=True)
             self.assertEqual(result.returncode == 0, accepted, result.stderr)
 
-    def test_runner_retains_status_and_output(self):
-        result = self.bash('set -euo pipefail; source "$1"; vfx_run compile-link bash -c "echo fixture-error >&2; exit 23"',
-                           VFX_EVIDENCE_DIR=str(self.directory))
+    def test_external_validator_retains_build_failure(self):
+        result = self.validate_build(self.directory, ['bash', '-c', 'echo fixture-error >&2; exit 23'])
         self.assertEqual(result.returncode, 23)
-        self.assertIn('fixture-error', (self.directory / 'compile-link.log').read_text())
-        self.assertIn('exit_status=23', (self.directory / 'outcome.txt').read_text())
+        evidence = self.directory / 'evidence'
+        self.assertIn('fixture-error', (evidence / 'build.log').read_text())
+        self.assertIn('phase=build exit_status=23', (evidence / 'outcome.txt').read_text())
 
     @unittest.skipUnless(shutil.which('cmake'), 'CMake required for real configure/build fixtures')
     def test_real_cmake_settings(self):
@@ -221,10 +226,11 @@ class SettingsTests(unittest.TestCase):
                     self.assertEqual(subprocess.run([str(build / 'fixture')]).returncode, 0)
 
     @unittest.skipUnless(shutil.which('cmake'), 'CMake required for failure fixtures')
-    def test_real_configure_compile_and_link_failures(self):
+    def test_external_validator_real_build_failures(self):
         cases = [('configure', 'not_a_cmake_command()', 'int main() { return 0; }'),
                  ('compile', '', 'int main() { syntax error }'),
                  ('link', '', 'extern void missing(); int main() { missing(); }')]
+        compiler = self.fixture_compiler()
         for label, cmake_error, code in cases:
             with self.subTest(label=label):
                 source = self.directory / label
@@ -233,24 +239,27 @@ class SettingsTests(unittest.TestCase):
                 (source / 'CMakeLists.txt').write_text(
                     'cmake_minimum_required(VERSION 3.21)\nproject(fixture LANGUAGES CXX)\n'
                     'add_executable(fixture main.cpp)\n' + cmake_error + '\n')
-                evidence = source / 'evidence'
-                evidence.mkdir()
-                result = self.bash(
-                    'set -euo pipefail; source "$1"; vfx_configure "$2/build" cmake -S "$2" -B "$2/build"; '
-                    'vfx_run compile-link cmake --build "$2/build" --verbose', source,
-                    VFX_EVIDENCE_DIR=str(evidence))
+                command = ['bash', '-euc', 'cmake -S "$1" -B "$1/build" '
+                           '-DCMAKE_CXX_STANDARD=20 -DCMAKE_CXX_STANDARD_REQUIRED=ON '
+                           '-DCMAKE_CXX_EXTENSIONS=OFF -DCMAKE_EXPORT_COMPILE_COMMANDS=ON; '
+                           'cmake --build "$1/build" --verbose', 'fixture', str(source)]
+                result = self.validate_build(source, command, compiler)
                 self.assertNotEqual(result.returncode, 0)
-                expected_phase = 'configure' if label == 'configure' else 'compile-link'
-                self.assertIn('phase=' + expected_phase, (evidence / 'outcome.txt').read_text())
-                self.assertGreater((evidence / (expected_phase + '.log')).stat().st_size, 0)
+                evidence = source / 'evidence'
+                self.assertIn('phase=build', (evidence / 'outcome.txt').read_text())
+                self.assertGreater((evidence / 'build.log').stat().st_size, 0)
                 self.assertTrue((evidence / 'CMakeCache.txt').exists())
+                if label != 'configure':
+                    self.assertTrue((evidence / 'compile_commands.json').exists())
+                    self.assertTrue((evidence / 'effective-settings.json').exists())
 
-    def test_preparation_failure_is_retained(self):
-        (self.directory / 'outcome.txt').write_text('outcome=incomplete\n')
-        result = self.bash('set -euo pipefail; source "$1"; trap \'vfx_finish "$?"\' EXIT; exit 19',
-                           VFX_EVIDENCE_DIR=str(self.directory))
-        self.assertEqual(result.returncode, 19)
-        self.assertIn('phase=preparation exit_status=19', (self.directory / 'outcome.txt').read_text())
+    def test_external_compiler_failure_prevents_builder(self):
+        compiler = self.fixture_compiler()
+        compiler.write_text(compiler.read_text().replace('14.2.1', '11.2.1'))
+        result = self.validate_build(self.directory, ['touch', str(self.directory / 'built')], compiler)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertFalse((self.directory / 'built').exists())
+        self.assertIn('phase=compiler', (self.directory / 'evidence/outcome.txt').read_text())
 
     def test_loading_and_unresolved_symbol_findings(self):
         pxr = Mock()
@@ -270,6 +279,63 @@ class SettingsTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, 'unresolved dependencies'):
                     checker.load_plugin(args)
                 plugin.Load.assert_not_called()
+
+    @unittest.skipUnless(shutil.which('cmake'), 'CMake required for override fixture')
+    def test_external_validator_rejects_project_override_after_build(self):
+        (self.directory / 'main.cpp').write_text('int main() { return 0; }\n')
+        (self.directory / 'CMakeLists.txt').write_text(
+            'cmake_minimum_required(VERSION 3.21)\nproject(fixture LANGUAGES CXX)\n'
+            'set(CMAKE_CXX_STANDARD 17)\nadd_executable(fixture main.cpp)\n')
+        result = self.validate_build(self.directory, ['bash', '-euc',
+            'cmake -S "$1" -B "$1/build" -DCMAKE_CXX_STANDARD=20 '
+            '-DCMAKE_CXX_EXTENSIONS=OFF -DCMAKE_EXPORT_COMPILE_COMMANDS=ON; '
+            'cmake --build "$1/build"', 'fixture', str(self.directory)])
+        self.assertNotEqual(result.returncode, 0)
+        self.assertTrue((self.directory / 'build/fixture').exists())
+        self.assertIn('expected -std=c++20', result.stdout + result.stderr)
+        phases = (self.directory / 'evidence/phases.log').read_text()
+        self.assertIn('phase=settings exit_status=1', phases)
+        self.assertNotIn('phase=loading', phases)
+
+    @unittest.skipUnless(shutil.which('cmake'), 'CMake required for acceptance fixture')
+    def test_external_validator_accepts_build_and_loading(self):
+        (self.directory / 'main.cpp').write_text('int main() { return 0; }\n')
+        (self.directory / 'CMakeLists.txt').write_text(
+            'cmake_minimum_required(VERSION 3.21)\nproject(fixture LANGUAGES CXX)\n'
+            'add_executable(fixture main.cpp)\n')
+        pxr = self.directory / 'pxr'
+        pxr.mkdir()
+        (pxr / '__init__.py').write_text(
+            'class Plugin:\n name="fixture"\n path="/fixture/plugin.so"\n'
+            ' def Load(self): return True\n'
+            'class Registry:\n def GetPluginForType(self, type): return Plugin()\n'
+            'class Plug:\n Registry=Registry\n'
+            'class Type:\n @staticmethod\n def FindByName(name): return name\n'
+            'class Tf:\n Type=Type\n')
+        ldd = self.directory / 'ldd'
+        ldd.write_text('#!/bin/sh\nexit 0\n')
+        ldd.chmod(0o755)
+        result = self.validate_build(self.directory, ['bash', '-euc',
+            'cmake -S "$1" -B "$1/build" -DCMAKE_CXX_STANDARD=20 '
+            '-DCMAKE_CXX_STANDARD_REQUIRED=ON -DCMAKE_CXX_EXTENSIONS=OFF '
+            '-DCMAKE_EXPORT_COMPILE_COMMANDS=ON; cmake --build "$1/build"',
+            'fixture', str(self.directory)], PYTHONPATH=str(self.directory),
+            PATH=str(self.directory) + os.pathsep + os.environ['PATH'])
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        evidence = self.directory / 'evidence'
+        self.assertIn('outcome=passed', (evidence / 'outcome.txt').read_text())
+        self.assertIn('phase=loading exit_status=0', (evidence / 'phases.log').read_text())
+        self.assertTrue((evidence / 'CMakeCache.txt').exists())
+        self.assertTrue((evidence / 'compile_commands.json').exists())
+        self.assertTrue((evidence / 'effective-settings.json').exists())
+        self.assertTrue((self.directory / 'build/fixture').exists())
+
+    def test_successful_builder_without_commands_fails_acceptance(self):
+        result = self.validate_build(self.directory, ['bash', '-c', 'exit 0'])
+        self.assertNotEqual(result.returncode, 0)
+        phases = (self.directory / 'evidence/phases.log').read_text()
+        self.assertIn('phase=settings exit_status=1', phases)
+        self.assertNotIn('phase=loading', phases)
 
 
 class WiringTests(unittest.TestCase):
@@ -325,15 +391,55 @@ class WiringTests(unittest.TestCase):
         self.assertIn('VFX_PLATFORM_YEAR="${VFX_PLATFORM_YEAR}"', dockerfile)
         self.assertIn('VFX_BASE_IMAGE="${BASE_IMAGE}"', dockerfile)
 
-    def test_builder_gates_before_compile(self):
-        builders = list(ROOT.glob('build_*.sh'))
-        self.assertTrue(builders)
-        for builder in builders:
-            text = builder.read_text()
-            self.assertIn('vfx_cxx_init', text)
-            self.assertIn('"${VFX_CMAKE_ARGS[@]}"', text)
-            self.assertLess(text.index('vfx_verify_commands'), text.index('vfx_run compile-link'))
-            self.assertLess(text.index('vfx_check_plugin'), text.index('vfx_complete'))
+    def test_builders_only_configure_and_build(self):
+        for builder in ROOT.glob('build_*.sh'):
+            with self.subTest(builder=builder.name):
+                text = builder.read_text()
+                self.assertNotIn('vfx_', text)
+                self.assertNotIn('build-support', text)
+                self.assertNotIn('VFX_PLATFORM_YEAR', text)
+                self.assertIn('-DCMAKE_CXX_STANDARD="${VFX_CXX_STANDARD:', text)
+                self.assertIn('cmake --build ', text)
+                self.assertIn('cmake --install ', text)
+
+    def test_docker_invocation_propagates_validation_failure(self):
+        dockerfile = (ROOT / 'Dockerfile.pristine').read_text()
+        logical = dockerfile.replace('\\\n', '')
+        commands = [line[4:] for line in logical.splitlines()
+                    if line.startswith('RUN ') and 'validate-build.sh' in line]
+        self.assertTrue(commands)
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            support = directory / 'build-support'
+            support.mkdir()
+            (support / 'vfx-cxx.sh').write_text('vfx_cxx_environment() { export VFX_CXX_STANDARD=20; }\n')
+            (support / 'validate-build.sh').write_text('echo fixture-validation-error >&2; exit 29\n')
+            fixers = directory / 'moonray-fixers'
+            fixers.mkdir()
+            for name in ['01-gitlfs-prereqs.sh', '02-openusd-cmake-exports.sh',
+                         '03-ispc.sh', '04-moonray-toolset.sh']:
+                fixer = fixers / name
+                fixer.write_text('#!/bin/sh\nexit 0\n')
+                fixer.chmod(0o755)
+            for name in ['build_moonray.sh', 'build_cycles.sh', 'build_hdembree.sh']:
+                (directory / name).write_text('exit 0\n')
+            env = {**os.environ, 'VFX_PLATFORM_YEAR': '2026', 'BASE_IMAGE': 'fixture',
+                   'CYCLES_TAG': 'fixture', 'CYCLES_REPO': '', 'WITH_CYCLES_OSL': 'ON',
+                   'WITH_CYCLES_OPENVDB': 'ON', 'MOONRAY_TAG': 'fixture', 'MOONRAY_REPO': '',
+                   'MOONRAY_TOOLSET': '', 'OPENUSD_TAG': 'fixture'}
+            for command in commands:
+                with self.subTest(command=command[:50]):
+                    root = directory / 'build-root'
+                    root.mkdir(exist_ok=True)
+                    marker = root / 'retained'
+                    marker.touch()
+                    command = command.replace('/usr/local/aswf', str(directory))
+                    for original in ['/opt/build-cycles', '/opt/build-moonray', '/opt/build-hdembree']:
+                        command = command.replace(original, str(root))
+                    result = subprocess.run(['bash', '-c', command], env=env,
+                                            text=True, capture_output=True)
+                    self.assertEqual(result.returncode, 29, result.stdout + result.stderr)
+                    self.assertTrue(marker.exists(), 'cleanup must wait for validation')
 
 
 if __name__ == '__main__':

@@ -56,14 +56,20 @@ COPY build_cycles.sh /usr/local/aswf/build_cycles.sh
 COPY build-support/ /usr/local/aswf/build-support/
 COPY cmake/import_openusd_dependencies.cmake /usr/local/share/cycles/import_openusd_dependencies.cmake
 RUN if [ -n "${CYCLES_TAG}" ]; then \
-      bash -lc 'chmod +x /usr/local/aswf/build_cycles.sh && \
+      bash -euc 'source /usr/local/aswf/build-support/vfx-cxx.sh; \
+                vfx_cxx_environment; \
                 VFX_PLATFORM_YEAR="${VFX_PLATFORM_YEAR}" \
                 VFX_BASE_IMAGE="${BASE_IMAGE}" \
                 CYCLES_TAG="${CYCLES_TAG}" \
                 CYCLES_REPO="${CYCLES_REPO}" \
                 WITH_CYCLES_OSL="${WITH_CYCLES_OSL}" \
                 WITH_CYCLES_OPENVDB="${WITH_CYCLES_OPENVDB}" \
-                /usr/local/aswf/build_cycles.sh'; \
+                PYTHONPATH="/usr/local/lib/python${PYTHONPATH:+:$PYTHONPATH}" \
+                PXR_PLUGINPATH_NAME="/opt/cycles/hydra${PXR_PLUGINPATH_NAME:+:$PXR_PLUGINPATH_NAME}" \
+                bash /usr/local/aswf/build-support/validate-build.sh cycles \
+                  /opt/build-cycles/cycles /opt/build-cycles/cycles/build HdCyclesPlugin \
+                  bash -x /usr/local/aswf/build_cycles.sh; \
+                rm -rf /opt/build-cycles'; \
     fi
 
 # TEMPORARY: build OpenMoonRay into the pristine stack — drop when the ASWF
@@ -98,5 +104,12 @@ RUN if [ -n "${MOONRAY_TAG}" ]; then \
       MOONRAY_TOOLSET="${MOONRAY_TOOLSET}" \
       MOONRAY_REPO_URL="${MOONRAY_REPO}" \
       MOONRAY_TAG="${MOONRAY_TAG}" \
-      bash /usr/local/aswf/build_moonray.sh; \
+      bash -euc 'source /usr/local/aswf/build-support/vfx-cxx.sh; \
+                 vfx_cxx_environment "${MOONRAY_TOOLSET}"; \
+                 PYTHONPATH="/usr/local/lib/python${PYTHONPATH:+:$PYTHONPATH}" \
+                 PXR_PLUGINPATH_NAME="/usr/local/plugin/pxr${PXR_PLUGINPATH_NAME:+:$PXR_PLUGINPATH_NAME}" \
+                 bash /usr/local/aswf/build-support/validate-build.sh moonray \
+                   /opt/build-moonray/src /opt/build-moonray/build HdMoonrayRendererPlugin \
+                   bash -x /usr/local/aswf/build_moonray.sh; \
+                 rm -rf /opt/build-moonray'; \
     fi
