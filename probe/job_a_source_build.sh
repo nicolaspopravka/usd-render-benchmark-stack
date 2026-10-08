@@ -45,7 +45,7 @@ bash /probe/fixers/03-ispc.sh
 MOONRAY_TOOLSET="'"${MOONRAY_TOOLSET}"'" bash /probe/fixers/04-moonray-toolset.sh
 
 echo "--- dependency presence (informational on this base)"
-bash /probe/presence_check.sh || true
+bash /probe/probe/presence_check.sh || true
 
 echo "--- build_moonray.sh"
 BUILD_RC=0
@@ -58,7 +58,7 @@ CUDA_HOST_COMPILER="'"${CUDA_HOST_COMPILER}"'" \
 
 if [ "${BUILD_RC}" -eq 0 ]; then
     echo "--- verification"
-    bash /probe/verify_moonray.sh
+    bash /probe/probe/verify_moonray.sh
     echo "=== JOB A PASS"
 else
     echo "--- diagnostics after failed build (BUILD_RC=${BUILD_RC})"
