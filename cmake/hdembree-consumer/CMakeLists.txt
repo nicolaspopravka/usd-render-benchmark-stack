@@ -12,6 +12,9 @@ project(hdembree-consumer LANGUAGES CXX)
 # define (CONAN_LIB::*, OpenSubdiv::*, ...); fixers/02-openusd-cmake-exports.sh
 # (a RUN step in Dockerfile.pristine) provides them before this configure runs.
 
+if(NOT DEFINED CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 17)
+endif()
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # --- inputs (all cached; provided by build_hdembree.sh) --------------------

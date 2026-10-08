@@ -41,9 +41,9 @@ should retain the image digest and the exact run commit that were observed.
 
 Both image workflows are manual.
 
-The pristine workflow requires `vfx_platform_year`. Delegate builds use that
-annual host C++ target and stop if supported options cannot enforce it or the
-build fails. See [build settings and evidence](build-support/README.md).
+Annual host C++ conformance is optional: `cxx_conformance` defaults to `off`,
+which keeps the existing compiler choices and upstream defaults. Select a year
+for an experimental profile check. See [C++ conformance](build-support/README.md).
 
 Publish a base stack under an explicit tag:
 
@@ -51,7 +51,6 @@ Publish a base stack under an explicit tag:
 gh workflow run build-pristine.yml \
   --repo nicolaspopravka/usd-render-benchmark-stack \
   -f base_image=aswf/ci-vfxall:2027@sha256:... \
-  -f vfx_platform_year=2027 \
   -f image_tag=2027
 ```
 

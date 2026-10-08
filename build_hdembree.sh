@@ -49,11 +49,14 @@ git -C "${OPENUSD_SRC}" rev-parse HEAD   # recorded for evidence; not asserted
 
 # --- configure ------------------------------------------------------------
 # CMAKE_PREFIX_PATH lets find_package(pxr) resolve /usr/local/pxrConfig.cmake.
+CXX_ARGS=()
+if [ -n "${VFX_CXX_STANDARD:-}" ]; then
+    CXX_ARGS=(-DCMAKE_CXX_STANDARD="$VFX_CXX_STANDARD"
+              -DCMAKE_CXX_STANDARD_REQUIRED=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON)
+fi
+
 cmake -S "${CONSUMER_DIR}" -B "${OPENUSD_BUILD}" \
-    -DCMAKE_CXX_STANDARD="${VFX_CXX_STANDARD:?Select the annual C++ standard in the image environment}" \
-    -DCMAKE_CXX_STANDARD_REQUIRED=ON \
-    -DCMAKE_CXX_EXTENSIONS=OFF \
-    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+    ${CXX_ARGS[@]+"${CXX_ARGS[@]}"} \
     -DCMAKE_PREFIX_PATH="${CMAKE_INSTALL_PREFIX}" \
     -DHDEMBREE_SOURCE_DIR="${OPENUSD_SRC}/pxr/imaging/plugin/hdEmbree" \
     -DUSD_INCLUDE_DIR="${CMAKE_INSTALL_PREFIX}/include" \
@@ -62,7 +65,7 @@ cmake -S "${CONSUMER_DIR}" -B "${OPENUSD_BUILD}" \
     -DCMAKE_INSTALL_RPATH="${CMAKE_INSTALL_PREFIX}/lib"
 
 # --- build ----------------------------------------------------------------
-cmake --build "${OPENUSD_BUILD}" --verbose --parallel "${BUILD_JOBS}"
+cmake --build "${OPENUSD_BUILD}" --parallel "${BUILD_JOBS}"
 
 # --- install --------------------------------------------------------------
 cmake --install "${OPENUSD_BUILD}"
