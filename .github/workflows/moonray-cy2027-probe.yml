@@ -1,13 +1,12 @@
-name: moonray-cy2026-probe
+name: moonray-cy2027-probe
 
-# Free CY2026 MoonRay feasibility probe — ExecPlan Phase 2
-# (benchmark repo: docs/cy2026-moonray-image-execplan.md).
+# Free CY2027 MoonRay feasibility probe — ExecPlan P2
+# (benchmark repo: docs/cy2027-moonray-image-execplan.md).
 #
-#   Job A: does the patched combined source (usd26-moonray) build against
-#          USD 26.03 on aswf/ci-moonray:2026.6 — the base GH #48 failed on?
-#   Job B: what does the published stack:2026.3 lack for MoonRay, and can
-#          MoonRay build on it directly after provisioning the gap from
-#          ci-moonray:2026.6?
+#   Job A: does the CY2026-proven patched source build against USD 26.08 on
+#          aswf/ci-moonray:2027.1 (hdMoonray-vs-26.08, PR #6 ctor shape)?
+#   Job B: what does the published stack:2027.3 lack for MoonRay, and can
+#          MoonRay build on it directly — the decisive run for the recipe?
 #
 # Nothing is published: no images, no tags. Logs + inventories are the
 # artifacts. Push-triggered on this branch only — workflow_dispatch resolves
@@ -16,19 +15,19 @@ name: moonray-cy2026-probe
 on:
   push:
     branches:
-      - opencode/probe-cy2026-moonray
+      - opencode/probe-cy2027-moonray
 
 permissions:
   contents: read
   packages: read
 
 concurrency:
-  group: moonray-cy2026-probe-${{ github.ref }}
+  group: moonray-cy2027-probe-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
   source-build:
-    name: "Job A: patched source on ci-moonray:2026.6"
+    name: "Job A: patched source on ci-moonray:2027.1"
     runs-on: ubuntu-22.04
     timeout-minutes: 180
     steps:
@@ -59,7 +58,7 @@ jobs:
           if-no-files-found: warn
 
   dep-inventory:
-    name: "Job B: stack:2026.3 inventory + build"
+    name: "Job B: stack:2027.3 inventory + build"
     runs-on: ubuntu-22.04
     timeout-minutes: 180
     steps:

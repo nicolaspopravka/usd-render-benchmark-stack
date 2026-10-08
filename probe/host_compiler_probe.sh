@@ -1,16 +1,15 @@
 #!/usr/bin/env bash
 # Host-compiler matrix for nvcc (ExecPlan Phase 2, Job A step 0).
 #
-# The CY2026 images ship gcc-toolset-14, which nvcc (CUDA 12.9) cannot use as
-# a host compiler: it dies inside GCC 14's <type_traits> on
-# __is_nothrow_new_constructible while compiling OptixGPUPrograms.cu. This
-# enumerates every gcc the image offers and asks nvcc to compile a
-# type_traits-using TU with each, so the recipe can pick a working
-# -ccbin / CMAKE_CUDA_HOST_COMPILER instead of guessing.
+# CY2027's question is whether CUDA 13.1 accepts gcc-toolset-12 as nvcc's
+# host (CY2026 proved 12.9 does; CUDA major bumps have moved the host range
+# before). This enumerates every gcc the image offers and asks nvcc to
+# compile a type_traits-using TU with each, so the choice is evidence, not
+# assumption. Falls back to compiling with the PATH default for contrast.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-IMAGE="${1:-aswf/ci-moonray:2026.6@sha256:57acaa6ae00e83a9862ae7b0ba1a2cea53dc6855a86d43a7ead9795266d3a7e7}"
+IMAGE="${1:-aswf/ci-moonray:2027.1@sha256:34104e08cbfb3b2737eaeb0ce9badb92344f5ee12582c7b5250b4be99c80a7b6}"
 
 mkdir -p probe/out
 exec > >(tee probe/out/host_compiler_probe.log) 2>&1

@@ -1,17 +1,16 @@
 #!/usr/bin/env bash
-# Job B — does MoonRay build directly on the published stack:2026.3 base?
-# (ExecPlan Phase 2, Job B — the base-lineage decision's evidence.)
+# Job B — does MoonRay build directly on the published stack:2027.3 base?
+# (CY2027 ExecPlan P2, Job B — the decisive run: this is the recipe's base.)
 #
-# The ExecPlan chose lineage "onto the published stack:2026.3" probe-gated:
-# that image is ci-vfxall-based, so it lacks the MoonRay-only conan packages
-# ci-moonray ships. This job
+# CY2026 showed the ci-vfxall-based .3 image already carries every MoonRay
+# dependency; CY2027's pins differ (embree 4.3.3, OIDN, ispc 1.21), so this job
 #   1. inventories /usr/local in both images and records the diff,
-#   2. prints a dependency presence matrix for stack:2026.3,
+#   2. prints a dependency presence matrix for stack:2027.3,
 #   3. provisions exactly the missing packages by copying their deployed
-#      files out of ci-moonray:2026.6 (same conan packages, same profile —
+#      files out of ci-moonray:2027.1 (same conan packages, same profile —
 #      no conan/network at provision time, byte-identical to the base that
 #      Phase 42 proved buildable),
-#   4. runs fixers 01/02/03, then the full build_moonray.sh on stack:2026.3,
+#   4. runs fixers 01-04, then the full build_moonray.sh on stack:2027.3,
 #   5. verifies the install.
 #
 # A green run means Phase 3 can write the provisioning as COPY --from lines
@@ -23,8 +22,8 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-STACK_IMAGE="ghcr.io/nicolaspopravka/usd-render-benchmark-stack:2026.3"
-MOON_IMAGE="aswf/ci-moonray:2026.6@sha256:57acaa6ae00e83a9862ae7b0ba1a2cea53dc6855a86d43a7ead9795266d3a7e7"
+STACK_IMAGE="ghcr.io/nicolaspopravka/usd-render-benchmark-stack:2027.3@sha256:3ca96479c22170cc7fc38c53e0140dffe91679057d715a886f52c152f3199710"
+MOON_IMAGE="aswf/ci-moonray:2027.1@sha256:34104e08cbfb3b2737eaeb0ce9badb92344f5ee12582c7b5250b4be99c80a7b6"
 MOONRAY_REPO_URL="https://github.com/nicolaspopravka/openmoonray.git"
 MOONRAY_TAG="usd26-moonray"
 # The image default (gcc-toolset-14) is twice wrong for MoonRay: nvcc 12.9
@@ -75,11 +74,11 @@ docker pull "${MOON_IMAGE}"
 echo "--- inventories"
 docker run --rm "${MOON_IMAGE}" \
     bash -lc 'find /usr/local \( -type f -o -type l \) | LC_ALL=C sort' \
-    > probe/out/usr_local.ci-moonray-2026.6.txt
+    > probe/out/usr_local.ci-moonray-2027.1.txt
 docker run --rm "${STACK_IMAGE}" \
     bash -lc 'find /usr/local \( -type f -o -type l \) | LC_ALL=C sort' \
-    > probe/out/usr_local.stack-2026.3.txt
-comm -23 probe/out/usr_local.ci-moonray-2026.6.txt probe/out/usr_local.stack-2026.3.txt \
+    > probe/out/usr_local.stack-2027.3.txt
+comm -23 probe/out/usr_local.ci-moonray-2027.1.txt probe/out/usr_local.stack-2027.3.txt \
     > probe/out/only-in-ci-moonray.txt
 wc -l probe/out/usr_local.*.txt probe/out/only-in-ci-moonray.txt
 
@@ -91,7 +90,7 @@ MISSING="$(awk '/^MISSING/{print $2}' probe/out/presence_stack_before.txt || tru
 echo "missing: ${MISSING:-<none>}"
 
 if [ -n "${MISSING}" ]; then
-    echo "--- provisioning from ci-moonray:2026.6"
+    echo "--- provisioning from ci-moonray:2027.1"
     mkdir -p probe/out/provision
     for name in ${MISSING}; do
         pats="$(patterns_for "${name}")"

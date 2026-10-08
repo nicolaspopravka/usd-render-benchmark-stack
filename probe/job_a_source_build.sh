@@ -1,17 +1,18 @@
 #!/usr/bin/env bash
-# Job A — CY2026 MoonRay source feasibility (ExecPlan Phase 2, Job A).
+# Job A — CY2027 MoonRay source feasibility (ExecPlan P2, Job A).
 #
-# Question: does the patched combined branch (usd26-moonray = v2026.29.1 +
-# hdMoonray PR #15 + moonray_sdr_plugins PR #6) build against the USD 26.03
-# in aswf/ci-moonray:2026.6? That base is where GH #48's failure happened
-# (moonray_sdr_plugins including the removed Ndr headers), so a green build
-# here is the gate for everything downstream.
+# Question: does the same patched combined branch that served CY2026
+# (usd26-moonray = v2026.29.1 + hdMoonray PR #15 + moonray_sdr_plugins PR #6
+# + the Boost/include pin moves) build against OpenUSD 26.08 in
+# aswf/ci-moonray:2027.1? The CY2027 unknowns are hdMoonray-vs-26.08 and
+# PR #6's Sdr ctor shape (26.08 added shadingSystem); this job isolates
+# source-vs-ASWF-stack before Job B's recipe base gets involved.
 #
 # Runs on a free GHA runner. Publishes nothing; the log is the artifact.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-IMAGE="aswf/ci-moonray:2026.6@sha256:57acaa6ae00e83a9862ae7b0ba1a2cea53dc6855a86d43a7ead9795266d3a7e7"
+IMAGE="aswf/ci-moonray:2027.1@sha256:34104e08cbfb3b2737eaeb0ce9badb92344f5ee12582c7b5250b4be99c80a7b6"
 MOONRAY_REPO_URL="https://github.com/nicolaspopravka/openmoonray.git"
 MOONRAY_TAG="usd26-moonray"
 # The image default (gcc-toolset-14) is twice wrong for MoonRay: nvcc 12.9
