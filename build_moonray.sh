@@ -97,11 +97,14 @@ if [ -n "${CUDA_HOST_COMPILER:-}" ]; then
     HOST_ARGS=(-DCMAKE_CUDA_HOST_COMPILER="${CUDA_HOST_COMPILER}" \
                "-DCMAKE_CUDA_FLAGS=--compiler-bindir=${CUDA_HOST_COMPILER}")
 fi
+CXX_ARGS=()
+if [ -n "${VFX_CXX_STANDARD:-}" ]; then
+    CXX_ARGS=(-DCMAKE_CXX_STANDARD="$VFX_CXX_STANDARD"
+              -DCMAKE_CXX_STANDARD_REQUIRED=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON)
+fi
+
 cmake -S "${MOONRAY_SRC}" -B "${MOONRAY_BUILD}" \
-    -DCMAKE_CXX_STANDARD="${VFX_CXX_STANDARD:?Select the annual C++ standard in the image environment}" \
-    -DCMAKE_CXX_STANDARD_REQUIRED=ON \
-    -DCMAKE_CXX_EXTENSIONS=OFF \
-    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+    ${CXX_ARGS[@]+"${CXX_ARGS[@]}"} \
     -DCMAKE_PREFIX_PATH="${ASWF_INSTALL_PREFIX}" \
     -DCUDAToolkit_ROOT="${CUDA_ROOT}" \
     -DPYTHON_EXECUTABLE=python3 \
@@ -111,7 +114,7 @@ cmake -S "${MOONRAY_SRC}" -B "${MOONRAY_BUILD}" \
     -DBUILD_QT_APPS=NO
 
 # --- Step 3c: build -------------------------------------------------------
-cmake --build "${MOONRAY_BUILD}" --verbose --parallel "${BUILD_JOBS}"
+cmake --build "${MOONRAY_BUILD}" --parallel "${BUILD_JOBS}"
 
 # --- Step 3d: install -----------------------------------------------------
 cmake --install "${MOONRAY_BUILD}" --prefix "${CMAKE_INSTALL_PREFIX}"

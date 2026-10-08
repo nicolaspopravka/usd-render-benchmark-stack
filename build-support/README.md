@@ -1,52 +1,44 @@
-# Annual host C++ settings
+# Optional annual C++ conformance
 
-The image/workflow environment requires `VFX_PLATFORM_YEAR`, independently of
-its output tag. CY2023–CY2025 select GCC 11.2.x and C++17; CY2026–CY2027 select
-GCC 14.2.x and C++20. `vfx-cxx.sh` activates the existing `/opt/rh` toolset and
-exports `CC`, `CXX` and `VFX_CXX_STANDARD`. It does not install a compiler.
-The delegate build scripts do not source this helper.
+`cxx_conformance` (workflow input) / `CXX_CONFORMANCE` (Docker build arg) defaults
+to `off`. With it off, the image retains its existing compiler choices, CUDA
+host selection and upstream configuration defaults; no compiler or command
+verification runs. Ordinary build examples need no new input.
 
-The scripts retain direct Git and CMake commands. Their new configuration is
-limited to CMake's standard, required-standard, extensions and compile-database
-options, plus verbose build output. They retain their existing source refs,
-feature choices and dependency locators. No cloned delegate source is changed.
-Compiler selection, evidence collection and plugin checks are outside them.
+Select `2023`, `2024` or `2025` to check C++17/GCC 11.2.x, or `2026`/`2027` for
+C++20/GCC 14.2.x. All selected profiles require the new libstdc++ ABI. This is
+an experimental check of our host C++ build settings, not whole-image compliance.
+The existing annual toolset must be available; this option installs no compiler
+and replaces no supplied component. A conflicting `moonray_toolset` fails only
+when conformance is selected. The existing `gcc-toolset-12` recipe remains
+available with conformance off. CUDA host selection is kept separate.
 
-`validate-build.sh` runs the build script as one command, checks its effective
-host C++ compile commands afterwards, then checks unresolved symbols and plugin
-loading. A project can override a requested CMake setting: configure success or
-a completed build alone does not establish compliance. Such an override fails
-acceptance; it is not repaired by rewriting source or weakening the settings.
-CUDA/ISPC/C commands are outside the host C++ check. CUDA host selection remains
-separate and explicit.
+```bash
+gh workflow run build-pristine.yml \
+  --repo nicolaspopravka/usd-render-benchmark-stack \
+  -f base_image='<prepared base image>' -f image_tag='<experimental output tag>' \
+  -f cxx_conformance=2026
+```
 
-The outer Docker step removes build directories only after validation. hdEmbree
-uses `/opt/build-hdembree` by default (`HDEMBREE_BUILD_ROOT` can override it).
-Standalone script callers must select their compiler/standard environment and
-clean their build directory themselves. The existing external hdEmbree consumer
-is repository-specific integration, not an upstream standalone build recipe.
+Set the relevant source-ref inputs too. The existing workflow builds and pushes
+images; it is not a read-only test. An empty delegate selection checks no build.
 
-Requested settings, compiler/ABI results, source revisions, build output, CMake
-cache and compile database are saved under
-`/usr/local/share/usd-render-benchmark/build-evidence/<delegate>`. Failed attempts
-remain nonzero. The external validator saves partial configuration and prints
-selected cache settings and available effective-command diagnostics on failure;
-plain Docker logs carry the command/output/status because failed layers are not
-published image artifacts. Compiler activation errors fail in the outer step.
-These checks do not test rendering or certify inherited upstream components.
-Inspect upstream only to explain an observed build failure; do not replace it.
+Build scripts retain direct Git/CMake commands. They add CMake standard,
+required-standard and compile-database options only when the outer environment
+supplies `VFX_CXX_STANDARD`. The image-side helper activates and checks the
+selected compiler, then verifies generated host C++ commands after installation.
+Equivalent GNU dialects and a matching probed compiler default are accepted.
+Overrides, missing evidence and build/check failures remain nonzero findings.
+No plugin-loading gate or custom phase logger is included. Docker build logs
+carry compiler/profile summaries and failure diagnostics.
 
-In the combined recipe, `moonray_toolset` may be empty or match the annual
-compiler. A conflict fails before the existing provisioning fixer runs. The
-existing dependency fixers are retained, not expanded by this change.
+Cleanup belongs to the outer Docker step and follows the build and optional
+check. Standalone script callers select their environment and clean their build
+directories themselves. hdEmbree defaults to `/opt/build-hdembree` (overridable
+with `HDEMBREE_BUILD_ROOT`); its existing external consumer keeps C++17 as its
+default while accepting an explicitly supplied standard.
 
-Build-command references:
-- [Cycles BUILDING.md](https://projects.blender.org/blender/cycles/src/branch/main/BUILDING.md)
-- [MoonRay container build](https://docs.openmoonray.org/getting-started/installation/building-moonray/rocky9_container_build/)
-- [CMake CXX_STANDARD](https://cmake.org/cmake/help/latest/variable/CMAKE_CXX_STANDARD.html)
-
-Run local fixtures with `python3 -m unittest discover -s tests -v`. They use
-small local CMake projects, fixture GCC identities and stub Linux loading;
-no delegates are downloaded and no images are built. `VFX_EVIDENCE_DIR` and
-`VFX_TOOLSET_ROOT` allow disposable fixture locations. They do not establish
-real Linux SDK, delegate, GPU or rendering acceptance.
+Run local fixtures with `python3 -m unittest discover -s tests -v`. They compare
+default-off commands with the established recipes, exercise small real CMake
+builds and use fixture GCC identities. They do not download renderers or build
+images and do not prove annual Linux SDK or rendering acceptance.

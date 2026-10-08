@@ -9,8 +9,7 @@
 ARG BASE_IMAGE
 
 FROM ${BASE_IMAGE}
-ARG BASE_IMAGE
-ARG VFX_PLATFORM_YEAR
+ARG CXX_CONFORMANCE="off"
 
 # Image identity, overriding the ASWF base's labels, which we inherit. version
 # is a build arg because the base's value is the ASWF version, not ours.
@@ -56,19 +55,16 @@ COPY build_cycles.sh /usr/local/aswf/build_cycles.sh
 COPY build-support/ /usr/local/aswf/build-support/
 COPY cmake/import_openusd_dependencies.cmake /usr/local/share/cycles/import_openusd_dependencies.cmake
 RUN if [ -n "${CYCLES_TAG}" ]; then \
-      bash -euc 'source /usr/local/aswf/build-support/vfx-cxx.sh; \
-                vfx_cxx_environment; \
-                VFX_PLATFORM_YEAR="${VFX_PLATFORM_YEAR}" \
-                VFX_BASE_IMAGE="${BASE_IMAGE}" \
+      bash -lc 'source /opt/rh/gcc-toolset-${ASWF_DTS_VERSION}/enable && \
+                source /usr/local/aswf/build-support/vfx-cxx.sh && \
+                vfx_cxx_environment && \
+                chmod +x /usr/local/aswf/build_cycles.sh && \
                 CYCLES_TAG="${CYCLES_TAG}" \
                 CYCLES_REPO="${CYCLES_REPO}" \
                 WITH_CYCLES_OSL="${WITH_CYCLES_OSL}" \
                 WITH_CYCLES_OPENVDB="${WITH_CYCLES_OPENVDB}" \
-                PYTHONPATH="/usr/local/lib/python${PYTHONPATH:+:$PYTHONPATH}" \
-                PXR_PLUGINPATH_NAME="/opt/cycles/hydra${PXR_PLUGINPATH_NAME:+:$PXR_PLUGINPATH_NAME}" \
-                bash /usr/local/aswf/build-support/validate-build.sh cycles \
-                  /opt/build-cycles/cycles /opt/build-cycles/cycles/build HdCyclesPlugin \
-                  bash -x /usr/local/aswf/build_cycles.sh; \
+                /usr/local/aswf/build_cycles.sh && \
+                vfx_cxx_check /opt/build-cycles/cycles/build && \
                 rm -rf /opt/build-cycles'; \
     fi
 
@@ -82,11 +78,9 @@ RUN if [ -n "${CYCLES_TAG}" ]; then \
 COPY fixers/01-gitlfs-prereqs.sh fixers/02-openusd-cmake-exports.sh \
      fixers/03-ispc.sh fixers/04-moonray-toolset.sh /usr/local/aswf/moonray-fixers/
 COPY build_moonray.sh /usr/local/aswf/build_moonray.sh
-# Reject a conflicting host toolset before the existing provisioning fixer runs.
 RUN if [ -n "${MOONRAY_TAG}" ]; then \
-      VFX_PLATFORM_YEAR="${VFX_PLATFORM_YEAR}" MOONRAY_TOOLSET="${MOONRAY_TOOLSET}" \
-      bash -euc 'source /usr/local/aswf/build-support/vfx-cxx.sh; \
-                 vfx_select_year; vfx_check_requested_toolset "${MOONRAY_TOOLSET}"'; \
+      bash -ec 'source /usr/local/aswf/build-support/vfx-cxx.sh; \
+                vfx_select_year; vfx_check_requested_toolset "${MOONRAY_TOOLSET}"'; \
     fi
 RUN if [ -n "${MOONRAY_TAG}" ]; then \
       chmod +x /usr/local/aswf/moonray-fixers/*.sh /usr/local/aswf/build_moonray.sh && \
@@ -100,16 +94,11 @@ RUN if [ -n "${MOONRAY_TAG}" ]; then \
                CXX="/opt/rh/${MOONRAY_TOOLSET}/root/usr/bin/g++" \
                CUDA_HOST_COMPILER="/opt/rh/${MOONRAY_TOOLSET}/root/usr/bin/g++"; \
       fi; \
-      VFX_PLATFORM_YEAR="${VFX_PLATFORM_YEAR}" VFX_BASE_IMAGE="${BASE_IMAGE}" \
-      MOONRAY_TOOLSET="${MOONRAY_TOOLSET}" \
       MOONRAY_REPO_URL="${MOONRAY_REPO}" \
       MOONRAY_TAG="${MOONRAY_TAG}" \
-      bash -euc 'source /usr/local/aswf/build-support/vfx-cxx.sh; \
-                 vfx_cxx_environment "${MOONRAY_TOOLSET}"; \
-                 PYTHONPATH="/usr/local/lib/python${PYTHONPATH:+:$PYTHONPATH}" \
-                 PXR_PLUGINPATH_NAME="/usr/local/plugin/pxr${PXR_PLUGINPATH_NAME:+:$PXR_PLUGINPATH_NAME}" \
-                 bash /usr/local/aswf/build-support/validate-build.sh moonray \
-                   /opt/build-moonray/src /opt/build-moonray/build HdMoonrayRendererPlugin \
-                   bash -x /usr/local/aswf/build_moonray.sh; \
-                 rm -rf /opt/build-moonray'; \
+      bash -ec 'source /usr/local/aswf/build-support/vfx-cxx.sh; \
+                vfx_cxx_environment "${MOONRAY_TOOLSET}"; \
+                bash /usr/local/aswf/build_moonray.sh; \
+                vfx_cxx_check /opt/build-moonray/build; \
+                rm -rf /opt/build-moonray'; \
     fi

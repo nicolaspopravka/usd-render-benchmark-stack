@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check our host C++ settings and plugin loading, not the upstream stack."""
+"""Check the optional annual host C++ profile, not inherited components."""
 
 import argparse
 import json
@@ -35,7 +35,12 @@ def compiler_settings(args):
         raise ValueError(f'expected GCC {args.release}.x, found {version}')
     if not re.search(r'^#define _GLIBCXX_USE_CXX11_ABI 1$', macros, re.M):
         raise ValueError('expected the new libstdc++ ABI (_GLIBCXX_USE_CXX11_ABI=1)')
-    return {'compiler': compiler, 'version': version, 'libstdcxx_cxx11_abi': 1}
+    language = re.search(r'^#define __cplusplus ([0-9]+)L?$', macros, re.M)
+    if not language:
+        raise ValueError('compiler default C++ standard cannot be determined')
+    default = {199711: 98, 201103: 11, 201402: 14, 201703: 17, 202002: 20, 202302: 23}
+    return {'compiler': compiler, 'version': version, 'libstdcxx_cxx11_abi': 1,
+            'default_standard': default.get(int(language[1]))}
 
 
 def expand_response_files(tokens, directory, seen=None):
@@ -52,10 +57,12 @@ def expand_response_files(tokens, directory, seen=None):
     return result
 
 
-def verify_commands(args):
+def verify_commands(args, compiler_profile):
     database = json.loads(Path(args.database).read_text())
     expected = resolve(args.compiler)
-    standards = {'c++17': 17, 'c++1z': 17, 'c++20': 20, 'c++2a': 20}
+    standards = {dialect + suffix: year
+                 for dialect in ['c++', 'gnu++']
+                 for suffix, year in [('17', 17), ('1z', 17), ('20', 20), ('2a', 20)]}
     checked = 0
     skipped = 0
     for entry in database:
@@ -74,19 +81,25 @@ def verify_commands(args):
             selected = None
             abi = '1'
             for i, token in enumerate(tokens):
+                if token == '-ansi':
+                    selected = 'c++98'
                 if token.startswith('-std='):
                     selected = token.split('=', 1)[1]
                 definition = token[2:] if token.startswith('-D') else ''
                 if token == '-D' and i + 1 < len(tokens):
                     definition = tokens[i + 1]
+                if definition == '_GLIBCXX_USE_CXX11_ABI':
+                    abi = '1'
                 if definition.startswith('_GLIBCXX_USE_CXX11_ABI='):
                     abi = definition.split('=', 1)[1]
                 if token.startswith('-U_GLIBCXX_USE_CXX11_ABI') or (
                     token == '-U' and i + 1 < len(tokens) and tokens[i + 1] == '_GLIBCXX_USE_CXX11_ABI'
                 ):
-                    raise ValueError('command undefines the selected libstdc++ ABI')
-            if standards.get(selected) != args.standard:
-                raise ValueError(f'expected -std=c++{args.standard}, found {selected or "no explicit standard"}')
+                    abi = None
+            effective = compiler_profile['default_standard'] if selected is None else standards.get(selected)
+            if effective != args.standard:
+                found = selected or f"compiler default C++{compiler_profile['default_standard']}"
+                raise ValueError(f'expected C++{args.standard}, found {found}')
             if abi != '1':
                 raise ValueError(f'command selects libstdc++ ABI {abi}, expected 1')
         except ValueError as error:
@@ -98,43 +111,23 @@ def verify_commands(args):
             'other_commands': skipped, 'libstdcxx_cxx11_abi': 1}
 
 
-def load_plugin(args):
-    from pxr import Plug, Tf
-    plugin = Plug.Registry().GetPluginForType(Tf.Type.FindByName(args.type))
-    if not plugin:
-        raise ValueError(f'renderer type not registered: {args.type}')
-    library = plugin.path
-    result = subprocess.run(['ldd', '-r', library], text=True, capture_output=True)
-    print(result.stdout, end='')
-    print(result.stderr, end='', file=sys.stderr)
-    if result.returncode or re.search(r'not found|undefined symbol', result.stdout + result.stderr):
-        raise ValueError(f'unresolved dependencies: {library}')
-    if not plugin.Load():
-        raise ValueError(f'plugin loading failed: {plugin.name}')
-    return {'type': args.type, 'plugin': plugin.name, 'library': library, 'loaded': True}
-
-
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest='operation', required=True)
-    compiler = commands.add_parser('compiler')
-    compiler.add_argument('--compiler', required=True)
-    compiler.add_argument('--release', required=True)
-    compiler.add_argument('--output', required=True)
-    verify = commands.add_parser('verify')
-    verify.add_argument('--database', required=True)
-    verify.add_argument('--compiler', required=True)
-    verify.add_argument('--standard', type=int, choices=[17, 20], required=True)
-    verify.add_argument('--output', required=True)
-    loading = commands.add_parser('load')
-    loading.add_argument('--type', required=True)
+    for operation in ['compiler', 'profile']:
+        command = commands.add_parser(operation)
+        command.add_argument('--compiler', required=True)
+        command.add_argument('--release', required=True)
+        if operation == 'profile':
+            command.add_argument('--database', required=True)
+            command.add_argument('--standard', type=int, choices=[17, 20], required=True)
     args = parser.parse_args()
     try:
-        result = {'compiler': compiler_settings, 'verify': verify_commands, 'load': load_plugin}[args.operation](args)
-        if hasattr(args, 'output'):
-            Path(args.output).write_text(json.dumps(result, indent=2) + '\n')
+        result = compiler_settings(args)
+        if args.operation == 'profile':
+            result.update(verify_commands(args, result))
         print(json.dumps(result, sort_keys=True))
-    except (ValueError, OSError, KeyError, ImportError, subprocess.CalledProcessError) as error:
+    except (ValueError, OSError, KeyError, subprocess.CalledProcessError) as error:
         print(f'ERROR: {error}', file=sys.stderr)
         return 1
     return 0
