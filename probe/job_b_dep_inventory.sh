@@ -131,6 +131,9 @@ echo "--- provision + fixers + build + verify, all inside ${STACK_IMAGE}"
 # carries the probe scripts and the provisioned files.
 docker run --rm -v "${PWD}:/repo" -v "${PWD}/probe:/probe" -w /repo "${STACK_IMAGE}" bash -lc '
 set -euo pipefail
+# keep-going: one run must enumerate EVERY missing-include failure, not
+# stop at the first (the sweep fixes them all in one pass after this)
+export MAKEFLAGS=-k
 
 if [ -d /probe/out/provision/usr ]; then
     echo "--- copying provisioned files into /usr"

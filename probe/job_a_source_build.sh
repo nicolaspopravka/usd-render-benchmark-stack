@@ -35,6 +35,9 @@ docker pull "${IMAGE}"
 
 docker run --rm -v "${PWD}:/probe" -w /probe "${IMAGE}" bash -lc '
 set -euo pipefail
+# keep-going: one run must enumerate EVERY missing-include failure, not
+# stop at the first (the sweep fixes them all in one pass after this)
+export MAKEFLAGS=-k
 echo "--- fixers"
 bash /probe/fixers/01-gitlfs-prereqs.sh
 bash /probe/fixers/02-openusd-cmake-exports.sh
