@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 150
     env:
-      DOCKER_CONFIG: ${{ runner.temp }}/cxx-docker-config
+      DOCKER_CONFIG: /tmp/annual-cxx-docker-config
     steps:
       - uses: actions/checkout@v4
       - name: Read frozen recipe commits
