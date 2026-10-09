@@ -108,6 +108,7 @@ class ValidationTests(unittest.TestCase):
         self.assertNotIn('packages: write', reusable)
         self.assertNotIn('login-action', reusable)
         self.assertNotIn('setup-buildx-action', reusable)
+        self.assertIn('DOCKER_CONFIG: ${{ runner.temp }}/cxx-docker-config', reusable)
         self.assertIn('cp validation/annual-inputs.json results/manifest.json', reusable)
 
 

@@ -16,6 +16,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: python3 -m unittest discover -s validation -p 'test_*.py' -v
+      - name: Verify anonymous public-registry access
+        env:
+          DOCKER_CONFIG: ${{ runner.temp }}/cxx-docker-config
+        run: |
+          mkdir -p "$DOCKER_CONFIG"
+          docker buildx imagetools inspect docker.io/docker/dockerfile:1.10
+          docker buildx imagetools inspect docker.io/aswf/ci-vfxall:2023@sha256:184caf8c0e2531e6153b1c742b9b57263c032fc619c40259d0dc5a726c3bb077
   embree_2023:
     needs: fixtures
     if: ${{ github.event_name == 'workflow_dispatch' && !cancelled() && needs.fixtures.result == 'success' }}

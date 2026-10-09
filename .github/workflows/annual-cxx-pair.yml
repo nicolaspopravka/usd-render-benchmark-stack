@@ -11,6 +11,8 @@ jobs:
   build:
     runs-on: ubuntu-22.04
     timeout-minutes: 150
+    env:
+      DOCKER_CONFIG: ${{ runner.temp }}/cxx-docker-config
     steps:
       - uses: actions/checkout@v4
       - name: Read frozen recipe commits
@@ -36,6 +38,7 @@ jobs:
           df -h
       - name: Use the runner's built-in BuildKit
         run: |
+          mkdir -p "$DOCKER_CONFIG"
           docker buildx version
           docker buildx ls
       - name: Build off, compare failed off with baseline, then build on
