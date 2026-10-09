@@ -29,7 +29,7 @@ A ref that moves is an input finding and is not silently repinned. Logs include
 submodule/build output produced by the established commands. The GNU dialect
 and effective-standard/ABI checks are those of the reviewed PRs.
 
-BuildKit's cache-only output exports and pushes no image. Each pair uploads
+The runner's built-in BuildKit uses cache-only output and exports/pushes no image. The input manifest is retained before setup, including when a build cannot start. Each pair uploads
 inputs, commands, status, elapsed time and complete logs, including failed
 builds and baseline controls. The final artifact and job summary compare all
 30 attempts. Missing artifacts remain explicitly not recorded. Automatic

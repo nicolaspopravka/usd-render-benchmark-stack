@@ -107,6 +107,8 @@ class ValidationTests(unittest.TestCase):
         self.assertIn('if: always()', reusable)
         self.assertNotIn('packages: write', reusable)
         self.assertNotIn('login-action', reusable)
+        self.assertNotIn('setup-buildx-action', reusable)
+        self.assertIn('cp validation/annual-inputs.json results/manifest.json', reusable)
 
 
 if __name__ == '__main__':
