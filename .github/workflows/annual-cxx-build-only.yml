@@ -1,0 +1,124 @@
+name: annual-cxx-build-only
+run-name: Annual C++ off/on builds CY2023–CY2027
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/validate/cxx-2023-2027]
+    paths: [.github/workflows/annual-cxx-build-only.yml, .github/workflows/annual-cxx-pair.yml, validation/**]
+permissions:
+  contents: read
+concurrency:
+  group: annual-cxx-build-only
+  cancel-in-progress: false
+jobs:
+  fixtures:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m unittest discover -s validation -p 'test_*.py' -v
+  embree_2023:
+    needs: fixtures
+    if: ${{ github.event_name == 'workflow_dispatch' && !cancelled() && needs.fixtures.result == 'success' }}
+    uses: ./.github/workflows/annual-cxx-pair.yml
+    with:
+      pair: embree-2023
+  embree_2024:
+    needs: embree_2023
+    if: ${{ github.event_name == 'workflow_dispatch' && !cancelled() && needs.embree_2023.result != 'skipped' }}
+    uses: ./.github/workflows/annual-cxx-pair.yml
+    with:
+      pair: embree-2024
+  embree_2025:
+    needs: embree_2024
+    if: ${{ github.event_name == 'workflow_dispatch' && !cancelled() && needs.embree_2024.result != 'skipped' }}
+    uses: ./.github/workflows/annual-cxx-pair.yml
+    with:
+      pair: embree-2025
+  embree_2026:
+    needs: embree_2025
+    if: ${{ github.event_name == 'workflow_dispatch' && !cancelled() && needs.embree_2025.result != 'skipped' }}
+    uses: ./.github/workflows/annual-cxx-pair.yml
+    with:
+      pair: embree-2026
+  embree_2027:
+    needs: embree_2026
+    if: ${{ github.event_name == 'workflow_dispatch' && !cancelled() && needs.embree_2026.result != 'skipped' }}
+    uses: ./.github/workflows/annual-cxx-pair.yml
+    with:
+      pair: embree-2027
+  cycles_2023:
+    needs: embree_2027
+    if: ${{ github.event_name == 'workflow_dispatch' && !cancelled() && needs.embree_2027.result != 'skipped' }}
+    uses: ./.github/workflows/annual-cxx-pair.yml
+    with:
+      pair: cycles-2023
+  cycles_2024:
+    needs: cycles_2023
+    if: ${{ github.event_name == 'workflow_dispatch' && !cancelled() && needs.cycles_2023.result != 'skipped' }}
+    uses: ./.github/workflows/annual-cxx-pair.yml
+    with:
+      pair: cycles-2024
+  cycles_2025:
+    needs: cycles_2024
+    if: ${{ github.event_name == 'workflow_dispatch' && !cancelled() && needs.cycles_2024.result != 'skipped' }}
+    uses: ./.github/workflows/annual-cxx-pair.yml
+    with:
+      pair: cycles-2025
+  cycles_2026:
+    needs: cycles_2025
+    if: ${{ github.event_name == 'workflow_dispatch' && !cancelled() && needs.cycles_2025.result != 'skipped' }}
+    uses: ./.github/workflows/annual-cxx-pair.yml
+    with:
+      pair: cycles-2026
+  cycles_2027:
+    needs: cycles_2026
+    if: ${{ github.event_name == 'workflow_dispatch' && !cancelled() && needs.cycles_2026.result != 'skipped' }}
+    uses: ./.github/workflows/annual-cxx-pair.yml
+    with:
+      pair: cycles-2027
+  moonray_2023:
+    needs: cycles_2027
+    if: ${{ github.event_name == 'workflow_dispatch' && !cancelled() && needs.cycles_2027.result != 'skipped' }}
+    uses: ./.github/workflows/annual-cxx-pair.yml
+    with:
+      pair: moonray-2023
+  moonray_2024:
+    needs: moonray_2023
+    if: ${{ github.event_name == 'workflow_dispatch' && !cancelled() && needs.moonray_2023.result != 'skipped' }}
+    uses: ./.github/workflows/annual-cxx-pair.yml
+    with:
+      pair: moonray-2024
+  moonray_2025:
+    needs: moonray_2024
+    if: ${{ github.event_name == 'workflow_dispatch' && !cancelled() && needs.moonray_2024.result != 'skipped' }}
+    uses: ./.github/workflows/annual-cxx-pair.yml
+    with:
+      pair: moonray-2025
+  moonray_2026:
+    needs: moonray_2025
+    if: ${{ github.event_name == 'workflow_dispatch' && !cancelled() && needs.moonray_2025.result != 'skipped' }}
+    uses: ./.github/workflows/annual-cxx-pair.yml
+    with:
+      pair: moonray-2026
+  moonray_2027:
+    needs: moonray_2026
+    if: ${{ github.event_name == 'workflow_dispatch' && !cancelled() && needs.moonray_2026.result != 'skipped' }}
+    uses: ./.github/workflows/annual-cxx-pair.yml
+    with:
+      pair: moonray-2027
+  report:
+    needs: [embree_2023, embree_2024, embree_2025, embree_2026, embree_2027, cycles_2023, cycles_2024, cycles_2025, cycles_2026, cycles_2027, moonray_2023, moonray_2024, moonray_2025, moonray_2026, moonray_2027]
+    if: ${{ github.event_name == 'workflow_dispatch' && !cancelled() }}
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: cxx-pair-*
+          path: results
+      - run: python3 validation/build_pair.py report validation/annual-inputs.json results > comparison.md
+      - run: cat comparison.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cxx-comparison
+          path: comparison.md

@@ -1,0 +1,312 @@
+{
+  "schema": 1,
+  "platform": "linux/amd64",
+  "build_timeout_seconds": 2700,
+  "pairs": [
+    {
+      "id": "embree-2023",
+      "delegate": "embree",
+      "year": 2023,
+      "recipe": {
+        "commit": "9d9274ad34df6759553deae58c88e994a6450123",
+        "baseline": "98dbec9171d26efbb113a292347ad7634be15c23"
+      },
+      "base_image": "aswf/ci-vfxall:2023@sha256:184caf8c0e2531e6153b1c742b9b57263c032fc619c40259d0dc5a726c3bb077",
+      "source": {
+        "repository": "https://github.com/PixarAnimationStudios/OpenUSD.git",
+        "ref": "v23.08",
+        "commit": "10b62439e9242a55101cf8b200f2c7e02420e1b0"
+      },
+      "build_args": {
+        "OPENUSD_TAG": "v23.08"
+      }
+    },
+    {
+      "id": "embree-2024",
+      "delegate": "embree",
+      "year": 2024,
+      "recipe": {
+        "commit": "9d9274ad34df6759553deae58c88e994a6450123",
+        "baseline": "98dbec9171d26efbb113a292347ad7634be15c23"
+      },
+      "base_image": "aswf/ci-vfxall:2024@sha256:e7431ef50a2e07bd53af515f54cb07f5601b1870046fa81e2d57a6b433e49fb6",
+      "source": {
+        "repository": "https://github.com/PixarAnimationStudios/OpenUSD.git",
+        "ref": "v24.08",
+        "commit": "59992d2178afcebd89273759f2bddfe730e59aa8"
+      },
+      "build_args": {
+        "OPENUSD_TAG": "v24.08"
+      }
+    },
+    {
+      "id": "embree-2025",
+      "delegate": "embree",
+      "year": 2025,
+      "recipe": {
+        "commit": "9d9274ad34df6759553deae58c88e994a6450123",
+        "baseline": "98dbec9171d26efbb113a292347ad7634be15c23"
+      },
+      "base_image": "aswf/ci-vfxall:2025@sha256:1357ca999b90bdd022c9d3668398e6a7c6ae8cdf836327a0e18d1db967505701",
+      "source": {
+        "repository": "https://github.com/PixarAnimationStudios/OpenUSD.git",
+        "ref": "v25.05.01",
+        "commit": "1595c62ea8381b5b22eb8621afc8652f89b6136d"
+      },
+      "build_args": {
+        "OPENUSD_TAG": "v25.05.01"
+      }
+    },
+    {
+      "id": "embree-2026",
+      "delegate": "embree",
+      "year": 2026,
+      "recipe": {
+        "commit": "9d9274ad34df6759553deae58c88e994a6450123",
+        "baseline": "98dbec9171d26efbb113a292347ad7634be15c23"
+      },
+      "base_image": "aswf/ci-vfxall:2026@sha256:649ff41fa02bb22a73ac361a49eb161493097bf719540696afd1da9bedd0bec7",
+      "source": {
+        "repository": "https://github.com/PixarAnimationStudios/OpenUSD.git",
+        "ref": "v26.03",
+        "commit": "1818e14bae0036ac4bc7b4e60826b5797076a4fe"
+      },
+      "build_args": {
+        "OPENUSD_TAG": "v26.03"
+      }
+    },
+    {
+      "id": "embree-2027",
+      "delegate": "embree",
+      "year": 2027,
+      "recipe": {
+        "commit": "9d9274ad34df6759553deae58c88e994a6450123",
+        "baseline": "98dbec9171d26efbb113a292347ad7634be15c23"
+      },
+      "base_image": "aswf/ci-vfxall:2027@sha256:d41fc294f7770c4390de0813c4594dcd03ba99dcf1da1dc5be85f04acffa1b3d",
+      "source": {
+        "repository": "https://github.com/PixarAnimationStudios/OpenUSD.git",
+        "ref": "v26.08",
+        "commit": "ee47c679abde5b467a7b6a41f3b2285564a4222e"
+      },
+      "build_args": {
+        "OPENUSD_TAG": "v26.08"
+      }
+    },
+    {
+      "id": "cycles-2023",
+      "delegate": "cycles",
+      "year": 2023,
+      "recipe": {
+        "commit": "db7a128af2832384e2cd8fc474d32960cd5af5e0",
+        "baseline": "ddea4d55d13936c4d53f1501a1dce37201a1e759"
+      },
+      "base_image": "ghcr.io/nicolaspopravka/usd-render-benchmark-stack:2023.2-default@sha256:23d2b1c0885a9e769bd7430cdf73c6cc3a13358499828f3b52483ae9a3659d2a",
+      "source": {
+        "repository": "https://projects.blender.org/blender/cycles.git",
+        "ref": "v4.0.2",
+        "commit": "4ad568a200defc338d43bd59c2be63c1e66993bc"
+      },
+      "build_args": {
+        "CYCLES_REPO": "https://projects.blender.org/blender/cycles.git",
+        "CYCLES_TAG": "v4.0.2",
+        "MOONRAY_TAG": "",
+        "WITH_CYCLES_OSL": "OFF",
+        "WITH_CYCLES_OPENVDB": "OFF"
+      }
+    },
+    {
+      "id": "cycles-2024",
+      "delegate": "cycles",
+      "year": 2024,
+      "recipe": {
+        "commit": "db7a128af2832384e2cd8fc474d32960cd5af5e0",
+        "baseline": "ddea4d55d13936c4d53f1501a1dce37201a1e759"
+      },
+      "base_image": "ghcr.io/nicolaspopravka/usd-render-benchmark-stack:2024.2-default@sha256:fe771a6c502d1c809f3a45bb751d5b55c97fcfc491a0e81046854bde7a533177",
+      "source": {
+        "repository": "https://projects.blender.org/blender/cycles.git",
+        "ref": "v4.3.0",
+        "commit": "5accdc3430cdaf26a05c0cd8070b37010400b0fb"
+      },
+      "build_args": {
+        "CYCLES_REPO": "https://projects.blender.org/blender/cycles.git",
+        "CYCLES_TAG": "v4.3.0",
+        "MOONRAY_TAG": "",
+        "WITH_CYCLES_OSL": "OFF",
+        "WITH_CYCLES_OPENVDB": "OFF"
+      }
+    },
+    {
+      "id": "cycles-2025",
+      "delegate": "cycles",
+      "year": 2025,
+      "recipe": {
+        "commit": "db7a128af2832384e2cd8fc474d32960cd5af5e0",
+        "baseline": "ddea4d55d13936c4d53f1501a1dce37201a1e759"
+      },
+      "base_image": "ghcr.io/nicolaspopravka/usd-render-benchmark-stack:2025.2@sha256:9dbde7fc0e78da24e4540ee2e68c35dce8a875291e754e1b7e69c96794a57e86",
+      "source": {
+        "repository": "https://projects.blender.org/blender/cycles.git",
+        "ref": "v5.0.0",
+        "commit": "2eba4102417439e59e03003f1dff881192cbd75f"
+      },
+      "build_args": {
+        "CYCLES_REPO": "https://projects.blender.org/blender/cycles.git",
+        "CYCLES_TAG": "v5.0.0",
+        "MOONRAY_TAG": "",
+        "WITH_CYCLES_OSL": "ON",
+        "WITH_CYCLES_OPENVDB": "ON"
+      }
+    },
+    {
+      "id": "cycles-2026",
+      "delegate": "cycles",
+      "year": 2026,
+      "recipe": {
+        "commit": "db7a128af2832384e2cd8fc474d32960cd5af5e0",
+        "baseline": "ddea4d55d13936c4d53f1501a1dce37201a1e759"
+      },
+      "base_image": "ghcr.io/nicolaspopravka/usd-render-benchmark-stack:2026.2@sha256:a5809404fe92bf48fd19ae1da6b7ce75f387437e075291f9a8c0457bb0a2bf36",
+      "source": {
+        "repository": "https://projects.blender.org/Nicolas-Popravka/cycles.git",
+        "ref": "build-usd26-combined",
+        "commit": "05fc4a46f69e12191aacc3b89593af35897bdc2c"
+      },
+      "build_args": {
+        "CYCLES_REPO": "https://projects.blender.org/Nicolas-Popravka/cycles.git",
+        "CYCLES_TAG": "build-usd26-combined",
+        "MOONRAY_TAG": "",
+        "WITH_CYCLES_OSL": "ON",
+        "WITH_CYCLES_OPENVDB": "ON"
+      }
+    },
+    {
+      "id": "cycles-2027",
+      "delegate": "cycles",
+      "year": 2027,
+      "recipe": {
+        "commit": "db7a128af2832384e2cd8fc474d32960cd5af5e0",
+        "baseline": "ddea4d55d13936c4d53f1501a1dce37201a1e759"
+      },
+      "base_image": "ghcr.io/nicolaspopravka/usd-render-benchmark-stack:2027.2@sha256:e7838018d09b7578ac53ec072aa749ca94720996bfa6935b825ffdef539ff752",
+      "source": {
+        "repository": "https://projects.blender.org/Nicolas-Popravka/cycles.git",
+        "ref": "build-usd26-combined",
+        "commit": "05fc4a46f69e12191aacc3b89593af35897bdc2c"
+      },
+      "build_args": {
+        "CYCLES_REPO": "https://projects.blender.org/Nicolas-Popravka/cycles.git",
+        "CYCLES_TAG": "build-usd26-combined",
+        "MOONRAY_TAG": "",
+        "WITH_CYCLES_OSL": "ON",
+        "WITH_CYCLES_OPENVDB": "ON"
+      }
+    },
+    {
+      "id": "moonray-2023",
+      "delegate": "moonray",
+      "year": 2023,
+      "recipe": {
+        "commit": "db7a128af2832384e2cd8fc474d32960cd5af5e0",
+        "baseline": "ddea4d55d13936c4d53f1501a1dce37201a1e759"
+      },
+      "base_image": "ghcr.io/nicolaspopravka/usd-render-benchmark-stack:2023.2-default@sha256:23d2b1c0885a9e769bd7430cdf73c6cc3a13358499828f3b52483ae9a3659d2a",
+      "source": {
+        "repository": "https://github.com/OpenMoonRay/openmoonray.git",
+        "ref": "v2026.29.1",
+        "commit": "d96c6e30a8c280d4b5eb3bafa5e54efc445d7ea8"
+      },
+      "build_args": {
+        "CYCLES_TAG": "",
+        "MOONRAY_REPO": "https://github.com/OpenMoonRay/openmoonray.git",
+        "MOONRAY_TAG": "v2026.29.1",
+        "MOONRAY_TOOLSET": ""
+      }
+    },
+    {
+      "id": "moonray-2024",
+      "delegate": "moonray",
+      "year": 2024,
+      "recipe": {
+        "commit": "db7a128af2832384e2cd8fc474d32960cd5af5e0",
+        "baseline": "ddea4d55d13936c4d53f1501a1dce37201a1e759"
+      },
+      "base_image": "ghcr.io/nicolaspopravka/usd-render-benchmark-stack:2024.2-default@sha256:fe771a6c502d1c809f3a45bb751d5b55c97fcfc491a0e81046854bde7a533177",
+      "source": {
+        "repository": "https://github.com/OpenMoonRay/openmoonray.git",
+        "ref": "v2026.29.1",
+        "commit": "d96c6e30a8c280d4b5eb3bafa5e54efc445d7ea8"
+      },
+      "build_args": {
+        "CYCLES_TAG": "",
+        "MOONRAY_REPO": "https://github.com/OpenMoonRay/openmoonray.git",
+        "MOONRAY_TAG": "v2026.29.1",
+        "MOONRAY_TOOLSET": ""
+      }
+    },
+    {
+      "id": "moonray-2025",
+      "delegate": "moonray",
+      "year": 2025,
+      "recipe": {
+        "commit": "db7a128af2832384e2cd8fc474d32960cd5af5e0",
+        "baseline": "ddea4d55d13936c4d53f1501a1dce37201a1e759"
+      },
+      "base_image": "ghcr.io/nicolaspopravka/usd-render-benchmark-stack:2025.3@sha256:b3005748f7d8f9286f87664d9457e1f789c3d70e36694d573984bc0921a707c6",
+      "source": {
+        "repository": "https://github.com/OpenMoonRay/openmoonray.git",
+        "ref": "v2026.29.1",
+        "commit": "d96c6e30a8c280d4b5eb3bafa5e54efc445d7ea8"
+      },
+      "build_args": {
+        "CYCLES_TAG": "",
+        "MOONRAY_REPO": "https://github.com/OpenMoonRay/openmoonray.git",
+        "MOONRAY_TAG": "v2026.29.1",
+        "MOONRAY_TOOLSET": ""
+      }
+    },
+    {
+      "id": "moonray-2026",
+      "delegate": "moonray",
+      "year": 2026,
+      "recipe": {
+        "commit": "db7a128af2832384e2cd8fc474d32960cd5af5e0",
+        "baseline": "ddea4d55d13936c4d53f1501a1dce37201a1e759"
+      },
+      "base_image": "ghcr.io/nicolaspopravka/usd-render-benchmark-stack:2026.3@sha256:07b097e394d283efb16f705e7d9f27574d57f3475349fe35ccf2b82798420bd3",
+      "source": {
+        "repository": "https://github.com/nicolaspopravka/openmoonray.git",
+        "ref": "usd26-moonray",
+        "commit": "02db29648d22eca65ffa8762d6f64f22d4baebf5"
+      },
+      "build_args": {
+        "CYCLES_TAG": "",
+        "MOONRAY_REPO": "https://github.com/nicolaspopravka/openmoonray.git",
+        "MOONRAY_TAG": "usd26-moonray",
+        "MOONRAY_TOOLSET": "gcc-toolset-12"
+      }
+    },
+    {
+      "id": "moonray-2027",
+      "delegate": "moonray",
+      "year": 2027,
+      "recipe": {
+        "commit": "db7a128af2832384e2cd8fc474d32960cd5af5e0",
+        "baseline": "ddea4d55d13936c4d53f1501a1dce37201a1e759"
+      },
+      "base_image": "ghcr.io/nicolaspopravka/usd-render-benchmark-stack:2027.3@sha256:3ca96479c22170cc7fc38c53e0140dffe91679057d715a886f52c152f3199710",
+      "source": {
+        "repository": "https://github.com/nicolaspopravka/openmoonray.git",
+        "ref": "usd26-moonray",
+        "commit": "02db29648d22eca65ffa8762d6f64f22d4baebf5"
+      },
+      "build_args": {
+        "CYCLES_TAG": "",
+        "MOONRAY_REPO": "https://github.com/nicolaspopravka/openmoonray.git",
+        "MOONRAY_TAG": "usd26-moonray",
+        "MOONRAY_TOOLSET": "gcc-toolset-12"
+      }
+    }
+  ]
+}

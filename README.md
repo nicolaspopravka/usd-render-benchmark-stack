@@ -42,6 +42,9 @@ should retain the image digest and the exact run commit that were observed.
 
 Both image workflows are manual.
 
+Experimental build-only CY2023–CY2027 checks are documented in
+[annual C++ validation](validation/README.md). They publish no images.
+
 Annual host C++ conformance is optional: `cxx_conformance` defaults to `off`,
 which keeps the existing compiler choices and upstream defaults. Select a year
 for an experimental profile check. See [C++ conformance](build-support/README.md).
