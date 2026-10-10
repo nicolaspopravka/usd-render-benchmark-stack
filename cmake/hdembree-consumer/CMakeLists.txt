@@ -33,11 +33,15 @@ endif()
 # fixers/02-openusd-cmake-exports.sh synthesizes them as empty interfaces and a
 # later real package would conflict. PXR_VERSION is set by pxrConfig.
 find_package(Threads REQUIRED)
-find_package(TBB REQUIRED)
-find_package(pxr REQUIRED)
-if(PXR_VERSION VERSION_LESS 2603)
-  message(FATAL_ERROR "This consumer expects OpenUSD >= 26.03 on the base")
+find_package(TBB CONFIG QUIET)
+if(NOT TBB_FOUND)
+  # Older SDKs have no package config; use the matching OpenUSD discovery module.
+  list(PREPEND CMAKE_MODULE_PATH "${HDEMBREE_SOURCE_DIR}/../../../../cmake/modules")
+  find_package(TBB MODULE REQUIRED)
 endif()
+find_package(pxr REQUIRED)
+# Matching upstream plugin source is compiled unchanged. Let its headers/API
+# report incompatibility with supplied dependencies instead of a year guard.
 
 # --- Embree package ----------------------------------------------------------
 # Embree ships a CMake package; consume it (Embree 4 exports Embree:: targets,
