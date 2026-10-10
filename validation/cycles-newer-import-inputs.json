@@ -1,0 +1,51 @@
+{
+  "schema": 1,
+  "platform": "linux/amd64",
+  "build_timeout_seconds": 2700,
+  "pairs": [
+    {
+      "id": "cycles-2026",
+      "delegate": "cycles",
+      "year": 2026,
+      "recipe": {
+        "commit": "8743aa53315c1061d0eb2765633755d834ac0916",
+        "baseline": "ddea4d55d13936c4d53f1501a1dce37201a1e759"
+      },
+      "base_image": "ghcr.io/nicolaspopravka/usd-render-benchmark-stack:2026.2@sha256:a5809404fe92bf48fd19ae1da6b7ce75f387437e075291f9a8c0457bb0a2bf36",
+      "source": {
+        "repository": "https://projects.blender.org/Nicolas-Popravka/cycles.git",
+        "ref": "build-usd26-combined",
+        "commit": "05fc4a46f69e12191aacc3b89593af35897bdc2c"
+      },
+      "build_args": {
+        "CYCLES_REPO": "https://projects.blender.org/Nicolas-Popravka/cycles.git",
+        "CYCLES_TAG": "build-usd26-combined",
+        "MOONRAY_TAG": "",
+        "WITH_CYCLES_OSL": "ON",
+        "WITH_CYCLES_OPENVDB": "ON"
+      }
+    },
+    {
+      "id": "cycles-2027",
+      "delegate": "cycles",
+      "year": 2027,
+      "recipe": {
+        "commit": "8743aa53315c1061d0eb2765633755d834ac0916",
+        "baseline": "ddea4d55d13936c4d53f1501a1dce37201a1e759"
+      },
+      "base_image": "ghcr.io/nicolaspopravka/usd-render-benchmark-stack:2027.2@sha256:e7838018d09b7578ac53ec072aa749ca94720996bfa6935b825ffdef539ff752",
+      "source": {
+        "repository": "https://projects.blender.org/Nicolas-Popravka/cycles.git",
+        "ref": "build-usd26-combined",
+        "commit": "05fc4a46f69e12191aacc3b89593af35897bdc2c"
+      },
+      "build_args": {
+        "CYCLES_REPO": "https://projects.blender.org/Nicolas-Popravka/cycles.git",
+        "CYCLES_TAG": "build-usd26-combined",
+        "MOONRAY_TAG": "",
+        "WITH_CYCLES_OSL": "ON",
+        "WITH_CYCLES_OPENVDB": "ON"
+      }
+    }
+  ]
+}

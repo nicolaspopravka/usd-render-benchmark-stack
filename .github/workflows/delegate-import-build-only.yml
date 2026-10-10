@@ -4,7 +4,7 @@ on:
     inputs:
       experiment:
         type: choice
-        options: [cycles, embree, embree-tbb]
+        options: [cycles, cycles-newer, embree, embree-tbb]
         required: true
   push:
     branches: [codex/validate/cxx-followup]
