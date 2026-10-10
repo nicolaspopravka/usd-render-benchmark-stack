@@ -37,7 +37,7 @@ find_package(TBB CONFIG QUIET)
 if(NOT TBB_FOUND)
   # Older SDKs have no package config; use the matching OpenUSD discovery module.
   list(PREPEND CMAKE_MODULE_PATH "${HDEMBREE_SOURCE_DIR}/../../../../cmake/modules")
-  find_package(TBB MODULE REQUIRED)
+  find_package(TBB MODULE REQUIRED COMPONENTS tbb)
 endif()
 find_package(pxr REQUIRED)
 # Matching upstream plugin source is compiled unchanged. Let its headers/API
