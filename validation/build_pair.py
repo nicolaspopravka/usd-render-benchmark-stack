@@ -10,7 +10,7 @@ import subprocess
 import sys
 import time
 
-MANIFEST = Path(__file__).with_name('annual-inputs.json')
+MANIFEST = Path(os.getenv('CXX_INPUT_MANIFEST', str(Path(__file__).with_name('annual-inputs.json'))))
 
 
 def load_pair(name):

@@ -1,0 +1,46 @@
+name: delegate-import-build-only
+on:
+  workflow_dispatch:
+    inputs:
+      experiment:
+        type: choice
+        options: [cycles, embree]
+        required: true
+  push:
+    branches: [codex/validate/cxx-followup]
+    paths: [.github/workflows/delegate-import-build-only.yml, .github/workflows/followup-cxx-pair.yml, validation/**]
+permissions:
+  contents: read
+concurrency:
+  group: annual-cxx-build-only
+  cancel-in-progress: false
+jobs:
+  inputs:
+    runs-on: ubuntu-22.04
+    outputs:
+      pairs: ${{ steps.select.outputs.pairs }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m unittest discover -s validation -p 'test_*.py' -v
+      - id: select
+        env:
+          EXPERIMENT: ${{ inputs.experiment || 'cycles' }}
+        run: |
+          python3 - <<'PYTHON' >> "$GITHUB_OUTPUT"
+          import json, os
+          from pathlib import Path
+          manifest = json.loads(Path('validation/' + os.environ['EXPERIMENT'] + '-import-inputs.json').read_text())
+          print('pairs=' + json.dumps([p['id'] for p in manifest['pairs']]))
+          PYTHON
+  build:
+    needs: inputs
+    if: github.event_name == 'workflow_dispatch'
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        pair: ${{ fromJSON(needs.inputs.outputs.pairs) }}
+    uses: ./.github/workflows/followup-cxx-pair.yml
+    with:
+      pair: ${{ matrix.pair }}
+      manifest: validation/${{ inputs.experiment }}-import-inputs.json

@@ -1,0 +1,60 @@
+name: followup-cxx-pair
+on:
+  workflow_call:
+    inputs:
+      manifest:
+        required: true
+        type: string
+      pair:
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 150
+    env:
+      CXX_INPUT_MANIFEST: ${{ inputs.manifest }}
+      DOCKER_CONFIG: /tmp/annual-cxx-docker-config
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read frozen recipe commits
+        id: recipe
+        env:
+          PAIR: ${{ inputs.pair }}
+        run: |
+          mkdir -p results
+          cp "$CXX_INPUT_MANIFEST" results/manifest.json
+          python3 validation/build_pair.py inputs "$PAIR" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.recipe.outputs.commit }}
+          path: recipe
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.recipe.outputs.baseline }}
+          path: baseline
+      - name: Free hosted-runner disk
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache
+          docker system prune -af
+          df -h
+      - name: Use the runner's built-in BuildKit
+        run: |
+          mkdir -p "$DOCKER_CONFIG"
+          docker buildx version
+          docker buildx ls
+      - name: Build off, compare failed off with baseline, then build on
+        env:
+          PAIR: ${{ inputs.pair }}
+          PYTHONUNBUFFERED: '1'
+        run: python3 validation/build_pair.py run "$PAIR" recipe baseline results
+      - name: Retain inputs, commands, logs and outcomes
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cxx-pair-${{ inputs.pair }}
+          path: results/
+          if-no-files-found: error
+          retention-days: 30

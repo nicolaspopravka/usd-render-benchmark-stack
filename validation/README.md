@@ -46,3 +46,5 @@ compatibility. Dispatch `annual-cxx-build-only.yml` with this experimental ref;
 never substitute a publication workflow.
 
 MoonRay GCC14 follow-up: `moonray-gcc14-build-only.yml` runs enabled CY2026/CY2027 only, using `moonray-gcc14-inputs.json`. The sole build-input change from the original comparison is MOONRAY_TOOLSET=gcc-toolset-14. Original GCC12 off builds are retained as comparison evidence in run37994841643. No recipe/source/base change or image export.
+
+Own import/discovery follow-ups: `delegate-import-build-only.yml` selects cycles or embree, rebuilding CY2023–CY2025 off/on using the corresponding frozen import-inputs manifest. Only candidate recipe commits change; source/base/features stay fixed. Failed off builds retain unchanged-recipe controls. Shared workflow concurrency keeps these experiments behind MoonRay; queue one pending experiment at a time.

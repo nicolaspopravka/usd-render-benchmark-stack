@@ -1,0 +1,73 @@
+{
+  "schema": 1,
+  "platform": "linux/amd64",
+  "build_timeout_seconds": 2700,
+  "pairs": [
+    {
+      "id": "cycles-2023",
+      "delegate": "cycles",
+      "year": 2023,
+      "recipe": {
+        "commit": "8743aa53315c1061d0eb2765633755d834ac0916",
+        "baseline": "ddea4d55d13936c4d53f1501a1dce37201a1e759"
+      },
+      "base_image": "ghcr.io/nicolaspopravka/usd-render-benchmark-stack:2023.2-default@sha256:23d2b1c0885a9e769bd7430cdf73c6cc3a13358499828f3b52483ae9a3659d2a",
+      "source": {
+        "repository": "https://projects.blender.org/blender/cycles.git",
+        "ref": "v4.0.2",
+        "commit": "4ad568a200defc338d43bd59c2be63c1e66993bc"
+      },
+      "build_args": {
+        "CYCLES_REPO": "https://projects.blender.org/blender/cycles.git",
+        "CYCLES_TAG": "v4.0.2",
+        "MOONRAY_TAG": "",
+        "WITH_CYCLES_OSL": "OFF",
+        "WITH_CYCLES_OPENVDB": "OFF"
+      }
+    },
+    {
+      "id": "cycles-2024",
+      "delegate": "cycles",
+      "year": 2024,
+      "recipe": {
+        "commit": "8743aa53315c1061d0eb2765633755d834ac0916",
+        "baseline": "ddea4d55d13936c4d53f1501a1dce37201a1e759"
+      },
+      "base_image": "ghcr.io/nicolaspopravka/usd-render-benchmark-stack:2024.2-default@sha256:fe771a6c502d1c809f3a45bb751d5b55c97fcfc491a0e81046854bde7a533177",
+      "source": {
+        "repository": "https://projects.blender.org/blender/cycles.git",
+        "ref": "v4.3.0",
+        "commit": "5accdc3430cdaf26a05c0cd8070b37010400b0fb"
+      },
+      "build_args": {
+        "CYCLES_REPO": "https://projects.blender.org/blender/cycles.git",
+        "CYCLES_TAG": "v4.3.0",
+        "MOONRAY_TAG": "",
+        "WITH_CYCLES_OSL": "OFF",
+        "WITH_CYCLES_OPENVDB": "OFF"
+      }
+    },
+    {
+      "id": "cycles-2025",
+      "delegate": "cycles",
+      "year": 2025,
+      "recipe": {
+        "commit": "8743aa53315c1061d0eb2765633755d834ac0916",
+        "baseline": "ddea4d55d13936c4d53f1501a1dce37201a1e759"
+      },
+      "base_image": "ghcr.io/nicolaspopravka/usd-render-benchmark-stack:2025.2@sha256:9dbde7fc0e78da24e4540ee2e68c35dce8a875291e754e1b7e69c96794a57e86",
+      "source": {
+        "repository": "https://projects.blender.org/blender/cycles.git",
+        "ref": "v5.0.0",
+        "commit": "2eba4102417439e59e03003f1dff881192cbd75f"
+      },
+      "build_args": {
+        "CYCLES_REPO": "https://projects.blender.org/blender/cycles.git",
+        "CYCLES_TAG": "v5.0.0",
+        "MOONRAY_TAG": "",
+        "WITH_CYCLES_OSL": "ON",
+        "WITH_CYCLES_OPENVDB": "ON"
+      }
+    }
+  ]
+}
