@@ -3,6 +3,10 @@
 # Cycles nor OpenUSD source.
 find_package(OpenGL REQUIRED)
 
+# Load the complete export set before a fallback can define only its main
+# target. Later USD/MaterialX discovery also loads this package config.
+find_package(OpenImageIO CONFIG QUIET)
+
 # When the USD package supplies the OpenEXR target, FindUSDPixar reuses it as a
 # bare imported location with no link interface, so Imath never reaches the
 # link line even though Cycles' OpenVDB image code references Imath symbols.
