@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "platform": "linux/amd64",
+  "build_timeout_seconds": 2700,
+  "pairs": [
+    {
+      "id": "embree-2024",
+      "delegate": "embree",
+      "year": 2024,
+      "recipe": {
+        "commit": "54897e8f0b9481fbd22f96fdc819ef0ac966808d",
+        "baseline": "98dbec9171d26efbb113a292347ad7634be15c23"
+      },
+      "base_image": "aswf/ci-vfxall:2024@sha256:e7431ef50a2e07bd53af515f54cb07f5601b1870046fa81e2d57a6b433e49fb6",
+      "source": {
+        "repository": "https://github.com/PixarAnimationStudios/OpenUSD.git",
+        "ref": "v24.08",
+        "commit": "59992d2178afcebd89273759f2bddfe730e59aa8"
+      },
+      "build_args": {
+        "OPENUSD_TAG": "v24.08"
+      }
+    }
+  ]
+}

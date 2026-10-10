@@ -13,3 +13,9 @@ class FollowupInputs(unittest.TestCase):
                 expected = original[p['id']]
                 expected['recipe']['commit'] = commit
                 self.assertEqual(p, expected)
+
+    def test_focused_tbb_rerun_keeps_annual_inputs(self):
+        root = Path(__file__).parent
+        original = next(p for p in json.loads((root/'annual-inputs.json').read_text())['pairs'] if p['id']=='embree-2024')
+        original['recipe']['commit'] = '54897e8f0b9481fbd22f96fdc819ef0ac966808d'
+        self.assertEqual(json.loads((root/'embree-tbb-import-inputs.json').read_text())['pairs'], [original])
