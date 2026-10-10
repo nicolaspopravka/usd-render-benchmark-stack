@@ -85,9 +85,34 @@ To add MoonRay, set `moonray_tag` to the required source ref (a tag such as
 (default: the upstream OpenMoonRay/openmoonray repo); set `moonray_repo` when
 `moonray_tag` names a branch that exists only on a fork, and record the repo,
 the ref and the resolved commit — the build log echoes the exact SHA after the
-clone. Before the build run the MoonRay fixers (git-lfs, the deployed
-OpenUSD cmake exports, a runnable ispc, and — when `moonray_toolset` is
-set — the toolset itself); each is a no-op when its gap is not present.
+clone. Before the build run the MoonRay fixers (git-lfs, a runnable ispc, and
+— when `moonray_toolset` is set — the toolset itself); each is a no-op when
+its gap is not present.
+
+### OpenUSD dependencies
+
+The ASWF images ship OpenUSD's libraries without the CMake package configs
+that `pxrConfig.cmake`'s `find_dependency()` calls need, so every delegate
+that consumes the deployed `pxr` package hits the same gap.
+`cmake/aswf_usd_deps.cmake` resolves it once for all of them and is loaded
+through `-DCMAKE_PROJECT_INCLUDE` (Cycles, MoonRay) or an explicit `include()`
+(hdEmbree's consumer).
+
+It prefers the real package config and falls back to a located library only
+when no config exists. That ordering is the whole point: an empty
+`INTERFACE IMPORTED` target satisfies a configure and then fails at link time
+with `DSO missing from command line`, and because it lives in the image it is
+inherited by every build on top. It also repairs the hollow targets left by
+the earlier per-branch fixers, so a base carrying them still resolves.
+
+Verify it against any built image — free, no network, no pod:
+
+```bash
+tests/test_usd_deps.sh ghcr.io/nicolaspopravka/usd-render-benchmark:2027.3
+```
+
+The test links and runs a consumer rather than only configuring one, because
+every failure mode of this mechanism configures cleanly and fails later.
 The build script also detects CMake 4 and adds the policy flags the
 older modules in the OpenMoonRay tree require, so the same script works on
 the CMake 3.x and CMake 4 ASWF lines. `moonray_toolset` optionally builds
