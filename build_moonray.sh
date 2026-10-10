@@ -97,11 +97,16 @@ if [ -n "${CUDA_HOST_COMPILER:-}" ]; then
     HOST_ARGS=(-DCMAKE_CUDA_HOST_COMPILER="${CUDA_HOST_COMPILER}" \
                "-DCMAKE_CUDA_FLAGS=--compiler-bindir=${CUDA_HOST_COMPILER}")
 fi
+# CMAKE_PROJECT_INCLUDE resolves the OpenUSD dependencies the ASWF deploy
+# ships without configs. MoonRay, Cycles and hdEmbree all consume the same
+# deployed pxr package, so they all load the same module rather than each
+# growing its own workaround.
 cmake -S "${MOONRAY_SRC}" -B "${MOONRAY_BUILD}" \
     -DCMAKE_PREFIX_PATH="${ASWF_INSTALL_PREFIX}" \
     -DCUDAToolkit_ROOT="${CUDA_ROOT}" \
     -DPYTHON_EXECUTABLE=python3 \
     -DBOOST_PYTHON_COMPONENT_NAME="python${ASWF_PYTHON_MAJOR_MINOR_VERSION//./}" \
+    -DCMAKE_PROJECT_INCLUDE="${ASWF_INSTALL_PREFIX}/share/aswf/aswf_usd_deps.cmake" \
     "${HOST_ARGS[@]}" \
     "${POLICY_ARGS[@]}" \
     -DBUILD_QT_APPS=NO

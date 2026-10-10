@@ -40,8 +40,10 @@ set -euxo pipefail
 # is the only one; without it OptiX fails at render, not at build.
 #
 # PXR_ROOT and -DCMAKE_PROJECT_INCLUDE go together: the former makes CMake load
-# OpenUSD's installed pxrTargets.cmake, which references an OpenGL::GL target the
-# ASWF deploy does not define, and the latter is the shim that defines it first.
+# OpenUSD's installed pxrTargets.cmake, which references dependency targets the
+# ASWF deploy does not define, and the latter resolves them first. The shared
+# module (cmake/aswf_usd_deps.cmake) is used by hdEmbree and MoonRay too, so all
+# three delegates resolve the deployed pxr package the same way.
 #
 # CMAKE_BUILD_TYPE is pinned because every published timing depends on it. It is
 # already Release by default here - Cycles seeds CMAKE_BUILD_TYPE_INIT before
@@ -145,7 +147,7 @@ fi
     -DPython3_ROOT_DIR="$ASWF_INSTALL_PREFIX" \
     -DWITH_CYCLES_OSL="$WITH_CYCLES_OSL" \
     -DWITH_CYCLES_OPENVDB="$WITH_CYCLES_OPENVDB" \
-    -DCMAKE_PROJECT_INCLUDE="${ASWF_INSTALL_PREFIX}/share/cycles/import_openusd_dependencies.cmake" \
+    -DCMAKE_PROJECT_INCLUDE="${ASWF_INSTALL_PREFIX}/share/aswf/aswf_usd_deps.cmake" \
     -DOPTIX_ROOT_DIR="$OPTIX_ROOT_DIR" \
     -DCYCLES_RUNTIME_OPTIX_ROOT_DIR="$CYCLES_RUNTIME_OPTIX_ROOT_DIR" \
     -DCUDAToolkit_ROOT="$CUDAToolkit_ROOT" \
