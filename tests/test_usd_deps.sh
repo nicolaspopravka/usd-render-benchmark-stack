@@ -65,18 +65,33 @@ foreach(target
     OpenColorIO::OpenColorIO
     OpenEXR::OpenEXR
     OpenImageIO::OpenImageIO
-    OpenImageIO::OpenImageIO_Util)
+    OpenImageIO::OpenImageIO_Util
+    OpenVDB::openvdb
+    OpenGL::GL)
   if(NOT TARGET ${target})
     message(FATAL_ERROR "aswf_usd_deps: ${target} is not defined")
   endif()
   get_target_property(type ${target} TYPE)
-  if(type STREQUAL "INTERFACE_LIBRARY")
-    message(FATAL_ERROR
-        "aswf_usd_deps: ${target} is an empty INTERFACE target; the real "
-        "library is installed but was not resolved")
+  # Threads and OpenGL are modelled as INTERFACE targets that carry flags, and
+  # on a glibc base Threads::Threads is legitimately empty because pthreads is
+  # part of libc. Every other target must resolve to a real library, because an
+  # empty INTERFACE there is the defect this module exists to prevent.
+  if(type STREQUAL "INTERFACE_LIBRARY" AND NOT target MATCHES "^(Threads|OpenGL)")
+    get_target_property(iface ${target} INTERFACE_LINK_LIBRARIES)
+    if(NOT iface)
+      message(FATAL_ERROR
+          "aswf_usd_deps: ${target} is an empty INTERFACE target; the real "
+          "library is installed but was not resolved")
+    endif()
   endif()
   message(STATUS "aswf_usd_deps: ${target} TYPE=${type}")
 endforeach()
+
+# Present but hollow is the failure mode; Threads must merely exist, since
+# glibc makes an empty Threads::Threads correct.
+if(NOT TARGET Threads::Threads)
+  message(FATAL_ERROR "aswf_usd_deps: Threads::Threads is not defined")
+endif()
 
 add_executable(consumer main.cpp)
 target_link_libraries(consumer PRIVATE

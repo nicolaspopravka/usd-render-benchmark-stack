@@ -51,7 +51,11 @@ COPY fixers/ /usr/local/aswf/cycles-fixers/
 RUN /usr/local/aswf/cycles-fixers/05-osl-shader-includes.sh
 
 COPY build_cycles.sh /usr/local/aswf/build_cycles.sh
-COPY cmake/import_openusd_dependencies.cmake /usr/local/share/cycles/import_openusd_dependencies.cmake
+# One module, all three delegates: it resolves the OpenUSD dependencies the
+# conan deploy ships without CMake package configs, which every delegate hits
+# because they all consume the same deployed pxr package. Installed outside
+# any delegate's directory so no delegate branch can claim ownership of it.
+COPY cmake/aswf_usd_deps.cmake /usr/local/share/aswf/aswf_usd_deps.cmake
 RUN if [ -n "${CYCLES_TAG}" ]; then \
       bash -lc 'source /opt/rh/gcc-toolset-${ASWF_DTS_VERSION}/enable && \
                 chmod +x /usr/local/aswf/build_cycles.sh && \

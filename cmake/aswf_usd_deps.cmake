@@ -55,8 +55,28 @@ find_package(Imath CONFIG QUIET)
 find_package(OpenImageIO CONFIG QUIET)
 find_package(OpenEXR CONFIG QUIET)
 find_package(OpenColorIO CONFIG QUIET)
-find_package(OpenVDB CONFIG QUIET)
 find_package(TBB CONFIG QUIET)
+
+# OpenVDB is resolved ahead of its find_package() because the ASWF deploy ships
+# no OpenVDB config, and fixers/04 wrote one that reports OpenVDB_FOUND while
+# defining an empty INTERFACE target behind an if(NOT TARGET) guard. A plain
+# find_package() therefore reports success while providing nothing, and the
+# hollow target it leaves is indistinguishable from a real one afterwards --
+# CMake cannot remove a target once it is defined.
+#
+# Defining the real target first is exactly what that guard tests for, so the
+# stub becomes a no-op and the name is already a real library by the time
+# anything else asks for it. Bases that do ship a genuine OpenVDB config get
+# that above, and the same guard leaves this alone.
+find_library(ASWF_USD_openvdb_LIBRARY NAMES openvdb PATHS /usr/local/lib)
+if(ASWF_USD_openvdb_LIBRARY AND NOT TARGET OpenVDB::openvdb)
+  add_library(OpenVDB::openvdb UNKNOWN IMPORTED)
+  set_target_properties(OpenVDB::openvdb PROPERTIES
+    IMPORTED_LOCATION "${ASWF_USD_openvdb_LIBRARY}")
+  message(STATUS
+    "aswf_usd_deps: OpenVDB::openvdb -> ${ASWF_USD_openvdb_LIBRARY}")
+endif()
+find_package(OpenVDB CONFIG QUIET)
 
 # --------------------------------------------------------------------------
 # 3. Location fallbacks, only for what step 2 did not provide.
