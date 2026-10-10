@@ -70,6 +70,30 @@ follow-up step confirms the published tag resolves to that exact digest, so a
 missing, wrong, or stale push fails the run. Keep the build log (uploaded as
 an artifact) and the image digest with any recorded result.
 
+### OpenUSD dependencies
+
+The ASWF images ship OpenUSD's libraries without the CMake package configs
+that `pxrConfig.cmake`'s `find_dependency()` calls need, so a consumer of the
+deployed `pxr` package hits the gap. `cmake/aswf_usd_deps.cmake` resolves it
+and is included by the hdEmbree consumer; the Cycles and MoonRay recipes load
+the same file through `-DCMAKE_PROJECT_INCLUDE`.
+
+It prefers the real package config and falls back to a located library only
+when no config exists. That ordering is the whole point: an empty
+`INTERFACE IMPORTED` target satisfies a configure and then fails at link time
+with `DSO missing from command line`, and because it lives in the image it is
+inherited by every build on top. It also repairs the hollow targets left by
+this branch's earlier fixers, so a base carrying them still resolves.
+
+Verify it against any built image — free, no network, no pod:
+
+```bash
+tests/test_usd_deps.sh ghcr.io/nicolaspopravka/usd-render-benchmark:2027.2
+```
+
+The test links and runs a consumer rather than only configuring one, because
+every failure mode of this mechanism configures cleanly and fails later.
+
 ## Run a benchmark branch
 
 Clone a run branch with its submodules:
