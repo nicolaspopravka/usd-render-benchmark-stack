@@ -1,0 +1,57 @@
+name: moonray-gcc14-build-only
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/validate/cxx-followup]
+    paths: [.github/workflows/moonray-gcc14-build-only.yml, validation/moonray*]
+permissions:
+  contents: read
+concurrency:
+  group: annual-cxx-build-only
+  cancel-in-progress: false
+jobs:
+  inputs:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m unittest discover -s validation -p 'test_*.py' -v
+  build:
+    needs: inputs
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 55
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        year: [2026, 2027]
+    env:
+      DOCKER_CONFIG: /tmp/annual-cxx-docker-config
+    steps:
+      - uses: actions/checkout@v4
+      - name: Retain frozen inputs before setup
+        run: |
+          mkdir -p results
+          cp validation/moonray-gcc14-inputs.json results/manifest.json
+      - uses: actions/checkout@v4
+        with:
+          ref: db7a128af2832384e2cd8fc474d32960cd5af5e0
+          path: recipe
+      - name: Free hosted-runner disk
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache
+          docker system prune -af
+          mkdir -p "$DOCKER_CONFIG"
+      - name: Build enabled MoonRay with GCC14
+        env:
+          PAIR: moonray-${{ matrix.year }}
+          PYTHONUNBUFFERED: '1'
+        run: python3 validation/moonray_gcc14.py "$PAIR" recipe results
+      - name: Retain build evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: moonray-gcc14-${{ matrix.year }}
+          path: results/
+          if-no-files-found: error
+          retention-days: 30

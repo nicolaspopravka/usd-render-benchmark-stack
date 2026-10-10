@@ -44,3 +44,5 @@ Local checks: `python3 -m unittest discover -s validation -p 'test_*.py' -v`.
 These fixture tests validate orchestration and evidence handling, not renderer
 compatibility. Dispatch `annual-cxx-build-only.yml` with this experimental ref;
 never substitute a publication workflow.
+
+MoonRay GCC14 follow-up: `moonray-gcc14-build-only.yml` runs enabled CY2026/CY2027 only, using `moonray-gcc14-inputs.json`. The sole build-input change from the original comparison is MOONRAY_TOOLSET=gcc-toolset-14. Original GCC12 off builds are retained as comparison evidence in run37994841643. No recipe/source/base change or image export.

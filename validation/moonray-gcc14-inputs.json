@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "platform": "linux/amd64",
+  "build_timeout_seconds": 2700,
+  "pairs": [
+    {
+      "id": "moonray-2026",
+      "delegate": "moonray",
+      "year": 2026,
+      "recipe": {
+        "commit": "db7a128af2832384e2cd8fc474d32960cd5af5e0",
+        "baseline": "ddea4d55d13936c4d53f1501a1dce37201a1e759"
+      },
+      "base_image": "ghcr.io/nicolaspopravka/usd-render-benchmark-stack:2026.3@sha256:07b097e394d283efb16f705e7d9f27574d57f3475349fe35ccf2b82798420bd3",
+      "source": {
+        "repository": "https://github.com/nicolaspopravka/openmoonray.git",
+        "ref": "usd26-moonray",
+        "commit": "02db29648d22eca65ffa8762d6f64f22d4baebf5"
+      },
+      "build_args": {
+        "CYCLES_TAG": "",
+        "MOONRAY_REPO": "https://github.com/nicolaspopravka/openmoonray.git",
+        "MOONRAY_TAG": "usd26-moonray",
+        "MOONRAY_TOOLSET": "gcc-toolset-14"
+      }
+    },
+    {
+      "id": "moonray-2027",
+      "delegate": "moonray",
+      "year": 2027,
+      "recipe": {
+        "commit": "db7a128af2832384e2cd8fc474d32960cd5af5e0",
+        "baseline": "ddea4d55d13936c4d53f1501a1dce37201a1e759"
+      },
+      "base_image": "ghcr.io/nicolaspopravka/usd-render-benchmark-stack:2027.3@sha256:3ca96479c22170cc7fc38c53e0140dffe91679057d715a886f52c152f3199710",
+      "source": {
+        "repository": "https://github.com/nicolaspopravka/openmoonray.git",
+        "ref": "usd26-moonray",
+        "commit": "02db29648d22eca65ffa8762d6f64f22d4baebf5"
+      },
+      "build_args": {
+        "CYCLES_TAG": "",
+        "MOONRAY_REPO": "https://github.com/nicolaspopravka/openmoonray.git",
+        "MOONRAY_TAG": "usd26-moonray",
+        "MOONRAY_TOOLSET": "gcc-toolset-14"
+      }
+    }
+  ]
+}
