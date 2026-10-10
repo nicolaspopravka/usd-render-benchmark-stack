@@ -9,8 +9,9 @@ project(hdembree-consumer LANGUAGES CXX)
 # One USD build per image: nothing is rebuilt here.
 #
 # The ASWF deploy's pxr cmake exports reference imported targets it does not
-# define (CONAN_LIB::*, OpenSubdiv::*, ...); fixers/02-openusd-cmake-exports.sh
-# (a RUN step in Dockerfile.pristine) provides them before this configure runs.
+# define (CONAN_LIB::*, OpenSubdiv::*, ...). The shared dependency module
+# (cmake/aswf_usd_deps.cmake, included below) provides them before this
+# configure runs.
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -26,12 +27,19 @@ if(NOT HDEMBREE_SOURCE_DIR)
 endif()
 
 # --- pxr (prebuilt OpenUSD) ---------------------------------------------------
-# Threads and TBB are REAL dependencies of this plugin AND of the pxr config's
-# dependency graph, so they are found BEFORE find_package(pxr): otherwise
-# fixers/02-openusd-cmake-exports.sh synthesizes them as empty interfaces and a
-# later real package would conflict. PXR_VERSION is set by pxrConfig.
+# The shared module resolves the OpenUSD dependencies the ASWF deploy ships
+# without CMake package configs, the same file the Cycles and MoonRay recipes
+# use. It replaces fixers 02 (which synthesized empty targets into
+# pxrConfig.cmake) and 04 (a stub OpenVDB config that reported success without
+# a library).
+#
+# Threads and TBB are still found first, and deliberately: they are real
+# dependencies of this plugin as well as of the pxr config's dependency graph,
+# so they must exist before find_package(pxr) runs. PXR_VERSION comes from
+# pxrConfig.
 find_package(Threads REQUIRED)
 find_package(TBB REQUIRED)
+include("/usr/local/share/aswf/aswf_usd_deps.cmake")
 find_package(pxr REQUIRED)
 if(PXR_VERSION VERSION_LESS 2603)
   message(FATAL_ERROR "This consumer expects OpenUSD >= 26.03 on the base")

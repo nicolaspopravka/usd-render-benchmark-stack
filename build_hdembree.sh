@@ -14,8 +14,9 @@
 # PXR_PLUGINPATH_NAME). One USD build per image: nothing here rebuilds OpenUSD.
 #
 # The ASWF deploy's pxr cmake exports reference imported targets it does not
-# define; fixers/02-openusd-cmake-exports.sh (a RUN step in Dockerfile.pristine)
-# provides them so find_package(pxr) succeeds -- the same fixer MoonRay uses.
+# define; the shared dependency module (cmake/aswf_usd_deps.cmake, a COPY in
+# Dockerfile.pristine) provides them so find_package(pxr) succeeds. The same
+# module serves the Cycles and MoonRay recipes.
 #
 # The OpenUSD source tag must match the base's prebuilt OpenUSD; it is caller
 # data (per-CY), not derived. Embree always comes from the image (Nicolas).

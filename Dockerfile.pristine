@@ -10,15 +10,12 @@ ARG BASE_IMAGE
 
 FROM ${BASE_IMAGE}
 
-# TEMPORARY: OpenUSD cmake exports reference CONAN_LIB targets the deploy never
-# defines (find_package(pxr) consumer, same fixer as MoonRay) — drop when the
-# ASWF bases ship corrected exports.
-COPY fixers/ /usr/local/aswf/moonray-fixers/
-RUN /usr/local/aswf/moonray-fixers/02-openusd-cmake-exports.sh
-
-# TEMPORARY: pxrConfig find_dependency(OpenVDB) needs a findable config on some
-# CYs — drop when the ASWF bases ship an OpenVDB cmake config.
-RUN /usr/local/aswf/moonray-fixers/04-openvdb-config.sh
+# The OpenUSD dependencies the ASWF deploy ships without CMake package configs
+# are resolved by one module shared with the Cycles and MoonRay recipes. It
+# replaces fixers 02 (empty targets synthesized into pxrConfig.cmake) and 04
+# (a stub OpenVDBConfig.cmake that reported success without a library), and it
+# repairs the hollow targets those two left in any base that inherited them.
+COPY cmake/aswf_usd_deps.cmake /usr/local/share/aswf/aswf_usd_deps.cmake
 
 # TEMPORARY: build hdEmbree into the pristine stack — drop when the ASWF
 # base images ship OpenUSD with hdEmbree enabled.
