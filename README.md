@@ -163,3 +163,9 @@ the pinned images behind the published results.
 
 The demo branch records the result that was actually observed:
 [`demo/run1`](https://github.com/nicolaspopravka/usd-render-benchmark/tree/demo/run1).
+
+## Optional host C++ conformance
+
+`build-pristine` accepts `cxx_conformance`: `off` (default) or `2023`–`2027`. Direct Docker builds use `--build-arg CXX_CONFORMANCE=<year>`. Compiler setup runs regardless of whether Cycles is built. Enabled mode sources the installed gcc-toolset-11 environment and requests C++17 for CY2023–2025, or gcc-toolset-14 and C++20 for CY2026–2027. When CYCLES_TAG is set, Cycles builds and installs normally.
+
+Off sources gcc-toolset-${ASWF_DTS_VERSION} and preserves existing CUDA and CMake choices. This selects build settings; it does not verify compiler version, ABI, individual compilation commands or target-specific overrides. It does not establish inherited-component, CUDA or runtime/render conformance. Without `CYCLES_TAG`, no delegate is rebuilt and the selected year does not reject the request. Runnable overlays inherit the delegate. Standalone builder callers manage build-directory cleanup. See [build support](build-support/README.md).

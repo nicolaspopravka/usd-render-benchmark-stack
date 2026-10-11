@@ -2,13 +2,14 @@
 
 # Byte-pristine <cy> stack image.
 #
-# CYCLES_TAG empty (default) keeps this a pure retag. When CYCLES_TAG is set,
+# Compiler setup runs even when CYCLES_TAG is empty. When CYCLES_TAG is set,
 # the Cycles Hydra delegate is built under /opt/cycles with this CY's
 # VFX-Platform compiler.
 
 ARG BASE_IMAGE
 
 FROM ${BASE_IMAGE}
+ARG CXX_CONFORMANCE="off"
 
 # Image identity, overriding the ASWF base's labels, which we inherit. version
 # is a build arg because the base's value is the ASWF version, not ours.
@@ -45,13 +46,16 @@ ARG WITH_CYCLES_OPENVDB="ON"
 COPY fixers/ /usr/local/aswf/cycles-fixers/
 RUN /usr/local/aswf/cycles-fixers/05-osl-shader-includes.sh
 
+COPY build-support/ /usr/local/aswf/build-support/
 COPY build_cycles.sh /usr/local/aswf/build_cycles.sh
 COPY cmake/import_openusd_dependencies.cmake /usr/local/share/cycles/import_openusd_dependencies.cmake
-RUN if [ -n "${CYCLES_TAG}" ]; then \
-      bash -lc 'source /opt/rh/gcc-toolset-${ASWF_DTS_VERSION}/enable && \
+RUN bash -lc 'source /usr/local/aswf/build-support/vfx-cxx.sh && \
+              vfx_cxx_environment && \
+              if [ -n "${CYCLES_TAG}" ]; then \
                 chmod +x /usr/local/aswf/build_cycles.sh && \
                 CYCLES_TAG="${CYCLES_TAG}" \
                 WITH_CYCLES_OSL="${WITH_CYCLES_OSL}" \
                 WITH_CYCLES_OPENVDB="${WITH_CYCLES_OPENVDB}" \
-                /usr/local/aswf/build_cycles.sh'; \
-    fi
+                /usr/local/aswf/build_cycles.sh && \
+                rm -rf /opt/build-cycles; \
+              fi'
