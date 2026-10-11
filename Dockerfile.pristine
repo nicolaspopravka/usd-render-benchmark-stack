@@ -9,6 +9,7 @@
 ARG BASE_IMAGE
 
 FROM ${BASE_IMAGE}
+ARG CXX_CONFORMANCE="off"
 
 # Image identity, overriding the ASWF base's labels, which we inherit. version
 # is a build arg because the base's value is the ASWF version, not ours.
@@ -45,13 +46,25 @@ ARG WITH_CYCLES_OPENVDB="ON"
 COPY fixers/ /usr/local/aswf/cycles-fixers/
 RUN /usr/local/aswf/cycles-fixers/05-osl-shader-includes.sh
 
+COPY build-support/ /usr/local/aswf/build-support/
+RUN bash -ec 'source /usr/local/aswf/build-support/vfx-cxx.sh; \
+                  vfx_select_year; \
+                  if [ "${CXX_CONFORMANCE:-off}" != off ] && [ -z "${CYCLES_TAG}" ]; then \
+                    echo "ERROR: CXX_CONFORMANCE requires a Cycles source build (CYCLES_TAG)" >&2; exit 1; \
+                  fi'
+
 COPY build_cycles.sh /usr/local/aswf/build_cycles.sh
 COPY cmake/import_openusd_dependencies.cmake /usr/local/share/cycles/import_openusd_dependencies.cmake
 RUN if [ -n "${CYCLES_TAG}" ]; then \
-      bash -lc 'source /opt/rh/gcc-toolset-${ASWF_DTS_VERSION}/enable && \
+      bash -lc 'source /usr/local/aswf/build-support/vfx-cxx.sh && \
+                if [ "${CXX_CONFORMANCE:-off}" = off ]; then \
+                  source /opt/rh/gcc-toolset-${ASWF_DTS_VERSION}/enable; \
+                fi && \
+                vfx_cxx_environment && \
                 chmod +x /usr/local/aswf/build_cycles.sh && \
                 CYCLES_TAG="${CYCLES_TAG}" \
                 WITH_CYCLES_OSL="${WITH_CYCLES_OSL}" \
                 WITH_CYCLES_OPENVDB="${WITH_CYCLES_OPENVDB}" \
-                /usr/local/aswf/build_cycles.sh'; \
+                /usr/local/aswf/build_cycles.sh && \
+                rm -rf /opt/build-cycles'; \
     fi

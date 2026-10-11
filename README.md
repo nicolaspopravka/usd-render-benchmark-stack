@@ -163,3 +163,9 @@ the pinned images behind the published results.
 
 The demo branch records the result that was actually observed:
 [`demo/run1`](https://github.com/nicolaspopravka/usd-render-benchmark/tree/demo/run1).
+
+## Optional host C++ conformance
+
+`build-pristine` accepts `cxx_conformance`: `off` (default) or `2023`–`2027`. Direct Docker builds use `--build-arg CXX_CONFORMANCE=<year>`. Enabled mode requires a nonempty `CYCLES_TAG`, selects the installed annual GCC toolset and verifies its version and default ABI, requests the annual C++ standard in CMake and runs the normal build/install. CY2023–2025 require GCC11.2.x/C++17; CY2026–2027 require GCC14.2.x/C++20; both require the new libstdc++ ABI. Unsupported source/SDK combinations fail the build. No supplied components are replaced.
+
+Off preserves existing compiler, CUDA and CMake choices. A successful enabled build means Cycles built with the selected annual compiler and requested CMake standard. It does not inspect individual compilation commands, enforce target-specific overrides, or check inherited components, CUDA compilation or runtime/render behavior. Runnable overlays inherit the delegate and do not independently establish conformance. Standalone builder callers manage build-directory cleanup. See [build support](build-support/README.md).
