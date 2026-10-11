@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # Optional image-side profile; delegate scripts contain only Git/CMake commands.
-_vfx_support_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 vfx_select_year() {
     case "${CXX_CONFORMANCE:-off}" in
@@ -28,5 +27,20 @@ vfx_cxx_environment() {
     CC="$(command -v gcc)" || return
     CXX="$(command -v g++)" || return
     export CC CXX VFX_CXX_STANDARD
-    python3 "$_vfx_support_dir/vfx_cxx.py" compiler --compiler "$CXX" --release "$VFX_GCC_RELEASE"
+    local version macros
+    version="$("$CXX" -dumpfullversion)" || return
+    case "$version" in
+        "$VFX_GCC_RELEASE"|"$VFX_GCC_RELEASE".*) ;;
+        *) printf 'ERROR: expected GCC %s.x, found %s\n' "$VFX_GCC_RELEASE" "$version" >&2; return 1 ;;
+    esac
+    macros="$("$CXX" -dM -E -x c++ - <<< '#include <string>')" || return
+    if grep -q '^#define __clang__ ' <<< "$macros" || ! grep -q '^#define __GNUC__ ' <<< "$macros"; then
+        echo 'ERROR: the annual host compiler must be GCC' >&2
+        return 1
+    fi
+    if ! grep -q '^#define _GLIBCXX_USE_CXX11_ABI 1$' <<< "$macros"; then
+        echo 'ERROR: expected the new libstdc++ ABI (_GLIBCXX_USE_CXX11_ABI=1)' >&2
+        return 1
+    fi
+    printf 'GCC %s; default libstdc++ ABI=1; requested C++%s\n' "$version" "$VFX_CXX_STANDARD"
 }
