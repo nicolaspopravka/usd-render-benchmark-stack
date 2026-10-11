@@ -14,7 +14,7 @@ on:
         required: true
         type: string
       cxx_conformance:
-        description: "Optional host C++ profile for a Cycles source build; off preserves defaults."
+        description: "Optional annual C++ build settings; off preserves defaults."
         required: false
         default: "off"
         type: choice
@@ -67,18 +67,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Validate conformance request
-        env:
-          CXX_CONFORMANCE: ${{ inputs.cxx_conformance }}
-          CYCLES_TAG: ${{ inputs.cycles_tag }}
-        run: |
-          source build-support/vfx-cxx.sh
-          vfx_select_year
-          if [ "${CXX_CONFORMANCE:-off}" != off ] && [ -z "$CYCLES_TAG" ]; then
-            echo "ERROR: CXX_CONFORMANCE requires a Cycles source build (CYCLES_TAG)" >&2
-            exit 1
-          fi
 
       - name: Log in to GHCR
         uses: docker/login-action@v3

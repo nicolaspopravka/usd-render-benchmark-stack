@@ -47,12 +47,6 @@ COPY fixers/ /usr/local/aswf/cycles-fixers/
 RUN /usr/local/aswf/cycles-fixers/05-osl-shader-includes.sh
 
 COPY build-support/ /usr/local/aswf/build-support/
-RUN bash -ec 'source /usr/local/aswf/build-support/vfx-cxx.sh; \
-                  vfx_select_year; \
-                  if [ "${CXX_CONFORMANCE:-off}" != off ] && [ -z "${CYCLES_TAG}" ]; then \
-                    echo "ERROR: CXX_CONFORMANCE requires a Cycles source build (CYCLES_TAG)" >&2; exit 1; \
-                  fi'
-
 COPY build_cycles.sh /usr/local/aswf/build_cycles.sh
 COPY cmake/import_openusd_dependencies.cmake /usr/local/share/cycles/import_openusd_dependencies.cmake
 RUN if [ -n "${CYCLES_TAG}" ]; then \
