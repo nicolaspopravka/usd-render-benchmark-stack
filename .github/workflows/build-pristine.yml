@@ -14,17 +14,11 @@ on:
         required: true
         type: string
       cxx_conformance:
-        description: "Optional annual host C++ profile; off preserves existing compiler choices and defaults."
+        description: "Optional annual hdEmbree C++ settings; off preserves defaults."
         required: false
         default: "off"
         type: choice
-        options:
-          - "off"
-          - "2023"
-          - "2024"
-          - "2025"
-          - "2026"
-          - "2027"
+        options: ["off", "2023", "2024", "2025", "2026", "2027"]
       image_tag:
         description: "Tag for the published stack image, e.g. 2027.2"
         required: true
@@ -75,7 +69,7 @@ jobs:
           OPENUSD_TAG: ${{ inputs.openusd_tag }}
         run: |
           set -o pipefail
-          docker buildx build --progress=plain --provenance=false \
+          docker buildx build --provenance=false \
             --file Dockerfile.pristine \
             --build-arg BASE_IMAGE="$BASE_IMAGE" \
             --build-arg CXX_CONFORMANCE="${CXX_CONFORMANCE:-off}" \

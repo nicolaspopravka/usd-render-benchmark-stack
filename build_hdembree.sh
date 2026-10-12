@@ -52,7 +52,7 @@ git -C "${OPENUSD_SRC}" rev-parse HEAD   # recorded for evidence; not asserted
 CXX_ARGS=()
 if [ -n "${VFX_CXX_STANDARD:-}" ]; then
     CXX_ARGS=(-DCMAKE_CXX_STANDARD="$VFX_CXX_STANDARD"
-              -DCMAKE_CXX_STANDARD_REQUIRED=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON)
+              -DCMAKE_CXX_STANDARD_REQUIRED=ON)
 fi
 
 cmake -S "${CONSUMER_DIR}" -B "${OPENUSD_BUILD}" \

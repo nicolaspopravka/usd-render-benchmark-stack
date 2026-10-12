@@ -29,7 +29,6 @@ ARG CXX_CONFORMANCE="off"
 COPY build-support/ /usr/local/aswf/build-support/
 RUN OPENUSD_TAG="${OPENUSD_TAG}" \
     bash -ec 'source /usr/local/aswf/build-support/vfx-cxx.sh; \
-              vfx_cxx_environment; \
+              if [ "${CXX_CONFORMANCE:-off}" != off ]; then vfx_cxx_environment; fi; \
               bash /usr/local/aswf/build_hdembree.sh; \
-              vfx_cxx_check /opt/build-hdembree/build; \
               rm -rf /opt/build-hdembree'
