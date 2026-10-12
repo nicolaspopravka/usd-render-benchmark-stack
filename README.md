@@ -42,9 +42,10 @@ should retain the image digest and the exact run commit that were observed.
 
 Both image workflows are manual.
 
-Annual host C++ conformance is optional: `cxx_conformance` defaults to `off`,
-which keeps the existing compiler choices and upstream defaults. Select a year
-for an experimental profile check. See [C++ conformance](build-support/README.md).
+Annual MoonRay C++ settings are optional: `cxx_conformance` defaults to `off`,
+which keeps existing compiler choices and upstream defaults. Select 2023–2027
+to source the annual toolset and request its standard, then build/install normally.
+See [build support](build-support/README.md).
 
 Publish a base stack under an explicit tag:
 

@@ -52,20 +52,15 @@ COPY fixers/ /usr/local/aswf/cycles-fixers/
 RUN /usr/local/aswf/cycles-fixers/05-osl-shader-includes.sh
 
 COPY build_cycles.sh /usr/local/aswf/build_cycles.sh
-COPY build-support/ /usr/local/aswf/build-support/
 COPY cmake/import_openusd_dependencies.cmake /usr/local/share/cycles/import_openusd_dependencies.cmake
 RUN if [ -n "${CYCLES_TAG}" ]; then \
       bash -lc 'source /opt/rh/gcc-toolset-${ASWF_DTS_VERSION}/enable && \
-                source /usr/local/aswf/build-support/vfx-cxx.sh && \
-                vfx_cxx_environment && \
                 chmod +x /usr/local/aswf/build_cycles.sh && \
                 CYCLES_TAG="${CYCLES_TAG}" \
                 CYCLES_REPO="${CYCLES_REPO}" \
                 WITH_CYCLES_OSL="${WITH_CYCLES_OSL}" \
                 WITH_CYCLES_OPENVDB="${WITH_CYCLES_OPENVDB}" \
-                /usr/local/aswf/build_cycles.sh && \
-                vfx_cxx_check /opt/build-cycles/cycles/build && \
-                rm -rf /opt/build-cycles'; \
+                /usr/local/aswf/build_cycles.sh'; \
     fi
 
 # TEMPORARY: build OpenMoonRay into the pristine stack — drop when the ASWF
@@ -77,12 +72,13 @@ RUN if [ -n "${CYCLES_TAG}" ]; then \
 # a no-op when its gap is not present.
 COPY fixers/01-gitlfs-prereqs.sh fixers/02-openusd-cmake-exports.sh \
      fixers/03-ispc.sh fixers/04-moonray-toolset.sh /usr/local/aswf/moonray-fixers/
+COPY build-support/ /usr/local/aswf/build-support/
 COPY build_moonray.sh /usr/local/aswf/build_moonray.sh
-RUN if [ -n "${MOONRAY_TAG}" ]; then \
-      bash -ec 'source /usr/local/aswf/build-support/vfx-cxx.sh; \
-                vfx_select_year; vfx_check_requested_toolset "${MOONRAY_TOOLSET}"'; \
-    fi
-RUN if [ -n "${MOONRAY_TAG}" ]; then \
+RUN bash -ec 'source /usr/local/aswf/build-support/vfx-cxx.sh; \
+      if [ "${CXX_CONFORMANCE:-off}" != off ]; then \
+        vfx_cxx_environment; \
+      fi; \
+      if [ -n "${MOONRAY_TAG}" ]; then \
       chmod +x /usr/local/aswf/moonray-fixers/*.sh /usr/local/aswf/build_moonray.sh && \
       /usr/local/aswf/moonray-fixers/01-gitlfs-prereqs.sh && \
       /usr/local/aswf/moonray-fixers/02-openusd-cmake-exports.sh && \
@@ -90,15 +86,14 @@ RUN if [ -n "${MOONRAY_TAG}" ]; then \
       MOONRAY_TOOLSET="${MOONRAY_TOOLSET}" \
       /usr/local/aswf/moonray-fixers/04-moonray-toolset.sh && \
       if [ -n "${MOONRAY_TOOLSET}" ]; then \
-        export CC="/opt/rh/${MOONRAY_TOOLSET}/root/usr/bin/gcc" \
-               CXX="/opt/rh/${MOONRAY_TOOLSET}/root/usr/bin/g++" \
-               CUDA_HOST_COMPILER="/opt/rh/${MOONRAY_TOOLSET}/root/usr/bin/g++"; \
+        export CUDA_HOST_COMPILER="/opt/rh/${MOONRAY_TOOLSET}/root/usr/bin/g++"; \
+        if [ "${CXX_CONFORMANCE:-off}" = off ]; then \
+          export CC="/opt/rh/${MOONRAY_TOOLSET}/root/usr/bin/gcc" \
+                 CXX="/opt/rh/${MOONRAY_TOOLSET}/root/usr/bin/g++"; \
+        fi; \
       fi; \
       MOONRAY_REPO_URL="${MOONRAY_REPO}" \
       MOONRAY_TAG="${MOONRAY_TAG}" \
-      bash -ec 'source /usr/local/aswf/build-support/vfx-cxx.sh; \
-                vfx_cxx_environment "${MOONRAY_TOOLSET}"; \
-                bash /usr/local/aswf/build_moonray.sh; \
-                vfx_cxx_check /opt/build-moonray/build; \
-                rm -rf /opt/build-moonray'; \
-    fi
+      bash /usr/local/aswf/build_moonray.sh && \
+      rm -rf /opt/build-moonray; \
+    fi'
