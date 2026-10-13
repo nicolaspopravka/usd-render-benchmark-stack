@@ -28,6 +28,27 @@ def dockerfiles(profile):
                 found = True
         if not found:
             raise ValueError(f'Unknown repair: {name}')
+    delegates = profile.get('delegates', {})
+    if not isinstance(delegates, dict):
+        raise ValueError('delegates must be an object')
+    stages, installs = [], []
+    for name, inputs in delegates.items():
+        if not re.fullmatch(r'[a-z][a-z0-9_-]*', name):
+            raise ValueError('delegate names must be simple basenames')
+        if not isinstance(inputs, dict) or any(
+                not re.fullmatch(r'[A-Z][A-Z0-9_]*', key) or not isinstance(value, str)
+                for key, value in inputs.items()):
+            raise ValueError('delegate inputs must be string build arguments')
+        stages.append((ROOT / 'delegates' / f'{name}.build').read_text())
+        installs.append((ROOT / 'delegates' / f'{name}.pristine').read_text())
+        runtime = ROOT / 'delegates' / f'{name}.runnable'
+        if runtime.is_file():
+            result['runnable'] += '\n' + runtime.read_text()
+    if delegates:
+        result['pristine'] = result['pristine'].replace(
+            'FROM ${BASE_IMAGE}', 'FROM ${BASE_IMAGE} AS prepared', 1)
+        result['pristine'] += '\n' + '\n'.join(stages)
+        result['pristine'] += '\nFROM prepared AS pristine\n' + '\n'.join(installs)
     return result
 
 
@@ -66,8 +87,12 @@ def build(path, push=False):
     runnable = f'ghcr.io/nicolaspopravka/usd-render-benchmark:{suffix}'
     revision = subprocess.check_output(
         ['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
+    delegate_args = []
+    for inputs in profile.get('delegates', {}).values():
+        for key, value in inputs.items():
+            delegate_args.extend(['--build-arg', f'{key}={value}'])
     subprocess.run([
-        'docker', 'build', '--file', '-',
+        'docker', 'build', '--file', '-', *delegate_args,
         '--build-arg', f'BASE_IMAGE={base}',
         '--build-arg', f'CXX_CONFORMANCE={year if conformance else "off"}',
         '--build-arg', f'IMAGE_VERSION={year}',

@@ -14,8 +14,11 @@ Mount a benchmark checkout and select its working directory with
 `docker run --workdir`. The runnable image defaults to `bash render_script.sh`
 and sets `REZ_PACKAGES_PATH=./packages`.
 
-Candidate changes live on recipe branches. Delegate builders will be added
-when implemented.
+Candidate changes live on recipe branches. CY2026 selects Embree with
+`"delegates": {"embree": {"OPENUSD_TAG": "v26.03"}}`. Omission builds no
+additional delegates. Each delegate builds from the same prepared base;
+the final pristine image copies its installed plugin. Delegate builds do not
+depend on one another.
 
 Profiles enable `cxx_conformance` explicitly; omission defaults to off. Enabled
 settings select GCC toolset 11/C++17 for CY2023–2025 and toolset 14/C++20 for

@@ -1,0 +1,2 @@
+COPY repairs/openusd-cmake-exports.sh /tmp/openusd-cmake-exports.sh
+RUN bash /tmp/openusd-cmake-exports.sh && rm /tmp/openusd-cmake-exports.sh

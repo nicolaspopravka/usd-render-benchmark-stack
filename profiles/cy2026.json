@@ -5,6 +5,13 @@
   "repairs": [
     "time",
     "rez",
-    "pythonpath"
-  ]
+    "pythonpath",
+    "openusd-cmake-exports",
+    "openvdb-config"
+  ],
+  "delegates": {
+    "embree": {
+      "OPENUSD_TAG": "v26.03"
+    }
+  }
 }

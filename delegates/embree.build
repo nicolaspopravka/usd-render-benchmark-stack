@@ -1,0 +1,8 @@
+FROM prepared AS embree
+ARG OPENUSD_TAG
+COPY cmake/hdembree-consumer /usr/local/aswf/cmake/hdembree-consumer
+COPY build_hdembree.sh /usr/local/aswf/build_hdembree.sh
+RUN bash -ec 'source /usr/local/aswf/build-support/vfx-cxx.sh; \
+    vfx_cxx_environment; \
+    bash /usr/local/aswf/build_hdembree.sh; \
+    rm -rf /opt/build-hdembree'
