@@ -8,7 +8,6 @@
     "pythonpath"
   ],
   "delegates": {
-    "embree": {},
     "moonray": {},
     "cycles": {
       "CYCLES_TAG": "v4.0.2"

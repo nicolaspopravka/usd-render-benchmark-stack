@@ -15,22 +15,19 @@ Mount a benchmark checkout and select its working directory with
 and sets `REZ_PACKAGES_PATH=./packages`.
 
 Profiles pin the latest published official ci-moonray base for each year.
-Candidate changes live on recipe branches. All five profiles select three builders:
+Candidate changes live on recipe branches. CY2023–CY2025 profiles select two builders:
 
 ```json
 "delegates": {
-  "embree": {},
   "moonray": {},
-  "cycles": {"CYCLES_TAG": "v5.1.0"}
+  "cycles": {"CYCLES_TAG": "v5.0.0"}
 }
 ```
 
-Omission builds no additional delegates. Embree's OpenUSD source tag comes from
-the base; MoonRay follows `ASWF_MOONRAY_VERSION`. Each delegate builds from the same prepared
+Omission builds no additional delegates. MoonRay follows `ASWF_MOONRAY_VERSION`. Each delegate builds from the same prepared
 base and stages its installation with `DESTDIR`; the final pristine image copies
 those installations. Delegate builds do not depend on one another. Selected
-build failures stop image publication. CMake/base repairs are deferred; this
-profile is not yet expected to complete successfully.
+build failures stop image publication. CMake/base repairs are deferred; builds remain unvalidated.
 
 Profiles enable `cxx_conformance` explicitly; omission defaults to off. Enabled
 settings select GCC toolset 11/C++17 for CY2023–2025 and toolset 14/C++20 for
@@ -45,12 +42,8 @@ the result to Docker through stdin. Omission applies none; unknown names fail.
 CY2023–2026 select time, Rez and pythonpath; CY2027 selects only Rez.
 Remove selections when the pinned ASWF release supplies the prerequisite.
 
-Cycles selections are v4.0.2, v4.3.0, v5.0.0, v5.1.0 and v5.2.0 for
-CY2023–2027. OSL and OpenVDB retain their ON defaults; no annual overrides.
-Released-source Embree is expected to fail on CY2023–2025; Cycles and MoonRay
-are expected to fail on CY2026–2027. Base repairs remain a separate review.
+Cycles selections are v4.0.2, v4.3.0 and v5.0.0 for CY2023–CY2025. OSL and OpenVDB retain their ON defaults; no annual overrides.
 
-Before tentative builds: published ci-moonray images omit
-`ASWF_OPENUSD_VERSION`. Embree's exact source-tag lookup remains unresolved;
-the current invocation stops with an explicit error when that metadata is absent.
-No year-to-version mapping or independent profile USD override is added.
+Embree and CY2026–CY2027 profiles are deferred. The existing Cycles-only CMake
+include remains pending review of OpenCode's shared OpenUSD dependency module.
+No shared repair has been adopted in this branch yet.
