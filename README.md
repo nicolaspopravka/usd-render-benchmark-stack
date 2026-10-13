@@ -17,9 +17,6 @@ and sets `REZ_PACKAGES_PATH=./packages`.
 Candidate changes live on recipe branches. Delegate builders and repairs
 will be added when implemented. Successful builds do not establish render success.
 
-Runnable supplies Rez, GNU time and the ASWF Python import path needed by the
-benchmark. The GitHub demo installs Mesa for software rendering.
-
 Profiles enable `cxx_conformance` explicitly; omission defaults to off. Enabled
 settings select GCC toolset 11/C++17 for CY2023–2025 and toolset 14/C++20 for
 CY2026–2027. Builders must source `build-support/vfx-cxx.sh` in their build shell
