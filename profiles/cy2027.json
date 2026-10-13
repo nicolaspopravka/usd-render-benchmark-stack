@@ -1,4 +1,4 @@
 {
   "year": 2027,
-  "base_image": "aswf/ci-vfxall:2027@sha256:d41fc294f7770c4390de0813c4594dcd03ba99dcf1da1dc5be85f04acffa1b3d"
+  "base_image": "aswf/ci-vfxall:2027-clang22.1@sha256:d41fc294f7770c4390de0813c4594dcd03ba99dcf1da1dc5be85f04acffa1b3d"
 }
