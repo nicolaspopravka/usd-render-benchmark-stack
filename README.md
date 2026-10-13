@@ -15,9 +15,13 @@ image ID before and after building. This ID is not a registry manifest digest. M
 directory with `docker run --workdir` when running the image.
 
 Storm is inherited. Embree, Cycles and MoonRay are explicitly excluded until
-builder integration. Repairs and candidate source changes are also pending;
-requests for these fail before Docker starts. `--variant candidate` currently
-resolves to the same inputs as released and reports that fact.
+builder integration. Repair execution is also pending; requests for repairs
+fail before Docker starts.
+
+Main profiles select released sources. Candidate branches change the relevant
+source pins or build code and use the same year-only command. For a matched
+comparison, keep the base, settings and repairs identical. The recipe commit
+in the receipt and OCI labels identifies each build; builds never merge branches.
 
 CI workflows and optional delegate builders will be added in later iterations.
 No runtime or render acceptance is claimed by a successful build.

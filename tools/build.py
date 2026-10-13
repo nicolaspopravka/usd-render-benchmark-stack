@@ -12,7 +12,7 @@ import uuid
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def resolve(year, variant):
+def resolve(year):
     profile = json.loads((ROOT / 'profiles' / f'cy{year}.json').read_text())
     if profile['year'] != year:
         raise ValueError('Profile year does not match its filename')
@@ -21,8 +21,6 @@ def resolve(year, variant):
         raise ValueError('base_image must include a sha256 digest')
     if profile['repairs']:
         raise ValueError('Repair execution is not implemented yet')
-    if profile['candidate_overrides']:
-        raise ValueError('Candidate source overrides are not implemented yet')
     if set(profile['delegates']) != {'storm', 'embree', 'cycles', 'moonray'}:
         raise ValueError('Profile must describe all four delegates')
     for name, delegate in profile['delegates'].items():
@@ -32,9 +30,7 @@ def resolve(year, variant):
             raise ValueError(f'{name}: builder integration is not implemented yet')
         if not delegate['included'] and not delegate.get('reason'):
             raise ValueError(f'{name}: exclusion needs a reason')
-    return {**profile, 'variant': variant,
-            'candidate_identical_to_released': not bool(profile['candidate_overrides']),
-            'ready_to_build': base is not None}
+    return {**profile, 'ready_to_build': base is not None}
 
 
 def verify_pristine(receipt):
@@ -49,7 +45,7 @@ def verify_pristine(receipt):
 def build(profile):
     if not profile['ready_to_build']:
         raise ValueError('Pin base_image in the annual profile before building')
-    attempt = f"cy{profile['year']}-{profile['variant']}-{uuid.uuid4().hex[:12]}"
+    attempt = f"cy{profile['year']}-{uuid.uuid4().hex[:12]}"
     output = ROOT / '.build' / attempt
     output.mkdir(parents=True)
     receipt = {'profile': profile, 'outputs': {}, 'status': 'building',
@@ -67,7 +63,7 @@ def build(profile):
                 verify_pristine(receipt)
             command = ['docker', 'build', '--file', f'Dockerfile.{stage}',
                        '--build-arg', f"{'BASE_IMAGE' if stage == 'pristine' else 'PRISTINE_IMAGE'}={parent}",
-                       '--build-arg', f"IMAGE_VERSION=cy{profile['year']}-{profile['variant']}",
+                       '--build-arg', f"IMAGE_VERSION=cy{profile['year']}",
                        '--build-arg', f"BUILD_CREATED={receipt['created']}",
                        '--build-arg', f"RECIPE_REVISION={receipt['recipe_commit']}",
                        '--build-arg', f'BASE_NAME={parent}',
@@ -97,10 +93,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('command', choices=['resolve', 'build'])
     parser.add_argument('--year', type=int, choices=range(2023, 2028), required=True)
-    parser.add_argument('--variant', choices=['released', 'candidate'], default='released')
     args = parser.parse_args()
     try:
-        profile = resolve(args.year, args.variant)
+        profile = resolve(args.year)
         result = profile if args.command == 'resolve' else build(profile)
     except (ValueError, KeyError, OSError, subprocess.CalledProcessError) as error:
         parser.exit(1, f'Error: {error}\n')
