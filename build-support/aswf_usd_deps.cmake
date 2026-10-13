@@ -112,7 +112,8 @@ macro(aswf_usd_define_imported target_name lib_name)
     if(ASWF_USD_${lib_name}_LIBRARY)
       add_library(${target_name} UNKNOWN IMPORTED)
       set_target_properties(${target_name} PROPERTIES
-        IMPORTED_LOCATION "${ASWF_USD_${lib_name}_LIBRARY}")
+        IMPORTED_LOCATION "${ASWF_USD_${lib_name}_LIBRARY}"
+        INTERFACE_INCLUDE_DIRECTORIES "/usr/local/include")
       message(STATUS "aswf_usd_deps: ${target_name} -> ${ASWF_USD_${lib_name}_LIBRARY}")
     else()
       message(STATUS "aswf_usd_deps: ${lib_name} not found; ${target_name} left undefined")
