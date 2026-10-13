@@ -1,0 +1,24 @@
+{
+  "year": 2026,
+  "base_image": null,
+  "delegates": {
+    "storm": {
+      "included": true,
+      "source": "inherited ASWF OpenUSD"
+    },
+    "embree": {
+      "included": false,
+      "reason": "Builder integration pending."
+    },
+    "cycles": {
+      "included": false,
+      "reason": "Builder integration pending."
+    },
+    "moonray": {
+      "included": false,
+      "reason": "Builder integration pending."
+    }
+  },
+  "repairs": [],
+  "candidate_overrides": {}
+}
