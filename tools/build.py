@@ -33,6 +33,13 @@ def resolve(path):
     return {**profile, 'ready_to_build': base is not None}
 
 
+def qualified_reference(reference):
+    first = reference.split('/')[0]
+    if '/' in reference and ('.' in first or ':' in first or first == 'localhost'):
+        return reference
+    return 'docker.io/' + (reference if '/' in reference else 'library/' + reference)
+
+
 def verify_pristine(receipt):
     pristine = receipt['outputs']['pristine']
     actual = subprocess.check_output(
@@ -56,17 +63,18 @@ def build(profile):
         ['git', 'status', '--porcelain'], cwd=ROOT, text=True).strip())
     try:
         for stage, argument in [('pristine', profile['base_image']), ('runnable', None)]:
-            tag = f'usd-render-benchmark-{stage}:{attempt}'
+            tag = f'docker.io/library/usd-render-benchmark-{stage}:{attempt}'
             iid = output / f'{stage}.iid'
             parent = argument or receipt['outputs']['pristine']['tag']
             if stage == 'runnable':
                 verify_pristine(receipt)
             command = ['docker', 'build', '--file', f'Dockerfile.{stage}',
                        '--build-arg', f"{'BASE_IMAGE' if stage == 'pristine' else 'PRISTINE_IMAGE'}={parent}",
-                       '--build-arg', f"IMAGE_VERSION=cy{profile['year']}",
+                       '--build-arg', f"IMAGE_VERSION={profile['year']}",
                        '--build-arg', f"BUILD_CREATED={receipt['created']}",
                        '--build-arg', f"RECIPE_REVISION={receipt['recipe_commit']}",
-                       '--build-arg', f'BASE_NAME={parent}',
+                       '--build-arg', f'BASE_NAME={qualified_reference(parent)}',
+                       '--build-arg', f'BASE_DIGEST={parent.split("@")[-1] if stage == "pristine" else ""}',
                        '--tag', tag, '--iidfile', str(iid), '.']
             with (output / f'{stage}.log').open('w') as log:
                 subprocess.run(command, cwd=ROOT, stdout=log,

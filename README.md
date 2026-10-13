@@ -28,3 +28,10 @@ No runtime or render acceptance is claimed by a successful build.
 
 Both images carry OCI title, source, version, creation time, recipe revision
 and immediate base name labels. The receipt retains exact base and image IDs.
+
+OCI version is the profile year (for example `2025`). Base references are fully
+qualified. Pristine records the ASWF manifest digest; runnable leaves base.digest
+empty because its local parent has no registry manifest digest. Local image IDs
+remain in receipts. The base's nonstandard `org.opencontainers.image.name` label
+is inherited: Dockerfile LABEL cannot remove an inherited key. These are image
+configuration labels; this local build does not add manifest/index annotations.
