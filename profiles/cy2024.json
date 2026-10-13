@@ -5,7 +5,8 @@
   "repairs": [
     "time",
     "rez",
-    "pythonpath"
+    "pythonpath",
+    "git-lfs"
   ],
   "delegates": {
     "moonray": {},

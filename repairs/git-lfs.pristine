@@ -1,0 +1,4 @@
+RUN dnf install -y git-lfs && \
+    dnf clean all && \
+    rm -rf /var/cache/dnf && \
+    git lfs install

@@ -39,7 +39,7 @@ Profiles select temporary repairs by basename, for example
 `"repairs": ["time", "rez", "pythonpath"]`. The builder appends matching
 `repairs/<name>.pristine` and `.runnable` fragments in that order and sends
 the result to Docker through stdin. Omission applies none; unknown names fail.
-CY2023–CY2025 select time, Rez and pythonpath.
+CY2023–CY2025 select time, Rez, pythonpath and Git LFS.
 Remove selections when the pinned ASWF release supplies the prerequisite.
 
 Cycles selections are v4.0.2, v4.3.0 and v5.0.0 for CY2023–CY2025. OSL and OpenVDB retain their ON defaults; no annual overrides.
