@@ -1,2 +1,1 @@
-COPY --from=embree /usr/local/plugin/usd/hdEmbree.so /usr/local/plugin/usd/hdEmbree.so
-COPY --from=embree /usr/local/plugin/usd/hdEmbree /usr/local/plugin/usd/hdEmbree
+COPY --from=embree /opt/install/ /

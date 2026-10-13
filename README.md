@@ -14,11 +14,22 @@ Mount a benchmark checkout and select its working directory with
 `docker run --workdir`. The runnable image defaults to `bash render_script.sh`
 and sets `REZ_PACKAGES_PATH=./packages`.
 
-Candidate changes live on recipe branches. CY2026 selects Embree with
-`"delegates": {"embree": {"OPENUSD_TAG": "v26.03"}}`. Omission builds no
-additional delegates. Each delegate builds from the same prepared base;
-the final pristine image copies its installed plugin. Delegate builds do not
-depend on one another.
+Candidate changes live on recipe branches. CY2026 selects all three builders:
+
+```json
+"delegates": {
+  "embree": {},
+  "moonray": {"MOONRAY_TAG": "v2026.29.1"},
+  "cycles": {"CYCLES_TAG": "v5.0.0"}
+}
+```
+
+Omission builds no additional delegates. Embree's OpenUSD source tag comes from
+`ASWF_OPENUSD_VERSION` in the base. Each delegate builds from the same prepared
+base and stages its installation with `DESTDIR`; the final pristine image copies
+those installations. Delegate builds do not depend on one another. Selected
+build failures stop image publication. CMake/base repairs are deferred; this
+profile is not yet expected to complete successfully.
 
 Profiles enable `cxx_conformance` explicitly; omission defaults to off. Enabled
 settings select GCC toolset 11/C++17 for CY2023–2025 and toolset 14/C++20 for

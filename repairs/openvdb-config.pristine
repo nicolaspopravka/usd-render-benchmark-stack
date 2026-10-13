@@ -1,2 +1,0 @@
-COPY repairs/openvdb-config.sh /tmp/openvdb-config.sh
-RUN bash /tmp/openvdb-config.sh && rm /tmp/openvdb-config.sh

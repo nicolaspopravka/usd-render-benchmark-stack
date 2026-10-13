@@ -1,0 +1,9 @@
+FROM prepared AS moonray
+ARG MOONRAY_TAG
+ARG MOONRAY_REPO_URL=https://github.com/OpenMoonRay/openmoonray.git
+COPY build_moonray.sh /usr/local/aswf/build_moonray.sh
+RUN bash -ec 'source /usr/local/aswf/build-support/vfx-cxx.sh; \
+    vfx_cxx_environment; \
+    export DESTDIR=/opt/install; \
+    bash /usr/local/aswf/build_moonray.sh; \
+    rm -rf /opt/build-moonray'

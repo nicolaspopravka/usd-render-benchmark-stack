@@ -5,13 +5,15 @@
   "repairs": [
     "time",
     "rez",
-    "pythonpath",
-    "openusd-cmake-exports",
-    "openvdb-config"
+    "pythonpath"
   ],
   "delegates": {
-    "embree": {
-      "OPENUSD_TAG": "v26.03"
+    "embree": {},
+    "moonray": {
+      "MOONRAY_TAG": "v2026.29.1"
+    },
+    "cycles": {
+      "CYCLES_TAG": "v5.0.0"
     }
   }
 }

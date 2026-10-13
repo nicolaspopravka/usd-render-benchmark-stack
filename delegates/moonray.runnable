@@ -1,0 +1,2 @@
+ENV PXR_PLUGINPATH_NAME=/usr/local/plugin/pxr:${PXR_PLUGINPATH_NAME}
+ENV ARRAS_SESSION_PATH=/usr/local/sessions
