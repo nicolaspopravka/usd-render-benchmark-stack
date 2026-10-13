@@ -11,8 +11,8 @@ Historical prepared benchmark images are not defaults.
 
 Build logs and a receipt go under `.build/<attempt>/`. Builds use unique local
 tags and never push. Runnable uses the unique local pristine tag, verified against its recorded
-image ID before and after building. This ID is not a registry manifest digest. Mount the benchmark checkout at
-`/usr/local/usd-render-benchmark` when running the image.
+image ID before and after building. This ID is not a registry manifest digest. Mount the benchmark checkout at a caller-selected directory and set that
+directory with `docker run --workdir` when running the image.
 
 Storm is inherited. Embree, Cycles and MoonRay are explicitly excluded until
 builder integration. Repairs and candidate source changes are also pending;

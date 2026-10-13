@@ -2,6 +2,6 @@
 ARG PRISTINE_IMAGE
 FROM ${PRISTINE_IMAGE}
 ENV REZ_PACKAGES_PATH=./packages
-WORKDIR /usr/local/usd-render-benchmark
+WORKDIR /
 ENTRYPOINT []
 CMD ["bash", "render_script.sh"]
