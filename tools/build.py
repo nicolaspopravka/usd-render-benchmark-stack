@@ -30,6 +30,9 @@ def build(path, push=False):
     year = profile['year']
     if type(year) is not int:
         raise ValueError('year must be an integer')
+    conformance = profile.get('cxx_conformance', False)
+    if type(conformance) is not bool:
+        raise ValueError('cxx_conformance must be a boolean')
     base = profile['base_image']
     if not isinstance(base, str) or not re.fullmatch(
             r'[^\s]+@sha256:[0-9a-f]{64}', base):
@@ -45,6 +48,7 @@ def build(path, push=False):
     subprocess.run([
         'docker', 'build', '--file', 'Dockerfile.pristine',
         '--build-arg', f'BASE_IMAGE={base}',
+        '--build-arg', f'CXX_CONFORMANCE={year if conformance else "off"}',
         '--build-arg', f'IMAGE_VERSION={year}',
         '--build-arg', f'BUILD_CREATED={datetime.now(timezone.utc).isoformat()}',
         '--build-arg', f'RECIPE_REVISION={revision}',
