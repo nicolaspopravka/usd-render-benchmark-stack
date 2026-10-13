@@ -1,1 +1,1 @@
-ENV PATH=/usr/local/rez/bin/rez:${PATH}
+ENV PATH=/opt/rez/bin/rez:${PATH}
