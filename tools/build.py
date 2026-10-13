@@ -30,7 +30,7 @@ def resolve(path):
             raise ValueError(f'{name}: builder integration is not implemented yet')
         if not delegate['included'] and not delegate.get('reason'):
             raise ValueError(f'{name}: exclusion needs a reason')
-    return {**profile, 'ready_to_build': base is not None}
+    return profile
 
 
 def qualified_reference(reference):
@@ -50,17 +50,19 @@ def verify_pristine(receipt):
 
 
 def build(profile):
-    if not profile['ready_to_build']:
+    if profile['base_image'] is None:
         raise ValueError('Pin base_image in the annual profile before building')
     attempt = f"cy{profile['year']}-{uuid.uuid4().hex[:12]}"
     output = ROOT / '.build' / attempt
     output.mkdir(parents=True)
-    receipt = {'profile': profile, 'outputs': {}, 'status': 'building',
+    (output / 'profile.json').write_text(json.dumps(profile, indent=2) + '\n')
+    receipt = {'profile': 'profile.json', 'outputs': {},
                'created': datetime.now(timezone.utc).isoformat()}
     receipt['recipe_commit'] = subprocess.check_output(
         ['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
-    receipt['recipe_dirty'] = bool(subprocess.check_output(
-        ['git', 'status', '--porcelain'], cwd=ROOT, text=True).strip())
+    if subprocess.check_output(
+            ['git', 'status', '--porcelain'], cwd=ROOT, text=True).strip():
+        receipt['recipe_dirty'] = True
     try:
         for stage, argument in [('pristine', profile['base_image']), ('runnable', None)]:
             tag = f'docker.io/library/usd-render-benchmark-{stage}:{attempt}'

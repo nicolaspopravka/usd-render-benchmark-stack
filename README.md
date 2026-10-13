@@ -9,7 +9,9 @@ Historical prepared benchmark images are not defaults.
     python3 tools/build.py resolve profiles/cy2025.json
     python3 tools/build.py build profiles/cy2025.json
 
-Build logs and a receipt go under `.build/<attempt>/`. Builds use unique local
+Build logs, the selected `profile.json` and a compact receipt go under
+`.build/<attempt>/`. The receipt references that profile snapshot and records
+recipe revision, build time, output image IDs/tags and success or failure. Builds use unique local
 tags and never push. Runnable uses the unique local pristine tag, verified against its recorded
 image ID before and after building. This ID is not a registry manifest digest. Mount the benchmark checkout at a caller-selected directory and set that
 directory with `docker run --workdir` when running the image.
