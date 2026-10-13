@@ -19,7 +19,4 @@ LABEL org.opencontainers.image.title="usd-render-benchmark-pristine" \
       org.opencontainers.image.description="Annual ASWF stack for the USD Render Benchmark."
 
 ARG CXX_CONFORMANCE=off
-COPY build-support/vfx-cxx.sh /usr/local/aswf/build-support/vfx-cxx.sh
-RUN bash -lc 'source /usr/local/aswf/build-support/vfx-cxx.sh && \
-    vfx_cxx_environment && \
-    echo "C++ build settings: gcc-toolset-${VFX_GCC_TOOLSET}, standard=${VFX_CXX_STANDARD:-default}"'
+COPY build-support/ /usr/local/aswf/build-support/

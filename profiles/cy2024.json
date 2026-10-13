@@ -1,10 +1,17 @@
 {
   "year": 2024,
-  "base_image": "aswf/ci-vfxall:2024-clang17.9@sha256:e7431ef50a2e07bd53af515f54cb07f5601b1870046fa81e2d57a6b433e49fb6",
+  "base_image": "aswf/ci-moonray:2024.9@sha256:aed24e2069c201988747d509b853860b37ca4b6879e22ed08e60d1e1685f9402",
   "cxx_conformance": true,
   "repairs": [
     "time",
     "rez",
     "pythonpath"
-  ]
+  ],
+  "delegates": {
+    "embree": {},
+    "moonray": {},
+    "cycles": {
+      "CYCLES_TAG": "v4.3.0"
+    }
+  }
 }

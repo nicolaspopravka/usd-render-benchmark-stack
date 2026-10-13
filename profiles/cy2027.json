@@ -1,8 +1,15 @@
 {
   "year": 2027,
-  "base_image": "aswf/ci-vfxall:2027-clang22.1@sha256:d41fc294f7770c4390de0813c4594dcd03ba99dcf1da1dc5be85f04acffa1b3d",
+  "base_image": "aswf/ci-moonray:2027.1@sha256:34104e08cbfb3b2737eaeb0ce9badb92344f5ee12582c7b5250b4be99c80a7b6",
   "cxx_conformance": true,
   "repairs": [
     "rez"
-  ]
+  ],
+  "delegates": {
+    "embree": {},
+    "moonray": {},
+    "cycles": {
+      "CYCLES_TAG": "v5.2.0"
+    }
+  }
 }

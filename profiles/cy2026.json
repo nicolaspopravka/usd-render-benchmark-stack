@@ -1,6 +1,6 @@
 {
   "year": 2026,
-  "base_image": "aswf/ci-vfxall:2026-clang20.6@sha256:649ff41fa02bb22a73ac361a49eb161493097bf719540696afd1da9bedd0bec7",
+  "base_image": "aswf/ci-moonray:2026.6@sha256:57acaa6ae00e83a9862ae7b0ba1a2cea53dc6855a86d43a7ead9795266d3a7e7",
   "cxx_conformance": true,
   "repairs": [
     "time",
@@ -9,11 +9,9 @@
   ],
   "delegates": {
     "embree": {},
-    "moonray": {
-      "MOONRAY_TAG": "v2026.29.1"
-    },
+    "moonray": {},
     "cycles": {
-      "CYCLES_TAG": "v5.0.0"
+      "CYCLES_TAG": "v5.1.0"
     }
   }
 }
