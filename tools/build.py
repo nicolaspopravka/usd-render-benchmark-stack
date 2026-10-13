@@ -3,7 +3,6 @@
 import argparse
 from datetime import datetime, timezone
 import json
-import os
 from pathlib import Path
 import re
 import subprocess
@@ -63,9 +62,6 @@ def build(path, push=False):
     if push:
         runnable = publish(runnable)
     print(f'Pristine: {pristine}\nRunnable: {runnable}')
-    if os.environ.get('GITHUB_OUTPUT'):
-        with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
-            output.write(f'runnable={runnable}\n')
 
 
 def main():

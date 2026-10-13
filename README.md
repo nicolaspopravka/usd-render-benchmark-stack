@@ -5,8 +5,9 @@ select the recipe branch, and provide a profile JSON path
 (default: `profiles/cy2025.json`).
 
 The profile supplies the year and base image digest. Each build uses distinct
-tags on the GitHub runner, prints Docker progress and stops on failure. The GitHub workflow publishes both images to GHCR and runs `demo/run1`
-with the runnable digest. The demo uploads its teapot image and render log.
+tags on the GitHub runner, prints Docker progress and stops on failure. The build workflow publishes both images to GHCR. Run the separate **Run demo**
+workflow with the runnable digest to render `demo/run1`. The demo uploads its
+teapot image and render log.
 Builds do not write receipts or metadata files. Both images carry OCI identity labels.
 
 Mount a benchmark checkout and select its working directory with
