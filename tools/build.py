@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Resolve an annual profile and build two local images. No registry publication."""
 import argparse
+from datetime import datetime, timezone
 import json
 from pathlib import Path
 import re
@@ -51,7 +52,8 @@ def build(profile):
     attempt = f"cy{profile['year']}-{profile['variant']}-{uuid.uuid4().hex[:12]}"
     output = ROOT / '.build' / attempt
     output.mkdir(parents=True)
-    receipt = {'profile': profile, 'outputs': {}, 'status': 'building'}
+    receipt = {'profile': profile, 'outputs': {}, 'status': 'building',
+               'created': datetime.now(timezone.utc).isoformat()}
     receipt['recipe_commit'] = subprocess.check_output(
         ['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
     receipt['recipe_dirty'] = bool(subprocess.check_output(
@@ -65,6 +67,10 @@ def build(profile):
                 verify_pristine(receipt)
             command = ['docker', 'build', '--file', f'Dockerfile.{stage}',
                        '--build-arg', f"{'BASE_IMAGE' if stage == 'pristine' else 'PRISTINE_IMAGE'}={parent}",
+                       '--build-arg', f"IMAGE_VERSION=cy{profile['year']}-{profile['variant']}",
+                       '--build-arg', f"BUILD_CREATED={receipt['created']}",
+                       '--build-arg', f"RECIPE_REVISION={receipt['recipe_commit']}",
+                       '--build-arg', f'BASE_NAME={parent}',
                        '--tag', tag, '--iidfile', str(iid), '.']
             with (output / f'{stage}.log').open('w') as log:
                 subprocess.run(command, cwd=ROOT, stdout=log,

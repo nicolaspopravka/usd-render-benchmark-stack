@@ -21,3 +21,6 @@ resolves to the same inputs as released and reports that fact.
 
 CI workflows and optional delegate builders will be added in later iterations.
 No runtime or render acceptance is claimed by a successful build.
+
+Both images carry OCI title, source, version, creation time, recipe revision
+and immediate base name labels. The receipt retains exact base and image IDs.
