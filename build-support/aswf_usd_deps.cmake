@@ -44,6 +44,8 @@ include_guard(GLOBAL)
 # both link it), not a metadata reference, so a real find is required.
 # --------------------------------------------------------------------------
 find_package(OpenGL REQUIRED)
+# Establish Threads before dependencies prefer -pthread compile options;
+# older MoonRay ISPC targets cannot accept those options.
 find_package(Threads REQUIRED)
 
 # --------------------------------------------------------------------------

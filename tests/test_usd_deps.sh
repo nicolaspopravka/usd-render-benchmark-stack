@@ -2,7 +2,7 @@
 # Copyright (c) Contributors to the aswf-docker Project. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
-# Acceptance test for cmake/aswf_usd_deps.cmake.
+# Acceptance test for build-support/aswf_usd_deps.cmake.
 #
 # The module's whole purpose is to make a consumer link against the REAL
 # libraries the ASWF conan deploy ships, so the test is a link test, not a
@@ -112,6 +112,9 @@ readonly FALLBACK_CMAKE_LISTS='cmake_minimum_required(VERSION 3.21)
 project(aswf_usd_deps_fallback LANGUAGES CXX)
 
 set(CMAKE_DISABLE_FIND_PACKAGE_OpenEXR TRUE)
+set(CMAKE_DISABLE_FIND_PACKAGE_TBB TRUE)
+set(CMAKE_DISABLE_FIND_PACKAGE_OpenSubdiv TRUE)
+set(CMAKE_DISABLE_FIND_PACKAGE_OpenImageIO TRUE)
 include("@aswf_usd_deps@")
 
 if(NOT TARGET OpenEXR::OpenEXR)
@@ -131,17 +134,23 @@ endif()
 message(STATUS "aswf_usd_deps: fallback OpenEXR ILB=${iface}")
 
 add_executable(fallback main.cpp)
-target_link_libraries(fallback PRIVATE OpenEXR::OpenEXR)
+get_target_property(tbb_include TBB::tbb INTERFACE_INCLUDE_DIRECTORIES)
+if(NOT tbb_include)
+  message(FATAL_ERROR "fallback TBB target lacks its SDK include directory")
+endif()
+target_link_libraries(fallback PRIVATE OpenEXR::OpenEXR TBB::tbb)
 '
 
-# Only Imath and the OpenEXR fallback are in play here, so the source is
-# trimmed to the symbol whose resolution is actually being asserted.
+# Exercise the Imath link interface and TBB's fallback SDK metadata.
 readonly FALLBACK_CPP='
 #include <Imath/half.h>
+#include <tbb/parallel_for.h>
 int main()
 {
     const half h(1.5f);
-    return h > 0.0f ? 0 : 1;
+    int count = 0;
+    tbb::parallel_for(0, 1, [&](int) { count = 1; });
+    return h > 0.0f && count == 1 ? 0 : 1;
 }
 '
 
