@@ -1,0 +1,4 @@
+# Temporary: remove selection when the pinned ASWF base supplies Rez.
+COPY repairs/install_rez.sh /tmp/install_rez.sh
+RUN REZ_INSTALL_DIR=/usr/local/rez \
+    bash -lc 'source /tmp/install_rez.sh' && rm /tmp/install_rez.sh

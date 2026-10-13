@@ -11,6 +11,26 @@ import uuid
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def dockerfiles(profile):
+    repairs = profile.get('repairs', [])
+    if not isinstance(repairs, list) or any(
+            not isinstance(name, str) or not re.fullmatch(r'[a-z][a-z0-9_-]*', name)
+            for name in repairs):
+        raise ValueError('repairs must be a list of simple basenames')
+    result = {stage: (ROOT / f'Dockerfile.{stage}').read_text()
+              for stage in ('pristine', 'runnable')}
+    for name in repairs:
+        found = False
+        for stage in result:
+            fragment = ROOT / 'repairs' / f'{name}.{stage}'
+            if fragment.is_file():
+                result[stage] += '\n' + fragment.read_text() + '\n'
+                found = True
+        if not found:
+            raise ValueError(f'Unknown repair: {name}')
+    return result
+
+
 def publish(tag):
     subprocess.run(['docker', 'push', tag], check=True)
     references = json.loads(subprocess.check_output(
@@ -40,13 +60,14 @@ def build(path, push=False):
     first = base.split('/')[0]
     if not ('/' in base and ('.' in first or ':' in first or first == 'localhost')):
         base = 'docker.io/' + (base if '/' in base else 'library/' + base)
+    recipes = dockerfiles(profile)
     suffix = f'{year}-{uuid.uuid4().hex[:12]}'
     pristine = f'ghcr.io/nicolaspopravka/usd-render-benchmark-stack:{suffix}'
     runnable = f'ghcr.io/nicolaspopravka/usd-render-benchmark:{suffix}'
     revision = subprocess.check_output(
         ['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
     subprocess.run([
-        'docker', 'build', '--file', 'Dockerfile.pristine',
+        'docker', 'build', '--file', '-',
         '--build-arg', f'BASE_IMAGE={base}',
         '--build-arg', f'CXX_CONFORMANCE={year if conformance else "off"}',
         '--build-arg', f'IMAGE_VERSION={year}',
@@ -54,15 +75,15 @@ def build(path, push=False):
         '--build-arg', f'RECIPE_REVISION={revision}',
         '--build-arg', f'BASE_NAME={base}',
         '--build-arg', f'BASE_DIGEST={base.split("@")[1]}',
-        '--tag', pristine, '.'], cwd=ROOT, check=True)
+        '--tag', pristine, '.'], cwd=ROOT, input=recipes['pristine'], text=True, check=True)
     if push:
         pristine = publish(pristine)
     subprocess.run([
-        'docker', 'build', '--file', 'Dockerfile.runnable',
+        'docker', 'build', '--file', '-',
         '--build-arg', f'PRISTINE_IMAGE={pristine}',
         '--build-arg', f'BASE_NAME={pristine}',
         '--build-arg', f'BASE_DIGEST={pristine.split("@")[1] if push else ""}',
-        '--tag', runnable, '.'], cwd=ROOT, check=True)
+        '--tag', runnable, '.'], cwd=ROOT, input=recipes['runnable'], text=True, check=True)
     if push:
         runnable = publish(runnable)
     print(f'Pristine: {pristine}\nRunnable: {runnable}')
