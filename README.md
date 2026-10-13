@@ -27,5 +27,5 @@ Profiles select temporary repairs by basename, for example
 `"repairs": ["time", "rez", "pythonpath"]`. The builder appends matching
 `repairs/<name>.pristine` and `.runnable` fragments in that order and sends
 the result to Docker through stdin. Omission applies none; unknown names fail.
-All five current profiles select time and Rez; CY2023–2026 also select pythonpath.
+CY2023–2026 select time, Rez and pythonpath; CY2027 selects only Rez.
 Remove selections when the pinned ASWF release supplies the prerequisite.

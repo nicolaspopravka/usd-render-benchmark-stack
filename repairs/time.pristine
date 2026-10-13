@@ -1,3 +1,2 @@
 # Temporary: remove selection when the pinned ASWF base supplies GNU time.
-RUN test -x /usr/bin/time || \
-    (dnf install -y time && dnf clean all && rm -rf /var/cache/dnf)
+RUN dnf install -y time && dnf clean all && rm -rf /var/cache/dnf
