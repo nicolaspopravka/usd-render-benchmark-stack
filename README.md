@@ -43,7 +43,8 @@ CY2023–CY2025 select time, Rez, pythonpath, Git LFS, runnable ISPC and OSL
 shader includes.
 Remove selections when the pinned ASWF release supplies the prerequisite.
 
-Cycles selections are v4.0.2, v4.3.0 and v5.0.0 for CY2023–CY2025. OSL and OpenVDB retain their ON defaults; no annual overrides.
+Cycles selections are v4.0.2, v4.3.0 and v5.0.0 for CY2023–CY2025. CY2023–CY2024 disable Cycles OSL and OpenVDB for the documented OSL runtime
+and older Cycles delayed-loading incompatibilities. CY2025 keeps their ON defaults.
 
 Embree and CY2026–CY2027 profiles are deferred.
 

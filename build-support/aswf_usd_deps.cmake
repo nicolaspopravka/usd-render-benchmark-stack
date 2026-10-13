@@ -44,6 +44,7 @@ include_guard(GLOBAL)
 # both link it), not a metadata reference, so a real find is required.
 # --------------------------------------------------------------------------
 find_package(OpenGL REQUIRED)
+find_package(Threads REQUIRED)
 
 # --------------------------------------------------------------------------
 # 2. Real package configs for the libraries the deployed exports reference.
@@ -56,6 +57,7 @@ find_package(OpenImageIO CONFIG QUIET)
 find_package(OpenEXR CONFIG QUIET)
 find_package(OpenColorIO CONFIG QUIET)
 find_package(TBB CONFIG QUIET)
+find_package(OpenSubdiv CONFIG QUIET)
 
 # OpenVDB is resolved ahead of its find_package() because the ASWF deploy ships
 # no OpenVDB config, and fixers/04 wrote one that reports OpenVDB_FOUND while
