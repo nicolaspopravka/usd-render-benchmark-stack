@@ -106,6 +106,7 @@ fi
 cmake -S "${MOONRAY_SRC}" -B "${MOONRAY_BUILD}" \
     ${CXX_ARGS[@]+"${CXX_ARGS[@]}"} \
     -DCMAKE_PREFIX_PATH="${ASWF_INSTALL_PREFIX}" \
+    -DCMAKE_PROJECT_INCLUDE="${ASWF_INSTALL_PREFIX}/aswf/build-support/aswf_usd_deps.cmake" \
     -DCUDAToolkit_ROOT="${CUDA_ROOT}" \
     -DPYTHON_EXECUTABLE=python3 \
     -DBOOST_PYTHON_COMPONENT_NAME="python${ASWF_PYTHON_MAJOR_MINOR_VERSION//./}" \

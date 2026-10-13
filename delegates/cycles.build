@@ -3,6 +3,5 @@ ARG CYCLES_TAG
 ARG WITH_CYCLES_OSL=ON
 ARG WITH_CYCLES_OPENVDB=ON
 COPY build_cycles.sh /usr/local/aswf/build_cycles.sh
-COPY cmake/import_openusd_dependencies.cmake /usr/local/share/cycles/import_openusd_dependencies.cmake
 RUN bash /usr/local/aswf/build-support/run-build.sh /usr/local/aswf/build_cycles.sh && \
     rm -rf /opt/build-cycles

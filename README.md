@@ -27,7 +27,7 @@ Candidate changes live on recipe branches. CY2023–CY2025 profiles select two b
 Omission builds no additional delegates. MoonRay follows `ASWF_MOONRAY_VERSION`. Each delegate builds from the same prepared
 base and stages its installation with `DESTDIR`; the final pristine image copies
 those installations. Delegate builds do not depend on one another. Selected
-build failures stop image publication. CMake/base repairs are deferred; builds remain unvalidated.
+build failures stop image publication. Builds remain unvalidated against the selected bases.
 
 Profiles enable `cxx_conformance` explicitly; omission defaults to off. Enabled
 settings select GCC toolset 11/C++17 for CY2023–2025 and toolset 14/C++20 for
@@ -39,11 +39,14 @@ Profiles select temporary repairs by basename, for example
 `"repairs": ["time", "rez", "pythonpath"]`. The builder appends matching
 `repairs/<name>.pristine` and `.runnable` fragments in that order and sends
 the result to Docker through stdin. Omission applies none; unknown names fail.
-CY2023–2026 select time, Rez and pythonpath; CY2027 selects only Rez.
+CY2023–CY2025 select time, Rez and pythonpath.
 Remove selections when the pinned ASWF release supplies the prerequisite.
 
 Cycles selections are v4.0.2, v4.3.0 and v5.0.0 for CY2023–CY2025. OSL and OpenVDB retain their ON defaults; no annual overrides.
 
-Embree and CY2026–CY2027 profiles are deferred. The existing Cycles-only CMake
-include remains pending review of OpenCode's shared OpenUSD dependency module.
-No shared repair has been adopted in this branch yet.
+Embree and CY2026–CY2027 profiles are deferred.
+
+Both builders load `build-support/aswf_usd_deps.cmake` through
+`CMAKE_PROJECT_INCLUDE`. This shared consumer support resolves OpenUSD's
+library dependency targets; it does not rewrite the base's CMake files and
+needs no repair selection in the profiles.
