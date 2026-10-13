@@ -1,10 +1,17 @@
 ARG PRISTINE_IMAGE
 FROM ${PRISTINE_IMAGE}
 ARG BASE_NAME
+ARG BASE_DIGEST
 LABEL org.opencontainers.image.title="usd-render-benchmark-runnable" \
       org.opencontainers.image.description="Benchmark runtime conventions on the selected pristine stack." \
       org.opencontainers.image.base.name="${BASE_NAME}" \
-      org.opencontainers.image.base.digest=""
+      org.opencontainers.image.base.digest="${BASE_DIGEST}"
+RUN dnf install -y --disablerepo=cuda time && dnf clean all
+RUN curl -fsSL https://github.com/AcademySoftwareFoundation/rez/archive/f19dad25ec9cbb6b0e9f53ff2ec5c964b077912a.tar.gz | tar -xz -C /tmp && \
+    python3 /tmp/rez-f19dad25ec9cbb6b0e9f53ff2ec5c964b077912a/install.py /opt/rez && \
+    rm -rf /tmp/rez-f19dad25ec9cbb6b0e9f53ff2ec5c964b077912a
+ENV PATH=/opt/rez/bin/rez:$PATH
+ENV PYTHONPATH=/usr/local/lib/python
 ENV REZ_PACKAGES_PATH=./packages
 WORKDIR /
 ENTRYPOINT []

@@ -11,13 +11,57 @@ on:
 
 permissions:
   contents: read
+  packages: write
 
 jobs:
   build:
     runs-on: ubuntu-24.04
+    outputs:
+      runnable: ${{ steps.build.outputs.runnable }}
     steps:
       - uses: actions/checkout@v4
-      - name: Build pristine and runnable
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and publish pristine and runnable
+        id: build
         env:
           PROFILE: ${{ inputs.profile }}
-        run: python3 tools/build.py "$PROFILE"
+        run: python3 tools/build.py "$PROFILE" --push
+
+  demo:
+    needs: build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: nicolaspopravka/usd-render-benchmark
+          ref: demo/run1
+          path: benchmark
+      - name: Get assets
+        run: git -C benchmark submodule update --init --depth 1 assets
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Render teapot
+        env:
+          IMAGE: ${{ needs.build.outputs.runnable }}
+        run: |
+          rm -rf benchmark/logs benchmark/renderers
+          docker run --rm -v "$PWD/benchmark:/benchmark" -w /benchmark "$IMAGE" bash -ec '
+            dnf install -y --disablerepo=cuda mesa-dri-drivers
+            LIBGL_ALWAYS_SOFTWARE=1 MESA_SHADER_CACHE_DISABLE=true xvfb-run -a bash render_script.sh
+          '
+          test -s benchmark/renderers/GL/Teapot.jpg
+          ! grep -q 'ERROR:' benchmark/logs/GL_Teapot.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: teapot
+          path: |
+            benchmark/renderers/GL/Teapot.jpg
+            benchmark/logs/GL_Teapot.log
