@@ -36,6 +36,15 @@ def resolve(year, variant):
             'ready_to_build': base is not None}
 
 
+def verify_pristine(receipt):
+    pristine = receipt['outputs']['pristine']
+    actual = subprocess.check_output(
+        ['docker', 'image', 'inspect', '--format', '{{.Id}}', pristine['tag']],
+        text=True).strip()
+    if actual != pristine['image_id']:
+        raise ValueError('Local pristine tag changed during the build')
+
+
 def build(profile):
     if not profile['ready_to_build']:
         raise ValueError('Pin base_image in the annual profile before building')
@@ -51,7 +60,9 @@ def build(profile):
         for stage, argument in [('pristine', profile['base_image']), ('runnable', None)]:
             tag = f'usd-render-benchmark-{stage}:{attempt}'
             iid = output / f'{stage}.iid'
-            parent = argument or receipt['outputs']['pristine']['image_id']
+            parent = argument or receipt['outputs']['pristine']['tag']
+            if stage == 'runnable':
+                verify_pristine(receipt)
             command = ['docker', 'build', '--file', f'Dockerfile.{stage}',
                        '--build-arg', f"{'BASE_IMAGE' if stage == 'pristine' else 'PRISTINE_IMAGE'}={parent}",
                        '--tag', tag, '--iidfile', str(iid), '.']
@@ -62,6 +73,8 @@ def build(profile):
             if not re.fullmatch(r'sha256:[0-9a-f]{64}', image_id):
                 raise ValueError(f'{stage}: Docker returned an invalid image ID')
             receipt['outputs'][stage] = {'tag': tag, 'image_id': image_id}
+            if stage == 'runnable':
+                verify_pristine(receipt)
         receipt['status'] = 'built'
     except Exception as error:
         receipt['status'] = 'failed'

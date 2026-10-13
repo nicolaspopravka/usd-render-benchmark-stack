@@ -10,8 +10,8 @@ Historical prepared benchmark images are not defaults.
     python3 tools/build.py build --year 2025
 
 Build logs and a receipt go under `.build/<attempt>/`. Builds use unique local
-tags and never push. Runnable uses the pristine image's exact local image ID;
-this ID is not a registry manifest digest. Mount the benchmark checkout at
+tags and never push. Runnable uses the unique local pristine tag, verified against its recorded
+image ID before and after building. This ID is not a registry manifest digest. Mount the benchmark checkout at
 `/usr/local/usd-render-benchmark` when running the image.
 
 Storm is inherited. Embree, Cycles and MoonRay are explicitly excluded until
