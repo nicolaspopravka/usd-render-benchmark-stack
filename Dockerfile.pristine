@@ -1,5 +1,3 @@
-# syntax=docker/dockerfile:1
-# Annual ASWF stack. Optional builders and repairs are added explicitly later.
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 

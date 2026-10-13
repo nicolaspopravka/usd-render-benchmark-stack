@@ -1,22 +1,10 @@
-# syntax=docker/dockerfile:1
 ARG PRISTINE_IMAGE
 FROM ${PRISTINE_IMAGE}
-
-ARG IMAGE_VERSION
-ARG BUILD_CREATED
-ARG RECIPE_REVISION
 ARG BASE_NAME
 LABEL org.opencontainers.image.title="usd-render-benchmark-runnable" \
-      org.opencontainers.image.source="https://github.com/nicolaspopravka/usd-render-benchmark-stack" \
-      org.opencontainers.image.version="${IMAGE_VERSION}" \
-      org.opencontainers.image.created="${BUILD_CREATED}" \
-      org.opencontainers.image.revision="${RECIPE_REVISION}" \
+      org.opencontainers.image.description="Benchmark runtime conventions on the selected pristine stack." \
       org.opencontainers.image.base.name="${BASE_NAME}" \
-      org.opencontainers.image.base.digest="" \
-      org.opencontainers.image.authors="Nicolas Popravka" \
-      org.opencontainers.image.vendor="Nicolas Popravka" \
-      org.opencontainers.image.url="https://github.com/nicolaspopravka/usd-render-benchmark-stack" \
-      org.opencontainers.image.description="Benchmark runtime conventions on the selected pristine stack."
+      org.opencontainers.image.base.digest=""
 ENV REZ_PACKAGES_PATH=./packages
 WORKDIR /
 ENTRYPOINT []
