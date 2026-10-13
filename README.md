@@ -3,8 +3,8 @@
 This first iteration resolves CY2023–CY2027 profiles and builds local pristine
 and runnable images. Profiles use JSON so the entry point needs only Python's
 standard library. Edit a profile's `base_image` to a raw ASWF image reference
-with a SHA-256 digest before building. The initial profiles deliberately have
-no selected base; historical prepared benchmark images are not defaults.
+with a SHA-256 digest before building. CY2025 has a pinned raw ASWF base; the other years await selection.
+Historical prepared benchmark images are not defaults.
 
     python3 tools/build.py resolve --year 2025
     python3 tools/build.py build --year 2025
