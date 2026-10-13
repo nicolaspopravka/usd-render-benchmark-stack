@@ -6,8 +6,8 @@ standard library. Edit a profile's `base_image` to a raw ASWF image reference
 with a SHA-256 digest before building. CY2025 has a pinned raw ASWF base; the other years await selection.
 Historical prepared benchmark images are not defaults.
 
-    python3 tools/build.py resolve --year 2025
-    python3 tools/build.py build --year 2025
+    python3 tools/build.py resolve profiles/cy2025.json
+    python3 tools/build.py build profiles/cy2025.json
 
 Build logs and a receipt go under `.build/<attempt>/`. Builds use unique local
 tags and never push. Runnable uses the unique local pristine tag, verified against its recorded
@@ -19,7 +19,7 @@ builder integration. Repair execution is also pending; requests for repairs
 fail before Docker starts.
 
 Main profiles select released sources. Candidate branches change the relevant
-source pins or build code and use the same year-only command. For a matched
+source pins or build code and use the same profile-file command. For a matched
 comparison, keep the base, settings and repairs identical. The recipe commit
 in the receipt and OCI labels identifies each build; builds never merge branches.
 

@@ -12,10 +12,10 @@ import uuid
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def resolve(year):
-    profile = json.loads((ROOT / 'profiles' / f'cy{year}.json').read_text())
-    if profile['year'] != year:
-        raise ValueError('Profile year does not match its filename')
+def resolve(path):
+    profile = json.loads(path.read_text())
+    if type(profile['year']) is not int or not 1000 <= profile['year'] <= 9999:
+        raise ValueError('Profile year must be a four-digit integer')
     base = profile['base_image']
     if base is not None and not re.fullmatch(r'[^\s]+@sha256:[0-9a-f]{64}', base):
         raise ValueError('base_image must include a sha256 digest')
@@ -92,10 +92,10 @@ def build(profile):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('command', choices=['resolve', 'build'])
-    parser.add_argument('--year', type=int, choices=range(2023, 2028), required=True)
+    parser.add_argument('profile', type=Path, help='Path to a profile JSON file')
     args = parser.parse_args()
     try:
-        profile = resolve(args.year)
+        profile = resolve(args.profile)
         result = profile if args.command == 'resolve' else build(profile)
     except (ValueError, KeyError, OSError, subprocess.CalledProcessError) as error:
         parser.exit(1, f'Error: {error}\n')
