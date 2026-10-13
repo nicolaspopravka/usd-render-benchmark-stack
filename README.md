@@ -24,9 +24,9 @@ Candidate changes live on recipe branches. CY2023–CY2025 profiles select two b
 }
 ```
 
-Omission builds no additional delegates. MoonRay follows `ASWF_MOONRAY_VERSION`. Each delegate builds from the same prepared
-base and stages its installation with `DESTDIR`; the final pristine image copies
-those installations. Delegate builds do not depend on one another. Selected
+Omission builds no additional delegates. MoonRay follows `ASWF_MOONRAY_VERSION`. Both delegate builders run in the same image stage, in profile order.
+MoonRay installs directly into `/usr/local`; Cycles installs into `/opt/cycles`.
+Neither builder requires the other; parallel execution is deferred. Selected
 build failures stop image publication. Builds remain unvalidated against the selected bases.
 
 Profiles enable `cxx_conformance` explicitly; omission defaults to off. Enabled

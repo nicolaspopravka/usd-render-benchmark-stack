@@ -1,4 +1,3 @@
-FROM prepared AS moonray
 ARG MOONRAY_REPO_URL=https://github.com/OpenMoonRay/openmoonray.git
 COPY build_moonray.sh /usr/local/aswf/build_moonray.sh
 RUN MOONRAY_TAG="openmoonray-${ASWF_MOONRAY_VERSION}" \

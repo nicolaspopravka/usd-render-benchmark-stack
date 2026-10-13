@@ -1,1 +1,0 @@
-COPY --from=cycles /opt/install/ /
