@@ -130,6 +130,11 @@ aswf_usd_define_imported(Imath::Imath Imath)
 aswf_usd_define_imported(
   CONAN_LIB::materialx_materialx_MaterialXCore_MaterialXCore_RELEASE MaterialXCore)
 aswf_usd_define_imported(
+  CONAN_LIB::materialx_materialx_MaterialXFormat_MaterialXFormat_RELEASE MaterialXFormat)
+aswf_usd_define_imported(OpenSubdiv::osdCPU osdCPU)
+aswf_usd_define_imported(OpenSubdiv::osdGPU osdGPU)
+aswf_usd_define_imported(Ptex::Ptex_dynamic Ptex)
+aswf_usd_define_imported(
   CONAN_LIB::ptex_Ptex_Ptex_dynamic_Ptex_RELEASE Ptex)
 string(REPLACE "." "" _aswf_python "$ENV{ASWF_PYTHON_MAJOR_MINOR_VERSION}")
 aswf_usd_define_imported(
