@@ -125,6 +125,7 @@ aswf_usd_define_imported(OpenEXR::OpenEXR OpenEXR)
 aswf_usd_define_imported(OpenImageIO::OpenImageIO OpenImageIO)
 aswf_usd_define_imported(OpenImageIO::OpenImageIO_Util OpenImageIO_Util)
 aswf_usd_define_imported(Imath::Imath Imath)
+aswf_usd_define_imported(TBB::tbb tbb)
 
 # Older ASWF OpenUSD exports retain Conan-generated target names. Resolve
 # those names to deployed libraries instead of inserting empty targets into

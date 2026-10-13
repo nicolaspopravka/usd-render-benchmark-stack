@@ -67,7 +67,8 @@ foreach(target
     OpenImageIO::OpenImageIO
     OpenImageIO::OpenImageIO_Util
     OpenVDB::openvdb
-    OpenGL::GL)
+    OpenGL::GL
+    TBB::tbb)
   if(NOT TARGET ${target})
     message(FATAL_ERROR "aswf_usd_deps: ${target} is not defined")
   endif()

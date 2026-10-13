@@ -11,11 +11,11 @@
     "osl-shader-includes"
   ],
   "delegates": {
-    "moonray": {},
     "cycles": {
       "CYCLES_TAG": "v4.3.0",
       "WITH_CYCLES_OSL": "OFF",
       "WITH_CYCLES_OPENVDB": "OFF"
-    }
+    },
+    "moonray": {}
   }
 }
