@@ -6,7 +6,9 @@
     "time",
     "rez",
     "pythonpath",
-    "git-lfs"
+    "git-lfs",
+    "ispc",
+    "osl-shader-includes"
   ],
   "delegates": {
     "moonray": {},
