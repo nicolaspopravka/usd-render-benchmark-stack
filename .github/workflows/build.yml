@@ -1,0 +1,23 @@
+name: Build stack
+
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: Profile JSON path
+        required: true
+        default: profiles/cy2025.json
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build pristine and runnable
+        env:
+          PROFILE: ${{ inputs.profile }}
+        run: python3 tools/build.py "$PROFILE"
