@@ -124,6 +124,20 @@ aswf_usd_define_imported(OpenImageIO::OpenImageIO OpenImageIO)
 aswf_usd_define_imported(OpenImageIO::OpenImageIO_Util OpenImageIO_Util)
 aswf_usd_define_imported(Imath::Imath Imath)
 
+# Older ASWF OpenUSD exports retain Conan-generated target names. Resolve
+# those names to deployed libraries instead of inserting empty targets into
+# pxrConfig.cmake, as the former export fixer did.
+aswf_usd_define_imported(
+  CONAN_LIB::materialx_materialx_MaterialXCore_MaterialXCore_RELEASE MaterialXCore)
+aswf_usd_define_imported(
+  CONAN_LIB::ptex_Ptex_Ptex_dynamic_Ptex_RELEASE Ptex)
+string(REPLACE "." "" _aswf_python "$ENV{ASWF_PYTHON_MAJOR_MINOR_VERSION}")
+aswf_usd_define_imported(
+  "CONAN_LIB::boost_Boost_python_boost_python${_aswf_python}_RELEASE"
+  "boost_python${_aswf_python}")
+unset(_aswf_python)
+
+
 # --------------------------------------------------------------------------
 # 4. Imath on the link line.
 #
