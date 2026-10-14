@@ -1,1 +1,2 @@
+# Discover Cycles outside the ASWF plugin installation.
 ENV PXR_PLUGINPATH_NAME=/opt/cycles/hydra:${PXR_PLUGINPATH_NAME}

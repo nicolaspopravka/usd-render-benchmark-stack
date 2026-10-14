@@ -1,3 +1,4 @@
+# Runtime template: inherit the pristine image and append selected runtime fragments.
 ARG PRISTINE_IMAGE
 FROM ${PRISTINE_IMAGE}
 ARG BASE_NAME

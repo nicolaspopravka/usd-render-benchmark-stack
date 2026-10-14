@@ -1,1 +1,2 @@
+# Expose the repaired Rez installation to benchmark commands.
 ENV PATH=/opt/rez/bin/rez:${PATH}

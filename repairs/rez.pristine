@@ -1,4 +1,4 @@
-# Temporary: remove selection when the pinned ASWF base supplies Rez.
+# Install Rez directly into /opt/rez; generated scripts contain absolute paths.
 ARG ASWF_REZ_VERSION=3.4.0
 COPY repairs/build_rez.sh /tmp/build_rez.sh
 RUN mkdir -p /tmp/rez-downloads && \

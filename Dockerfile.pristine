@@ -1,3 +1,4 @@
+# Base template: the composer appends selected repairs, then delegate builds.
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 

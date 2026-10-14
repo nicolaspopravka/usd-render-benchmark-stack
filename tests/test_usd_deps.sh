@@ -1,22 +1,6 @@
 #!/usr/bin/env bash
-# Copyright (c) Contributors to the aswf-docker Project. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
-#
-# Acceptance test for build-support/aswf_usd_deps.cmake.
-#
-# The module's whole purpose is to make a consumer link against the REAL
-# libraries the ASWF conan deploy ships, so the test is a link test, not a
-# configure test: every earlier failure of this mechanism (empty targets,
-# the "DSO missing from command line" link error, the OpenImageIO export-set
-# rejection) either configures cleanly and fails later, or fails only for one
-# delegate. A configure-only test would have passed the broken versions.
-#
-# Run against an image that already carries the delegate under test:
-#   tests/test_usd_deps.sh [image]
-#
-# Free: no network, no build, no pod. Needs docker and an image with the ASWF
-# conan deploy (any usd-render-benchmark-stack tag, or aswf/ci-vfxall).
-
+# Manual check: tests/test_usd_deps.sh <image>.
+# Requires Docker and an ASWF image; compiles consumers, runs them and checks ldd -r.
 set -uo pipefail
 
 IMAGE="${1:-}"
@@ -73,10 +57,6 @@ foreach(target
     message(FATAL_ERROR "aswf_usd_deps: ${target} is not defined")
   endif()
   get_target_property(type ${target} TYPE)
-  # Threads and OpenGL are modelled as INTERFACE targets that carry flags, and
-  # on a glibc base Threads::Threads is legitimately empty because pthreads is
-  # part of libc. Every other target must resolve to a real library, because an
-  # empty INTERFACE there is the defect this module exists to prevent.
   if(type STREQUAL "INTERFACE_LIBRARY" AND NOT target MATCHES "^(Threads|OpenGL)")
     get_target_property(iface ${target} INTERFACE_LINK_LIBRARIES)
     if(NOT iface)
@@ -88,8 +68,6 @@ foreach(target
   message(STATUS "aswf_usd_deps: ${target} TYPE=${type}")
 endforeach()
 
-# Present but hollow is the failure mode; Threads must merely exist, since
-# glibc makes an empty Threads::Threads correct.
 if(NOT TARGET Threads::Threads)
   message(FATAL_ERROR "aswf_usd_deps: Threads::Threads is not defined")
 endif()
@@ -102,12 +80,7 @@ target_link_libraries(consumer PRIVATE
     Imath::Imath)
 '
 
-# The fallback path. On a base that ships a real OpenEXR config, OpenEXR's own
-# export set already carries Imath::Imath and the module's step 4 is a no-op,
-# so the passing case above does not actually test that step. Disabling the
-# package forces the location fallback FindUSDPixar uses when a base has the
-# library but no config, which is exactly where Imath would silently drop off
-# the link line and bin/cycles would fail to link.
+# Force missing-config paths to exercise Imath linking and TBB SDK metadata.
 readonly FALLBACK_CMAKE_LISTS='cmake_minimum_required(VERSION 3.21)
 project(aswf_usd_deps_fallback LANGUAGES CXX)
 
@@ -141,7 +114,6 @@ endif()
 target_link_libraries(fallback PRIVATE OpenEXR::OpenEXR TBB::tbb)
 '
 
-# Exercise the Imath link interface and TBB's fallback SDK metadata.
 readonly FALLBACK_CPP='
 #include <Imath/half.h>
 #include <tbb/parallel_for.h>
@@ -156,10 +128,7 @@ int main()
 
 fail() { echo "FAIL: $*" >&2; exit 1; }
 
-echo "== aswf_usd_deps acceptance against ${IMAGE}"
 
-# The module is mounted read-only and used from /m, so the test exercises the
-# committed file rather than a copy that could drift from it.
 log="$(docker run --rm -v "${ROOT}/build-support:/m:ro" --entrypoint bash "$IMAGE" -c '
   set -euo pipefail
   mkdir -p '"${WORKDIR}"'
@@ -187,7 +156,6 @@ log="$(docker run --rm -v "${ROOT}/build-support:/m:ro" --entrypoint bash "$IMAG
   ./build/fallback
 ' 2>&1)" || { echo "$log"; fail "configure/build/run failed"; }
 
-echo "$log" | sed -n 's/^-- aswf_usd_deps: /  target: /p'
 
 grep -q 'colorSpaces=' <<<"$log" || fail "consumer produced no output"
 loader_log="$(awk '/^--- ldd -r ---$/ {inside=1; next} inside && /^--/ {exit} inside {print}' <<<"$log")"
@@ -197,8 +165,6 @@ for target in Imath OpenColorIO OpenEXR OpenImageIO; do
   grep -q "lib${target}" <<<"$log" || fail "${target} absent from the linked image"
 done
 
-# The consumer exits 0 only when OCIO answered, half round-tripped and OIIO
-# reported its channels; a link that silently dropped Imath fails at runtime.
 grep -q 'channels=3' <<<"$log" || fail "consumer did not run to completion"
 grep -q 'aswf_usd_deps: fallback OpenEXR ILB' <<<"$log" \
   || fail "fallback path did not report a link interface"

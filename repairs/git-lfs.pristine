@@ -1,3 +1,4 @@
+# Supply Git LFS for OpenMoonRay source checkout.
 RUN dnf install -y git-lfs && \
     dnf clean all && \
     rm -rf /var/cache/dnf && \

@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
-"""Build local pristine and runnable images from a JSON profile."""
+"""Compose and build pristine/runnable images from a profile JSON.
+
+Required: year and digest-pinned base_image. cxx_conformance defaults to false.
+repairs lists basenames with .pristine/.runnable fragments; omission selects none.
+delegates maps names to string build arguments, in build order; omission builds none.
+Append repairs before delegate builds; runtime fragments extend the runnable image.
+--push publishes both images and prints digest-pinned references; otherwise print tags.
+"""
 import argparse
 from datetime import datetime, timezone
 import json
@@ -12,6 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def dockerfiles(profile):
+    """Inline selected fragments into the two Dockerfile templates."""
     repairs = profile.get('repairs', [])
     if not isinstance(repairs, list) or any(
             not isinstance(name, str) or not re.fullmatch(r'[a-z][a-z0-9_-]*', name)
@@ -46,6 +54,7 @@ def dockerfiles(profile):
 
 
 def publish(tag):
+    """Push a tag, check its remote digest and return the pinned reference."""
     subprocess.run(['docker', 'push', tag], check=True)
     references = json.loads(subprocess.check_output(
         ['docker', 'image', 'inspect', '--format', '{{json .RepoDigests}}', tag], text=True))

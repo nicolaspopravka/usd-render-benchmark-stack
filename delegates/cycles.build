@@ -1,3 +1,4 @@
+# Build the profile-selected Cycles tag; OSL and OpenVDB default to ON.
 ARG CYCLES_TAG
 ARG WITH_CYCLES_OSL=ON
 ARG WITH_CYCLES_OPENVDB=ON
