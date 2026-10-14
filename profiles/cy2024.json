@@ -8,6 +8,7 @@
     "pythonpath",
     "git-lfs",
     "epoxy",
+    "usd-cmake",
     "ispc",
     "osl-shader-includes"
   ],

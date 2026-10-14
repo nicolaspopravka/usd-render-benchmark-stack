@@ -1,0 +1,3 @@
+# Correct deployed USD metadata before any delegate consumes it.
+COPY repairs/usd-cmake.py repairs/TBBConfig.cmake repairs/OpenVDBConfig.cmake /tmp/usd-cmake/
+RUN python3 /tmp/usd-cmake/usd-cmake.py && rm -rf /tmp/usd-cmake
