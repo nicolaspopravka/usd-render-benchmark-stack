@@ -1,0 +1,7 @@
+# Build the profile-selected Cycles tag; OSL and OpenVDB default to ON.
+ARG CYCLES_TAG
+ARG WITH_CYCLES_OSL=ON
+ARG WITH_CYCLES_OPENVDB=ON
+COPY build_cycles.sh /usr/local/aswf/build_cycles.sh
+RUN bash /usr/local/aswf/build-support/run-build.sh /usr/local/aswf/build_cycles.sh && \
+    rm -rf /opt/build-cycles

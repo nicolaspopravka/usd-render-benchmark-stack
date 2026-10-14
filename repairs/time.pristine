@@ -1,0 +1,2 @@
+# Supply GNU time for benchmark timing and memory measurements.
+RUN dnf install -y time && dnf clean all && rm -rf /var/cache/dnf

@@ -1,0 +1,3 @@
+# Repair ISPC runtime dependencies before delegate compilation.
+COPY repairs/ispc.sh /tmp/ispc.sh
+RUN bash /tmp/ispc.sh && rm /tmp/ispc.sh

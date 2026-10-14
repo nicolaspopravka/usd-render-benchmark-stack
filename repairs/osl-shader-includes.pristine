@@ -1,0 +1,3 @@
+# Supply OSL shader headers omitted by the base image.
+COPY repairs/osl-shader-includes.sh /tmp/osl-shader-includes.sh
+RUN bash /tmp/osl-shader-includes.sh && rm /tmp/osl-shader-includes.sh

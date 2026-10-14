@@ -1,0 +1,22 @@
+{
+  "year": 2025,
+  "base_image": "aswf/ci-moonray:2025.8@sha256:5d29528fd6027fcd96c3d1d99fead53c33f3878ad1a9cb88491b0a8236b84f48",
+  "cxx_conformance": true,
+  "repairs": [
+    "time",
+    "rez",
+    "pythonpath",
+    "git-lfs",
+    "epoxy",
+    "usd-cmake",
+    "ispc",
+    "osl-shader-includes",
+    "hd-default-renderer"
+  ],
+  "delegates": {
+    "moonray": {},
+    "cycles": {
+      "CYCLES_TAG": "v4.5.0"
+    }
+  }
+}
