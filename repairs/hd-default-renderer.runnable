@@ -1,0 +1,2 @@
+# Work around usdrecord's Storm/GL alias mismatch (benchmark #49).
+ENV HD_DEFAULT_RENDERER=GL

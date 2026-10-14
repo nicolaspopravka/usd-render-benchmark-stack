@@ -10,7 +10,8 @@
     "epoxy",
     "usd-cmake",
     "ispc",
-    "osl-shader-includes"
+    "osl-shader-includes",
+    "hd-default-renderer"
   ],
   "delegates": {
     "moonray": {},
