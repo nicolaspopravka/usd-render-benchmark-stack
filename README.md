@@ -1,54 +1,151 @@
 # USD Render Benchmark Stack
 
-Build pristine and runnable images on GitHub Actions. Run **Build stack**,
-select the recipe branch, and provide a profile JSON path
-(default: `profiles/cy2025.json`).
+This repository builds the container images used to run the
+[USD Render Benchmark](https://github.com/nicolaspopravka/usd-render-benchmark).
 
-The profile supplies the year and base image digest. Each build uses distinct
-tags on the GitHub runner, prints Docker progress and stops on failure. The build workflow publishes both images to GHCR. Run the separate **run-demo**
-workflow with `run_branch=demo/run1` and the runnable digest. The existing demo
-uploads render outputs, logs and its summary.
-Builds do not write receipts or metadata files. Both images carry OCI identity labels.
+The image supplies the software environment. The benchmark branch supplies the
+harness, scenes, renderer selection, and output directories. Keeping those
+parts separate allows the same image to run different benchmark branches
+without rebuilding the image.
 
-Mount a benchmark checkout and select its working directory with
-`docker run --workdir`. The runnable image defaults to `bash render_script.sh`
-and sets `REZ_PACKAGES_PATH=./packages`.
+This is an independent community project. The images are not ASWF or OpenUSD
+certification, and publishing an image does not by itself produce a benchmark
+result.
 
-Profiles pin the latest published official ci-moonray base for each year.
-Candidate changes live on recipe branches. CY2023–CY2025 profiles select two builders:
+## Repository split
 
-```json
-"delegates": {
-  "moonray": {},
-  "cycles": {"CYCLES_TAG": "v5.0.0"}
-}
+The current setup has three parts:
+
+- [`AcademySoftwareFoundation/aswf-docker`](https://github.com/AcademySoftwareFoundation/aswf-docker)
+  builds the underlying VFX Platform and renderer environments.
+- This repository composes those environments into images that follow the
+  benchmark's run conventions.
+- [`nicolaspopravka/usd-render-benchmark`](https://github.com/nicolaspopravka/usd-render-benchmark)
+  contains the harness and the branches that preserve individual run results.
+
+A run branch is mounted at a caller-selected directory, which is also the
+container's working directory. The default command executes that branch's
+`render_script.sh`. Logs and renders remain in the mounted checkout; summary
+generation is a separate runner step.
+
+## Images
+
+| Image | Purpose |
+| --- | --- |
+| `ghcr.io/nicolaspopravka/usd-render-benchmark-stack:<tag>` | The pinned ASWF base, selected repairs, and delegate builds. |
+| `ghcr.io/nicolaspopravka/usd-render-benchmark:<tag>` | Thin runnable overlay with `REZ_PACKAGES_PATH=./packages` and default command `bash render_script.sh`. The caller supplies the working directory and run branch. |
+
+Both images carry OCI identity and base-image labels. Recorded results should
+retain the image digest and the exact run commit that were observed.
+
+## Build workflows
+
+The manual **Build stack** workflow builds and publishes both images from a
+profile JSON. Select the profile path:
+
+```bash
+gh workflow run build.yml \
+  --repo nicolaspopravka/usd-render-benchmark-stack \
+  -f profile=profiles/cy2025.json
 ```
 
-Omission builds no additional delegates. MoonRay follows `ASWF_MOONRAY_VERSION`. Both delegate builders run in the same image stage, in profile order.
-MoonRay installs directly into `/usr/local`; Cycles installs into `/opt/cycles`.
-Neither builder requires the other; parallel execution is deferred. Selected
-build failures stop image publication. CY2023–CY2025 builds have completed on GitHub Actions; demo runs still report runtime errors.
+Commands use the repository's default branch, `main`. To use another recipe
+branch, add `--ref <recipe-branch>`.
 
-Profiles enable `cxx_conformance` explicitly; omission defaults to off. Enabled
-settings select GCC toolset 11/C++17 for CY2023–2025 and toolset 14/C++20 for
-CY2026–2027. The shared build launcher activates these settings in each independent build
-shell; existing builders pass `VFX_CXX_STANDARD` to CMake. A missing toolset fails the build. Settings
-do not establish conformance of inherited ASWF software.
+A failed build fails the workflow. Each push is checked against the published
+tag. The build log prints pinned `Pristine:` and `Runnable:` references when
+both images have been published. Set `RUNNABLE_IMAGE` to the printed runnable
+reference for the commands below.
 
-Profiles select temporary repairs by basename, for example
-`"repairs": ["time", "rez", "pythonpath"]`. The builder appends matching
-`repairs/<name>.pristine` and `.runnable` fragments in that order and sends
-the result to Docker through stdin. Omission applies none; unknown names fail.
-CY2023–CY2025 select time, Rez, pythonpath, Git LFS, distro epoxy, runnable ISPC and OSL
-shader includes.
-Remove selections when the pinned ASWF release supplies the prerequisite.
+## Build framework
 
-Cycles selections are v4.0.2, v4.3.0 and v5.0.0 for CY2023–CY2025. CY2023–CY2024 disable Cycles OSL and OpenVDB for the documented OSL runtime
-and older Cycles delayed-loading incompatibilities. CY2025 keeps their ON defaults.
+[Profiles](profiles/) select the pinned ASWF base, repairs and delegates.
+OpenUSD and MoonRay versions come from the base; Cycles versions and options
+come from the profile. The [composer](tools/build.py) builds the selected stack
+and its runnable overlay. The implementation is in [repairs](repairs/),
+[delegates](delegates/) and [build support](build-support/).
 
-Embree and CY2026–CY2027 profiles are deferred.
+| Profile | ASWF base | Cycles | Cycles OSL / OpenVDB |
+| --- | --- | --- | --- |
+| [CY2023](profiles/cy2023.json) | `ci-moonray:2023.5` | v4.0.2 | OFF / OFF |
+| [CY2024](profiles/cy2024.json) | `ci-moonray:2024.9` | v4.3.0 | OFF / OFF |
+| [CY2025](profiles/cy2025.json) | `ci-moonray:2025.8` | v5.0.0 | ON / ON |
 
-Both builders load `build-support/aswf_usd_deps.cmake` through
-`CMAKE_PROJECT_INCLUDE`. This shared consumer support resolves OpenUSD's
-library dependency targets; it does not rewrite the base's CMake files and
-needs no repair selection in the profiles.
+### Repairs
+
+These profiles select the following repairs. Upstream changes do not alter
+the pinned images; remove a repair after checking the replacement base.
+
+| Repair | Purpose | Internal tracking | Upstream tracking |
+| --- | --- | --- | --- |
+| [time](repairs/time.pristine) | GNU time for measurements | — | [ASWF PR #468](https://github.com/AcademySoftwareFoundation/aswf-docker/pull/468) |
+| [rez](repairs/rez.pristine) | Rez package environment | — | [ASWF PR #467](https://github.com/AcademySoftwareFoundation/aswf-docker/pull/467) |
+| [pythonpath](repairs/pythonpath.runnable) | OpenUSD Python module lookup | — | — |
+| [git-lfs](repairs/git-lfs.pristine) | OpenMoonRay source checkout | — | — |
+| [epoxy](repairs/epoxy.pristine) | Cycles development dependency | — | — |
+| [usd-cmake](repairs/usd-cmake.pristine) | OpenUSD dependency exports | [#34](https://github.com/nicolaspopravka/usd-render-benchmark/issues/34) | [ASWF #480](https://github.com/AcademySoftwareFoundation/aswf-docker/issues/480), [PR #490](https://github.com/AcademySoftwareFoundation/aswf-docker/pull/490) |
+| [ispc](repairs/ispc.pristine) | Working ISPC compiler | — | [ASWF #469](https://github.com/AcademySoftwareFoundation/aswf-docker/issues/469), [PR #473](https://github.com/AcademySoftwareFoundation/aswf-docker/pull/473) |
+| [osl-shader-includes](repairs/osl-shader-includes.pristine) | Installed OSL shader headers | — | [ASWF PR #487](https://github.com/AcademySoftwareFoundation/aswf-docker/pull/487) |
+
+### Cycles feature overrides
+
+| Setting | Years | Reason | Tracking |
+| --- | --- | --- | --- |
+| `WITH_CYCLES_OSL=OFF` | CY2023–CY2024 | OSL compiler cannot start with the supplied LLVM runtime | [#54](https://github.com/nicolaspopravka/usd-render-benchmark/issues/54), [ASWF #469](https://github.com/AcademySoftwareFoundation/aswf-docker/issues/469) |
+| `WITH_CYCLES_OPENVDB=OFF` | CY2023–CY2024 | Older Cycles tags expect OpenVDB delayed-loading APIs | [#56](https://github.com/nicolaspopravka/usd-render-benchmark/issues/56), [ASWF #488](https://github.com/AcademySoftwareFoundation/aswf-docker/issues/488) |
+
+These settings disable Cycles OSL shading and volume support for those years.
+
+## Run a benchmark branch
+
+Clone a run branch with its submodules:
+
+```bash
+git clone \
+  --branch demo/run3 \
+  --single-branch \
+  --recurse-submodules \
+  https://github.com/nicolaspopravka/usd-render-benchmark.git \
+  run-branch
+```
+
+Mount it into a runnable image:
+
+```bash
+docker run --rm \
+  -v "$PWD/run-branch:/benchmark" \
+  -w /benchmark \
+  "$RUNNABLE_IMAGE"
+```
+
+Display, GPU, and headless-rendering requirements remain properties of the
+selected environment and runner. The command above shows the mount contract;
+it is not a guarantee that every renderer can run on every Docker host.
+
+## Headless demo
+
+The `run-demo` workflow exercises the same model on a GitHub-hosted runner. It
+clones a benchmark branch, initializes its submodules, mounts it into the
+selected image, runs the harness with Mesa and Xvfb, generates the summary,
+and uploads the resulting files.
+
+Use the `Runnable:` reference printed by the build:
+
+```bash
+gh workflow run run-demo.yml \
+  --repo nicolaspopravka/usd-render-benchmark-stack \
+  -f run_branch=demo/run3 \
+  -f runnable_image="$RUNNABLE_IMAGE"
+```
+
+Download the `run-output` artifact and inspect its logs, images and summary.
+The harness continues after a renderer fails, so workflow success alone does
+not establish render success. Embree is not included in these profiles.
+
+## Optional host C++ conformance
+
+Profiles enable `"cxx_conformance": true` explicitly; omission defaults to off. Enabled
+mode selects GCC toolset 11/C++17 for CY2023–CY2025, or toolset 14/C++20 for
+CY2026–CY2027. The shared launcher activates the settings in each delegate
+build shell. These are build settings; they do not establish conformance of
+inherited ASWF components or runtime/render conformance.
