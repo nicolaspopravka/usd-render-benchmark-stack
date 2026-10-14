@@ -1,0 +1,23 @@
+{
+  "year": 2023,
+  "base_image": "aswf/ci-moonray:2023.5@sha256:aa9825143009a5ec48693682d7dfe53059525f28462b94d33f1a8152583ad5e0",
+  "cxx_conformance": true,
+  "repairs": [
+    "time",
+    "rez",
+    "pythonpath",
+    "git-lfs",
+    "epoxy",
+    "usd-cmake",
+    "ispc",
+    "osl-shader-includes"
+  ],
+  "delegates": {
+    "cycles": {
+      "CYCLES_TAG": "v4.0.2",
+      "WITH_CYCLES_OSL": "OFF",
+      "WITH_CYCLES_OPENVDB": "OFF"
+    },
+    "moonray": {}
+  }
+}

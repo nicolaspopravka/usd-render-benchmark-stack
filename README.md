@@ -32,63 +32,69 @@ generation is a separate runner step.
 
 | Image | Purpose |
 | --- | --- |
-| `ghcr.io/nicolaspopravka/usd-render-benchmark-stack:<tag>` | A selected base with the recipe's dependency fixes, under an explicit output tag. With `cycles_tag` set, the Cycles Hydra delegate is built into `/opt/cycles`. |
+| `ghcr.io/nicolaspopravka/usd-render-benchmark-stack:<tag>` | The pinned ASWF base, selected repairs, and delegate builds. |
 | `ghcr.io/nicolaspopravka/usd-render-benchmark:<tag>` | Thin runnable overlay with `REZ_PACKAGES_PATH=./packages` and default command `bash render_script.sh`. The caller supplies the working directory and run branch. |
 
-Image tags are convenient references, not fixed evidence. Recorded results
-should retain the image digest and the exact run commit that were observed.
+Both images carry OCI identity and base-image labels. Recorded results should
+retain the image digest and the exact run commit that were observed.
 
 ## Build workflows
 
-Both image workflows are manual.
-
-Publish a base stack under an explicit tag:
-
-```bash
-gh workflow run build-pristine.yml \
-  --repo nicolaspopravka/usd-render-benchmark-stack \
-  -f base_image=aswf/ci-vfxall:2027@sha256:... \
-  -f image_tag=2027
-```
-
-Build the runnable overlay:
+The manual **Build stack** workflow builds and publishes both images from a
+profile JSON. Select the profile path:
 
 ```bash
-gh workflow run build-runnable.yml \
+gh workflow run build.yml \
   --repo nicolaspopravka/usd-render-benchmark-stack \
-  -f pristine_image=ghcr.io/nicolaspopravka/usd-render-benchmark-stack:2027@sha256:... \
-  -f image_tag=2027
+  -f profile=profiles/cy2025.json
 ```
 
-Both workflows accept an explicit `image_tag` and never infer it from the input
-image reference. The base or pristine image may therefore use a tag, a digest,
-or both without changing the requested output tag. The same `image_tag` can be
-passed unchanged from the pristine build to the runnable build.
+Commands use the repository's default branch, `main`. To use another recipe
+branch, add `--ref <recipe-branch>`.
 
-To add Cycles, set `cycles_tag` to the required source tag. The
-`with_cycles_osl` and `with_cycles_openvdb` inputs both default to `ON`.
-For the tested CY2023/CY2024 bases with Cycles v4.0.2/v4.3.0, select both
-as `OFF`: OSL's compiler lacks its required LLVM runtime libraries
-([#54](https://github.com/nicolaspopravka/usd-render-benchmark/issues/54)),
-and those older Cycles tags assume OpenVDB delayed-loading APIs absent from
-the ASWF packages ([#56](https://github.com/nicolaspopravka/usd-render-benchmark/issues/56)).
-These overrides disable Cycles OSL shading and volume support; they are not
-source fixes. ASWF's OpenVDB setting is being discussed in
-[#488](https://github.com/AcademySoftwareFoundation/aswf-docker/issues/488).
+A failed build fails the workflow. Each push is checked against the published
+tag. The build log prints pinned `Pristine:` and `Runnable:` references when
+both images have been published. Set `RUNNABLE_IMAGE` to the printed runnable
+reference for the commands below.
 
-The current Cycles recipe expects a prepared per-year `.2` base when building
-the multi-delegate environments. That base supplies MoonRay, Rez and GNU
-`time`; this Dockerfile does not build or install them. A plain ASWF base is
-not interchangeable with that prepared image. Pin the chosen input digest
-and record its build recipe. The runnable overlay adds plugin search paths,
-the Arras session path, and a Storm-selection workaround for
-[#49](https://github.com/nicolaspopravka/usd-render-benchmark/issues/49).
+## Build framework
 
-The Build + push steps run with `pipefail`, so a failed build fails the
-workflow. The build records the digest it pushed (`--metadata-file`), and a
-follow-up step confirms the published tag resolves to that exact digest, so a
-missing, wrong, or stale push fails the run. Keep the build log (uploaded as
-an artifact) and the image digest with any recorded result.
+[Profiles](profiles/) select the pinned ASWF base, repairs and delegates.
+OpenUSD and MoonRay versions come from the base; Cycles versions and options
+come from the profile. The [composer](tools/build.py) builds the selected stack
+and its runnable overlay. The implementation is in [repairs](repairs/),
+[delegates](delegates/) and [build support](build-support/).
+
+| Profile | ASWF base | Cycles | Cycles OSL / OpenVDB |
+| --- | --- | --- | --- |
+| [CY2023](profiles/cy2023.json) | `ci-moonray:2023.5` | v4.0.2 | OFF / OFF |
+| [CY2024](profiles/cy2024.json) | `ci-moonray:2024.9` | v4.3.0 | OFF / OFF |
+| [CY2025](profiles/cy2025.json) | `ci-moonray:2025.8` | v5.0.0 | ON / ON |
+
+### Repairs
+
+These profiles select the following repairs. Upstream changes do not alter
+the pinned images; remove a repair after checking the replacement base.
+
+| Repair | Purpose | Internal tracking | Upstream tracking |
+| --- | --- | --- | --- |
+| [time](repairs/time.pristine) | GNU time for measurements | — | [ASWF PR #468](https://github.com/AcademySoftwareFoundation/aswf-docker/pull/468) |
+| [rez](repairs/rez.pristine) | Rez package environment | — | [ASWF PR #467](https://github.com/AcademySoftwareFoundation/aswf-docker/pull/467) |
+| [pythonpath](repairs/pythonpath.runnable) | OpenUSD Python module lookup | — | — |
+| [git-lfs](repairs/git-lfs.pristine) | OpenMoonRay source checkout | — | — |
+| [epoxy](repairs/epoxy.pristine) | Cycles development dependency | — | — |
+| [usd-cmake](repairs/usd-cmake.pristine) | OpenUSD dependency exports | [#34](https://github.com/nicolaspopravka/usd-render-benchmark/issues/34) | [ASWF #480](https://github.com/AcademySoftwareFoundation/aswf-docker/issues/480), [PR #490](https://github.com/AcademySoftwareFoundation/aswf-docker/pull/490) |
+| [ispc](repairs/ispc.pristine) | Working ISPC compiler | — | [ASWF #469](https://github.com/AcademySoftwareFoundation/aswf-docker/issues/469), [PR #473](https://github.com/AcademySoftwareFoundation/aswf-docker/pull/473) |
+| [osl-shader-includes](repairs/osl-shader-includes.pristine) | Installed OSL shader headers | — | [ASWF PR #487](https://github.com/AcademySoftwareFoundation/aswf-docker/pull/487) |
+
+### Cycles feature overrides
+
+| Setting | Years | Reason | Tracking |
+| --- | --- | --- | --- |
+| `WITH_CYCLES_OSL=OFF` | CY2023–CY2024 | OSL compiler cannot start with the supplied LLVM runtime | [#54](https://github.com/nicolaspopravka/usd-render-benchmark/issues/54), [ASWF #469](https://github.com/AcademySoftwareFoundation/aswf-docker/issues/469) |
+| `WITH_CYCLES_OPENVDB=OFF` | CY2023–CY2024 | Older Cycles tags expect OpenVDB delayed-loading APIs | [#56](https://github.com/nicolaspopravka/usd-render-benchmark/issues/56), [ASWF #488](https://github.com/AcademySoftwareFoundation/aswf-docker/issues/488) |
+
+These settings disable Cycles OSL shading and volume support for those years.
 
 ## Run a benchmark branch
 
@@ -96,7 +102,7 @@ Clone a run branch with its submodules:
 
 ```bash
 git clone \
-  --branch demo/run1 \
+  --branch demo/run3 \
   --single-branch \
   --recurse-submodules \
   https://github.com/nicolaspopravka/usd-render-benchmark.git \
@@ -123,49 +129,23 @@ clones a benchmark branch, initializes its submodules, mounts it into the
 selected image, runs the harness with Mesa and Xvfb, generates the summary,
 and uploads the resulting files.
 
+Use the `Runnable:` reference printed by the build:
+
 ```bash
 gh workflow run run-demo.yml \
   --repo nicolaspopravka/usd-render-benchmark-stack \
-  -f run_branch=demo/run1 \
+  -f run_branch=demo/run3 \
   -f runnable_image="$RUNNABLE_IMAGE"
 ```
 
-The verified demonstration is
-[run 34144139279](https://github.com/nicolaspopravka/usd-render-benchmark-stack/actions/runs/34144139279).
-It rendered the Teapot scene with Storm and wrote the image, log, and summary
-back into the mounted checkout.
-
-## Current reproduction status
-
-The successful CY2027 demonstration used
-`ghcr.io/nicolaspopravka/usd-render-benchmark:2027` at observed digest:
-
-```text
-sha256:edc74bf323c3da67a98b9d455b2a52e5d4401a18ef680a2ee80d5b30b6754a2e
-```
-
-That image was built from an intermediate repository revision,
-[`635e796`](https://github.com/nicolaspopravka/usd-render-benchmark-stack/commit/635e796a564a99a5a9b8e53dafd4d8570337dc32).
-The intermediate base image installed Rez and GNU `time`, and its runnable
-overlay added Rez to `PATH`.
-
-Current `main` has since gained the delegate build options, dependency fixes
-and runnable environment described above. It still relies on prepared bases
-for MoonRay, Rez and GNU `time`; the demo is evidence for its recorded image,
-not for every image built from today's recipe.
-
-The CY2023/CY2024 build updates were merged in
-[PR #14](https://github.com/nicolaspopravka/usd-render-benchmark-stack/pull/14),
-including the Python discovery hint and configurable OSL/OpenVDB support.
-Full builds and benchmark renders using refreshed ASWF bases are deferred
-until new upstream images are released. Merged build scripts do not replace
-the pinned images behind the published results.
-
-The demo branch records the result that was actually observed:
-[`demo/run1`](https://github.com/nicolaspopravka/usd-render-benchmark/tree/demo/run1).
+Download the `run-output` artifact and inspect its logs, images and summary.
+The harness continues after a renderer fails, so workflow success alone does
+not establish render success. Embree is not included in these profiles.
 
 ## Optional host C++ conformance
 
-`build-pristine` accepts `cxx_conformance`: `off` (default) or `2023`–`2027`. Direct Docker builds use `--build-arg CXX_CONFORMANCE=<year>`. Compiler setup runs regardless of whether Cycles is built. Enabled mode sources the installed gcc-toolset-11 environment and requests C++17 for CY2023–2025, or gcc-toolset-14 and C++20 for CY2026–2027. When CYCLES_TAG is set, Cycles builds and installs normally.
-
-Off sources gcc-toolset-${ASWF_DTS_VERSION} and preserves existing CUDA and CMake choices. This selects build settings; it does not verify compiler version, ABI, individual compilation commands or target-specific overrides. It does not establish inherited-component, CUDA or runtime/render conformance. Without `CYCLES_TAG`, no delegate is rebuilt and the selected year does not reject the request. Runnable overlays inherit the delegate. Standalone builder callers manage build-directory cleanup. See [build support](build-support/README.md).
+Profiles enable `"cxx_conformance": true` explicitly; omission defaults to off. Enabled
+mode selects GCC toolset 11/C++17 for CY2023–CY2025, or toolset 14/C++20 for
+CY2026–CY2027. The shared launcher activates the settings in each delegate
+build shell. These are build settings; they do not establish conformance of
+inherited ASWF components or runtime/render conformance.

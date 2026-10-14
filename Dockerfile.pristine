@@ -1,61 +1,23 @@
-# syntax=docker/dockerfile:1.10
-
-# Byte-pristine <cy> stack image.
-#
-# Compiler setup runs even when CYCLES_TAG is empty. When CYCLES_TAG is set,
-# the Cycles Hydra delegate is built under /opt/cycles with this CY's
-# VFX-Platform compiler.
-
+# Base template: the composer appends selected repairs, then delegate builds.
 ARG BASE_IMAGE
-
 FROM ${BASE_IMAGE}
-ARG CXX_CONFORMANCE="off"
 
-# Image identity, overriding the ASWF base's labels, which we inherit. version
-# is a build arg because the base's value is the ASWF version, not ours.
-# image.name is not a predefined OCI annotation and the namespace is reserved;
-# it is kept as a legacy label because it is the only thing naming the package.
-ARG IMAGE_VERSION=""
-ARG BUILD_CREATED=""
-ARG BASE_NAME=""
-ARG BASE_DIGEST=""
-LABEL org.opencontainers.image.title="usd-render-benchmark: Hydra render delegate benchmark images" \
-      org.opencontainers.image.description="Benchmark images that render USD scenes with Hydra render delegates: Storm, plus MoonRay, Cycles or Embree depending on the tag. The image supplies the software environment; a benchmark run branch supplies the harness, scenes and outputs." \
-      org.opencontainers.image.name="usd-render-benchmark-stack" \
+ARG IMAGE_VERSION
+ARG BUILD_CREATED
+ARG RECIPE_REVISION
+ARG BASE_NAME
+ARG BASE_DIGEST
+LABEL org.opencontainers.image.title="usd-render-benchmark-pristine" \
       org.opencontainers.image.source="https://github.com/nicolaspopravka/usd-render-benchmark-stack" \
-      org.opencontainers.image.url="https://github.com/nicolaspopravka/usd-render-benchmark" \
-      org.opencontainers.image.authors="Nicolas Popravka" \
-      org.opencontainers.image.vendor="usd-render-benchmark" \
       org.opencontainers.image.version="${IMAGE_VERSION}" \
       org.opencontainers.image.created="${BUILD_CREATED}" \
-      org.opencontainers.image.revision="" \
+      org.opencontainers.image.revision="${RECIPE_REVISION}" \
       org.opencontainers.image.base.name="${BASE_NAME}" \
-      org.opencontainers.image.base.digest="${BASE_DIGEST}"
+      org.opencontainers.image.base.digest="${BASE_DIGEST}" \
+      org.opencontainers.image.authors="Nicolas Popravka" \
+      org.opencontainers.image.vendor="Nicolas Popravka" \
+      org.opencontainers.image.url="https://github.com/nicolaspopravka/usd-render-benchmark-stack" \
+      org.opencontainers.image.description="Annual ASWF stack for the USD Render Benchmark."
 
-ARG CYCLES_TAG=""
-ARG WITH_CYCLES_OSL="ON"
-ARG WITH_CYCLES_OPENVDB="ON"
-
-# TEMPORARY: additions the ASWF base needs before the default build can work.
-# 05 installs the OSL shader includes the conan OSL package omits, so
-# WITH_CYCLES_OSL defaults to ON; select OFF explicitly for bases whose OSL
-# compiler cannot load its runtime dependencies.
-#
-# This .3 pristine is built FROM stack:<cy>.2, which already carries Rez and
-# GNU time from the .2 composer, so neither is installed here.
-COPY fixers/ /usr/local/aswf/cycles-fixers/
-RUN /usr/local/aswf/cycles-fixers/05-osl-shader-includes.sh
-
+ARG CXX_CONFORMANCE=off
 COPY build-support/ /usr/local/aswf/build-support/
-COPY build_cycles.sh /usr/local/aswf/build_cycles.sh
-COPY cmake/import_openusd_dependencies.cmake /usr/local/share/cycles/import_openusd_dependencies.cmake
-RUN bash -lc 'source /usr/local/aswf/build-support/vfx-cxx.sh && \
-              vfx_cxx_environment && \
-              if [ -n "${CYCLES_TAG}" ]; then \
-                chmod +x /usr/local/aswf/build_cycles.sh && \
-                CYCLES_TAG="${CYCLES_TAG}" \
-                WITH_CYCLES_OSL="${WITH_CYCLES_OSL}" \
-                WITH_CYCLES_OPENVDB="${WITH_CYCLES_OPENVDB}" \
-                /usr/local/aswf/build_cycles.sh && \
-                rm -rf /opt/build-cycles; \
-              fi'

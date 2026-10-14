@@ -1,0 +1,2 @@
+# Expose OpenUSD Python modules installed outside site-packages.
+ENV PYTHONPATH=/usr/local/lib/python

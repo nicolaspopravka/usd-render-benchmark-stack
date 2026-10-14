@@ -1,0 +1,7 @@
+# Install Rez directly into /opt/rez; generated scripts contain absolute paths.
+ARG ASWF_REZ_VERSION=3.4.0
+COPY repairs/build_rez.sh /tmp/build_rez.sh
+RUN mkdir -p /tmp/rez-downloads && \
+    ASWF_INSTALL_PREFIX=/opt DOWNLOADS_DIR=/tmp/rez-downloads \
+    bash /tmp/build_rez.sh && \
+    rm -rf /tmp/rez-downloads /tmp/build_rez.sh

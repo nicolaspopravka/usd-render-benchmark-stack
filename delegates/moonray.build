@@ -1,0 +1,6 @@
+# Follow the base image MoonRay version; profiles need no separate tag.
+ARG MOONRAY_REPO_URL=https://github.com/OpenMoonRay/openmoonray.git
+COPY build_moonray.sh /usr/local/aswf/build_moonray.sh
+RUN MOONRAY_TAG="openmoonray-${ASWF_MOONRAY_VERSION}" \
+    bash /usr/local/aswf/build-support/run-build.sh /usr/local/aswf/build_moonray.sh && \
+    rm -rf /opt/build-moonray

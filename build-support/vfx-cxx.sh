@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Optional image-side settings; delegate scripts retain Git/CMake commands.
-
+# Optional annual C++ settings; off uses the base image GCC toolset.
 vfx_select_year() {
     case "${CXX_CONFORMANCE:-off}" in
         off) unset VFX_CXX_STANDARD; VFX_GCC_TOOLSET="${ASWF_DTS_VERSION}" ;;

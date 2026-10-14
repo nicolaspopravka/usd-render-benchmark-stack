@@ -1,0 +1,11 @@
+# Load native packages early; resolving Threads first keeps -pthread out of MoonRay ISPC.
+include_guard(GLOBAL)
+find_package(Threads REQUIRED)
+find_package(OpenGL REQUIRED)
+find_package(Imath CONFIG REQUIRED)
+find_package(OpenImageIO CONFIG REQUIRED)
+find_package(OpenEXR CONFIG REQUIRED)
+find_package(OpenColorIO CONFIG REQUIRED)
+find_package(TBB CONFIG REQUIRED)
+find_package(OpenSubdiv CONFIG REQUIRED)
+find_package(OpenVDB CONFIG REQUIRED)
