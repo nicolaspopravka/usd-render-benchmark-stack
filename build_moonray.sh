@@ -73,7 +73,7 @@ MOONRAY_BUILD="${BUILD_ROOT}/build"
 # The superproject references 19 submodules; some track files via LFS.
 git clone --branch "${MOONRAY_TAG}" --recurse-submodules \
     "${MOONRAY_REPO_URL}" "${MOONRAY_SRC}"
-git -C "${MOONRAY_SRC}" rev-parse HEAD   # recorded for evidence; not asserted
+# recorded for evidence; not asserted
 git -C "${MOONRAY_SRC}" lfs pull
 
 # --- Step 3b: configure ---------------------------------------------------
@@ -83,20 +83,11 @@ git -C "${MOONRAY_SRC}" lfs pull
 # CY2026+ images ship CMake 4 while older years ship 3.x, so the flags are
 # added only when cmake --version reports 4/5 and the 3.x configure stays
 # byte-identical.
-POLICY_ARGS=()
-if cmake --version | grep -qE '^cmake version (4|5)\.'; then
-    POLICY_ARGS=(-DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_POLICY_DEFAULT_CMP0167=NEW)
-fi
-HOST_ARGS=()
-if [ -n "${CUDA_HOST_COMPILER:-}" ]; then
     # Two mechanisms on purpose. CMAKE_CUDA_HOST_COMPILER is what CMake uses
     # for the compiler-id test; in CMake 4 it is NOT added to the generated
     # nvcc build rules, which otherwise pair with whatever gcc PATH offers
     # first (the toolset on ASWF images). CMAKE_CUDA_FLAGS reaches every
     # real nvcc invocation, so the rules are the part that must carry it.
-    HOST_ARGS=(-DCMAKE_CUDA_HOST_COMPILER="${CUDA_HOST_COMPILER}" \
-               "-DCMAKE_CUDA_FLAGS=--compiler-bindir=${CUDA_HOST_COMPILER}")
-fi
 CXX_ARGS=()
 if [ -n "${VFX_CXX_STANDARD:-}" ]; then
     CXX_ARGS=(-DCMAKE_CXX_STANDARD="$VFX_CXX_STANDARD"
@@ -108,10 +99,7 @@ cmake -S "${MOONRAY_SRC}" -B "${MOONRAY_BUILD}" \
     -DCMAKE_PREFIX_PATH="${ASWF_INSTALL_PREFIX}" \
     -DCMAKE_PROJECT_INCLUDE="${ASWF_INSTALL_PREFIX}/aswf/build-support/aswf_usd_deps.cmake" \
     -DCUDAToolkit_ROOT="${CUDA_ROOT}" \
-    -DPYTHON_EXECUTABLE=python3 \
     -DBOOST_PYTHON_COMPONENT_NAME="python${ASWF_PYTHON_MAJOR_MINOR_VERSION//./}" \
-    "${HOST_ARGS[@]}" \
-    "${POLICY_ARGS[@]}" \
     -DBUILD_QT_APPS=NO
 
 # --- Step 3c: build -------------------------------------------------------
@@ -119,5 +107,3 @@ cmake --build "${MOONRAY_BUILD}" --parallel "${BUILD_JOBS}"
 
 # --- Step 3d: install -----------------------------------------------------
 cmake --install "${MOONRAY_BUILD}" --prefix "${CMAKE_INSTALL_PREFIX}"
-
-echo "OpenMoonRay ${MOONRAY_TAG} installed under ${CMAKE_INSTALL_PREFIX}"

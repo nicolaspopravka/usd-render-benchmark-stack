@@ -1,0 +1,2 @@
+RUN dnf install -y libepoxy-devel && \
+    dnf clean all && rm -rf /var/cache/dnf
