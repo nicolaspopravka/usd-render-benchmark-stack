@@ -53,18 +53,6 @@ jobs:
               set -e
               dnf install -y --disablerepo=cuda mesa-dri-drivers
 
-              # CY2024 (GH #46): ASWF LLVM 17 is built with NVPTX;X86 only, so
-              # the distro Mesa swrast cannot load (missing
-              # LLVMInitializeAMDGPUTargetInfo) and the Qt offscreen GL setup
-              # segfaults. Prefer the distro LLVM when present.
-              if [ -d /usr/lib64/llvm17/lib ]; then
-                export LD_LIBRARY_PATH=/usr/lib64/llvm17/lib:${LD_LIBRARY_PATH:-}
-              fi
-
-              # Disable the Mesa disk shader cache for the software-rendered demo.
-              # This avoids the CY2027 abort caused by conflicting zstd
-              # implementations in Blosc and libzstd (GH #45).
-              MESA_SHADER_CACHE_DISABLE=true \
               LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a bash render_script.sh
             '
 
