@@ -46,14 +46,17 @@ def repair():
         if 'CONAN_LIB::' in text[path]:
             raise ValueError(f'unrecognized Conan target in {path.name}')
 
-    for name in ('MaterialX', 'Imath'):
+    for name, directory in (
+            ('MaterialX', 'MaterialX'), ('Imath', 'Imath'),
+            ('OpenColorIO', 'OpenColorIO'), ('OpenVDB', 'OpenVDB'),
+            ('PTex', 'Ptex')):
         pattern = rf'set\({name}_DIR \[\[(/opt/conan_home/[^\]\n]+)\]\]\)'
         match = re.search(pattern, usd)
         if match:
             usd = usd.replace('[[' + match.group(1) + ']]',
-                              '"${PXR_CMAKE_DIR}/lib/cmake/' + name + '"', 1)
+                              '"${PXR_CMAKE_DIR}/lib/cmake/' + directory + '"', 1)
             usd = re.sub(pattern,
-                         f'set({name}_DIR "${{PXR_CMAKE_DIR}}/lib/cmake/{name}")', usd)
+                         f'set({name}_DIR "${{PXR_CMAKE_DIR}}/lib/cmake/{directory}")', usd)
     include = 'include("${PXR_CMAKE_DIR}/cmake/aswf-usd-dependencies.cmake")'
     anchor = 'include("${PXR_CMAKE_DIR}/cmake/pxrTargets.cmake")'
     if usd.count(anchor) != 1:
@@ -80,6 +83,23 @@ def repair():
             if not (prefix / f'lib/lib{library}.so').is_file() or not (prefix / 'include' / header).is_file():
                 raise ValueError(f'installed {name} library or headers missing')
             text[path] = Path(__file__).with_name(f'{name}Config.cmake').read_text()
+
+    # Keep the native exports; repair their observed dependency discovery/names.
+    blosc = packages / 'Blosc/BloscConfig.cmake'
+    if blosc.is_file():
+        value = blosc.read_text().replace(
+            'find_dependency(ZLIB REQUIRED CONFIG)', 'find_dependency(ZLIB REQUIRED)')
+        alias = 'add_library(Blosc::blosc ALIAS Blosc::blosc_shared)'
+        if alias not in value:
+            value += '\nif(NOT TARGET Blosc::blosc)\n  ' + alias + '\nendif()\n'
+        text[blosc] = value
+    openvdb = packages / 'OpenVDB/OpenVDBConfig.cmake'
+    if openvdb.is_file():
+        value = openvdb.read_text()
+        alias = 'add_library(OpenVDB::openvdb ALIAS OpenVDB::openvdb_shared)'
+        if alias not in value:
+            value += '\nif(NOT TARGET OpenVDB::openvdb)\n  ' + alias + '\nendif()\n'
+        text[openvdb] = value
 
     # Complete validation before changing any installed metadata.
     for path, value in text.items():

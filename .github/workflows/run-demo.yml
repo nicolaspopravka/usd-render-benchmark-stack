@@ -61,10 +61,6 @@ jobs:
                 export LD_LIBRARY_PATH=/usr/lib64/llvm17/lib:${LD_LIBRARY_PATH:-}
               fi
 
-              # Disable the Mesa disk shader cache for the software-rendered demo.
-              # This avoids the CY2027 abort caused by conflicting zstd
-              # implementations in Blosc and libzstd (GH #45).
-              MESA_SHADER_CACHE_DISABLE=true \
               LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a bash render_script.sh
             '
 

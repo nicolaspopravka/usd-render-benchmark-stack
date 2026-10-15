@@ -1,22 +1,17 @@
 {
   "year": 2024,
-  "base_image": "aswf/ci-moonray:2024.9@sha256:aed24e2069c201988747d509b853860b37ca4b6879e22ed08e60d1e1685f9402",
+  "base_image": "aswf/ci-moonray:2024.10@sha256:1c06ea2c759f941fa602f0ad916b17beab4151347797817585d00d2d2647d150",
   "cxx_conformance": true,
   "repairs": [
-    "time",
     "rez",
     "pythonpath",
     "git-lfs",
     "epoxy",
-    "usd-cmake",
-    "ispc",
-    "osl-shader-includes"
+    "usd-cmake"
   ],
   "delegates": {
     "cycles": {
-      "CYCLES_TAG": "v4.3.0",
-      "WITH_CYCLES_OSL": "OFF",
-      "WITH_CYCLES_OPENVDB": "OFF"
+      "CYCLES_TAG": "v4.3.0"
     },
     "moonray": {}
   }

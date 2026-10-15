@@ -67,9 +67,9 @@ and its runnable overlay. The implementation is in [repairs](repairs/),
 
 | Profile | ASWF base | Cycles | Cycles OSL / OpenVDB |
 | --- | --- | --- | --- |
-| [CY2023](profiles/cy2023.json) | `ci-moonray:2023.5` | v4.0.2 | OFF / OFF |
-| [CY2024](profiles/cy2024.json) | `ci-moonray:2024.9` | v4.3.0 | OFF / OFF |
-| [CY2025](profiles/cy2025.json) | `ci-moonray:2025.8` | v4.5.0 | ON / ON |
+| [CY2023](profiles/cy2023.json) | `ci-moonray:2023.6` | v4.0.2 | OFF / ON |
+| [CY2024](profiles/cy2024.json) | `ci-moonray:2024.10` | v4.3.0 | ON / ON |
+| [CY2025](profiles/cy2025.json) | `ci-moonray:2025.9` | v4.5.0 | ON / ON |
 
 ### Repairs
 
@@ -78,24 +78,17 @@ the pinned images; remove a repair after checking the replacement base.
 
 | Repair | Purpose | Internal tracking | Upstream tracking |
 | --- | --- | --- | --- |
-| [time](repairs/time.pristine) | GNU time for measurements | — | [ASWF PR #468](https://github.com/AcademySoftwareFoundation/aswf-docker/pull/468) |
 | [rez](repairs/rez.pristine) | Rez package environment | — | [ASWF PR #467](https://github.com/AcademySoftwareFoundation/aswf-docker/pull/467) |
 | [pythonpath](repairs/pythonpath.runnable) | OpenUSD Python module lookup | — | — |
 | [hd-default-renderer](repairs/hd-default-renderer.runnable) | CY2025 Storm/GL renderer selection | [#49](https://github.com/nicolaspopravka/usd-render-benchmark/issues/49) | [OpenUSD PR #4238](https://github.com/PixarAnimationStudios/OpenUSD/pull/4238) (USD-12684; not merged) |
 | [git-lfs](repairs/git-lfs.pristine) | OpenMoonRay source checkout | — | — |
 | [epoxy](repairs/epoxy.pristine) | Cycles development dependency | — | — |
-| [usd-cmake](repairs/usd-cmake.pristine) | OpenUSD dependency exports | [#34](https://github.com/nicolaspopravka/usd-render-benchmark/issues/34) | [ASWF #480](https://github.com/AcademySoftwareFoundation/aswf-docker/issues/480), [PR #490](https://github.com/AcademySoftwareFoundation/aswf-docker/pull/490) |
-| [ispc](repairs/ispc.pristine) | Working ISPC compiler | — | [ASWF #469](https://github.com/AcademySoftwareFoundation/aswf-docker/issues/469), [PR #473](https://github.com/AcademySoftwareFoundation/aswf-docker/pull/473) |
-| [osl-shader-includes](repairs/osl-shader-includes.pristine) | Installed OSL shader headers | — | [ASWF PR #487](https://github.com/AcademySoftwareFoundation/aswf-docker/pull/487) |
+| [usd-cmake](repairs/usd-cmake.pristine) | OpenUSD hints and native dependency exports | [#34](https://github.com/nicolaspopravka/usd-render-benchmark/issues/34) | [ASWF #480](https://github.com/AcademySoftwareFoundation/aswf-docker/issues/480), [PR #490](https://github.com/AcademySoftwareFoundation/aswf-docker/pull/490) |
 
-### Cycles feature overrides
-
-| Setting | Years | Reason | Tracking |
-| --- | --- | --- | --- |
-| `WITH_CYCLES_OSL=OFF` | CY2023–CY2024 | OSL compiler cannot start with the supplied LLVM runtime | [#54](https://github.com/nicolaspopravka/usd-render-benchmark/issues/54), [ASWF #469](https://github.com/AcademySoftwareFoundation/aswf-docker/issues/469) |
-| `WITH_CYCLES_OPENVDB=OFF` | CY2023–CY2024 | Older Cycles tags expect OpenVDB delayed-loading APIs | [#56](https://github.com/nicolaspopravka/usd-render-benchmark/issues/56), [ASWF #488](https://github.com/AcademySoftwareFoundation/aswf-docker/issues/488) |
-
-These settings disable Cycles OSL shading and volume support for those years.
+CY2023 disables Cycles OSL because v4.0.2's Clang finder does not support the
+shared Clang library layout in this image. OpenVDB remains enabled. CY2024 and
+CY2025 use the builder's default OSL and OpenVDB settings, both enabled. Cycles
+sources are unmodified; no Clang finder patch is applied.
 
 ## Run a benchmark branch
 
@@ -125,6 +118,25 @@ it is not a guarantee that every renderer can run on every Docker host.
 
 ## Headless demo
 
+The software demo demonstrates the mount-run model; it is not annual benchmark
+acceptance. For the annual NVIDIA/EGL runs, follow the benchmark's
+[running guide](https://github.com/nicolaspopravka/usd-render-benchmark/blob/main/docs/RUNNING.md#annual-nvidia-benchmark).
+
+The CY2023 candidate was checked with both `demo/run1` (Storm) and
+`demo/run3` (Storm, Cycles and MoonRay), using the same image:
+
+```text
+ghcr.io/nicolaspopravka/usd-render-benchmark@sha256:337b6ca693f74a5986551524c321578d57cd26dc90d694dee325f36eefa09d3d
+```
+
+[run1](https://github.com/nicolaspopravka/usd-render-benchmark-stack/actions/runs/38767275881)
+and [run3](https://github.com/nicolaspopravka/usd-render-benchmark-stack/actions/runs/38767281785)
+produced Teapot images with normal shader caching. Storm and Cycles completed.
+MoonRay wrote an image but logged the known empty-`TfToken` recording error,
+despite returning zero; its summary's Success does not mean a clean render.
+Missing MoonRay shader Python-module warnings remain. These are software demo
+checks, not annual NVIDIA/EGL validation.
+
 The `run-demo` workflow exercises the same model on a GitHub-hosted runner. It
 clones a benchmark branch, initializes its submodules, mounts it into the
 selected image, runs the harness with Mesa and Xvfb, generates the summary,
@@ -138,6 +150,9 @@ gh workflow run run-demo.yml \
   -f run_branch=demo/run3 \
   -f runnable_image="$RUNNABLE_IMAGE"
 ```
+
+The demo uses Mesa's normal shader-cache behavior. Its distro LLVM selection
+for software GL remains; that workaround addresses a separate loading conflict.
 
 Download the `run-output` artifact and inspect its logs, images and summary.
 The harness continues after a renderer fails, so workflow success alone does
