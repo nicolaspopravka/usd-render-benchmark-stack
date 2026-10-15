@@ -118,25 +118,6 @@ it is not a guarantee that every renderer can run on every Docker host.
 
 ## Headless demo
 
-The software demo demonstrates the mount-run model; it is not annual benchmark
-acceptance. For the annual NVIDIA/EGL runs, follow the benchmark's
-[running guide](https://github.com/nicolaspopravka/usd-render-benchmark/blob/main/docs/RUNNING.md#annual-nvidia-benchmark).
-
-The CY2023 candidate was checked with both `demo/run1` (Storm) and
-`demo/run3` (Storm, Cycles and MoonRay), using the same image:
-
-```text
-ghcr.io/nicolaspopravka/usd-render-benchmark@sha256:337b6ca693f74a5986551524c321578d57cd26dc90d694dee325f36eefa09d3d
-```
-
-[run1](https://github.com/nicolaspopravka/usd-render-benchmark-stack/actions/runs/38767275881)
-and [run3](https://github.com/nicolaspopravka/usd-render-benchmark-stack/actions/runs/38767281785)
-produced Teapot images with normal shader caching. Storm and Cycles completed.
-MoonRay wrote an image but logged the known empty-`TfToken` recording error,
-despite returning zero; its summary's Success does not mean a clean render.
-Missing MoonRay shader Python-module warnings remain. These are software demo
-checks, not annual NVIDIA/EGL validation.
-
 The `run-demo` workflow exercises the same model on a GitHub-hosted runner. It
 clones a benchmark branch, initializes its submodules, mounts it into the
 selected image, runs the harness with Mesa and Xvfb, generates the summary,
@@ -150,9 +131,6 @@ gh workflow run run-demo.yml \
   -f run_branch=demo/run3 \
   -f runnable_image="$RUNNABLE_IMAGE"
 ```
-
-The demo uses Mesa's normal shader-cache behavior. Its distro LLVM selection
-for software GL remains; that workaround addresses a separate loading conflict.
 
 Download the `run-output` artifact and inspect its logs, images and summary.
 The harness continues after a renderer fails, so workflow success alone does

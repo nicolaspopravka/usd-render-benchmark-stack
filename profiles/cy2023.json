@@ -12,8 +12,7 @@
   "delegates": {
     "cycles": {
       "CYCLES_TAG": "v4.0.2",
-      "WITH_CYCLES_OSL": "OFF",
-      "WITH_CYCLES_OPENVDB": "ON"
+      "WITH_CYCLES_OSL": "OFF"
     },
     "moonray": {}
   }
