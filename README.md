@@ -71,6 +71,11 @@ and its runnable overlay. The implementation is in [repairs](repairs/),
 | [CY2024](profiles/cy2024.json) | `ci-moonray:2024.10` | v4.3.0 | ON / ON |
 | [CY2025](profiles/cy2025.json) | `ci-moonray:2025.9` | v4.5.0 | ON / ON |
 
+The [CY2026](profiles/cy2026.json) and [CY2027](profiles/cy2027.json) profiles
+use released `ci-vfxall:2026-clang20.7` and `ci-vfxall:2027-clang22.2` bases
+with their supplied Storm delegates. They build no additional delegates.
+CY2026 selects the Python lookup repair; CY2027 needs no repair.
+
 ### Repairs
 
 These profiles select the following repairs. Upstream changes do not alter

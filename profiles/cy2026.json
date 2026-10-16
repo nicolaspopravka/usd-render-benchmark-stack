@@ -1,0 +1,7 @@
+{
+  "year": 2026,
+  "base_image": "aswf/ci-vfxall:2026-clang20.7@sha256:8382c429ab72cff32c02a7503c952eda5e4e90bae89aad4966fb37244778d2fa",
+  "repairs": [
+    "pythonpath"
+  ]
+}
