@@ -1,0 +1,45 @@
+name: Check CY2025 Mesa against existing LLVM
+on:
+  push:
+    branches: [codex/diagnostics/issue58-mesa]
+    paths: [probe/**, .github/workflows/diagnose-llvm.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: nicolaspopravka/usd-render-benchmark
+          ref: 0649e883134579fa1ad7a46daa072cfafac2cef0
+          path: run-branch
+          submodules: recursive
+      - name: Pull exact runnable
+        run: |
+          docker pull ghcr.io/nicolaspopravka/usd-render-benchmark@sha256:1930601508b6d40cf7e6b1d0a31a658788053004bc2286a86c1f0a2bd375d085
+      - name: Build private-prefix Mesa and compare both delegates
+        run: |
+          mkdir results
+          docker run --rm --entrypoint /bin/bash \
+            -e REZ_PACKAGES_PATH=./packages -w /benchmark \
+            -v "$PWD/run-branch:/benchmark:ro" \
+            -v "$PWD/results:/results" -v "$PWD/probe:/probe:ro" \
+            ghcr.io/nicolaspopravka/usd-render-benchmark@sha256:1930601508b6d40cf7e6b1d0a31a658788053004bc2286a86c1f0a2bd375d085 \
+            /probe/run.sh
+      - name: Make evidence readable
+        if: always()
+        run: sudo chmod -R a+rX results
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cy2025-mesa-llvm18
+          path: |
+            results/*.log
+            results/*.txt
+            results/*.jpg
+            results/*.gz
+          if-no-files-found: error
