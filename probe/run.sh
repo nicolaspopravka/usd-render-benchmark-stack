@@ -50,7 +50,7 @@ run mesa-configure meson setup /tmp/issue58-mesa-build /tmp/mesa-24.3.4 \
     -Dbuild-tests=false
 run mesa-build timeout 1800 ninja -C /tmp/issue58-mesa-build -j2
 run mesa-install meson install -C /tmp/issue58-mesa-build
-run driver-linkage ldd /opt/issue58-mesa/lib/dri/swrast_dri.so
+run driver-linkage ldd /opt/issue58-mesa/lib/libgallium-24.3.4.so
 grep -F '/usr/local/lib/libLLVM' /results/driver-linkage.log
 if grep -E 'not found|libLLVM-17|llvm17' /results/driver-linkage.log; then exit 2; fi
 
@@ -66,7 +66,7 @@ for renderer in GL Cycles; do
         "/results/baseline-$renderer.jpg" || true
     if ! run "matched-$renderer" timeout 120 env -u MESA_SHADER_CACHE_DISABLE \
         LD_LIBRARY_PATH="/opt/issue58-mesa/lib:$original_library_path" \
-        LIBGL_DRIVERS_PATH=/opt/issue58-mesa/lib/dri __GLX_VENDOR_LIBRARY_NAME=mesa \
+        __GLX_VENDOR_LIBRARY_NAME=mesa \
         GALLIUM_DRIVER=llvmpipe LIBGL_ALWAYS_SOFTWARE=1 \
         MESA_SHADER_CACHE_DIR="/results/cache-matched-$renderer" \
         xvfb-run -a rez env aswf -- env LD_DEBUG=libs \
