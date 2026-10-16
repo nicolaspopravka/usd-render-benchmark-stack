@@ -64,12 +64,15 @@ for renderer in GL Cycles; do
         xvfb-run -a rez env aswf -- usdrecord --camera main_cam --renderer "$renderer" \
         --purposes render assets/full_assets/Teapot/Teapot.usd \
         "/results/baseline-$renderer.jpg" || true
+    # Xvfb remains on distro graphics libraries. Select candidate Mesa only
+    # for the recording client; the server has its own driver dependencies.
     if ! run "matched-$renderer" timeout 120 env -u MESA_SHADER_CACHE_DISABLE \
-        LD_LIBRARY_PATH="/opt/issue58-mesa/lib:$original_library_path" \
-        __GLX_VENDOR_LIBRARY_NAME=mesa \
-        GALLIUM_DRIVER=llvmpipe LIBGL_ALWAYS_SOFTWARE=1 \
+        LIBGL_ALWAYS_SOFTWARE=1 \
         MESA_SHADER_CACHE_DIR="/results/cache-matched-$renderer" \
-        xvfb-run -a rez env aswf -- env LD_DEBUG=libs \
+        xvfb-run -a -e "/results/matched-$renderer-Xvfb.log" env \
+        LD_LIBRARY_PATH="/opt/issue58-mesa/lib:$original_library_path" \
+        __GLX_VENDOR_LIBRARY_NAME=mesa GALLIUM_DRIVER=llvmpipe \
+        rez env aswf -- env LD_DEBUG=libs \
         LD_DEBUG_OUTPUT="/results/matched-$renderer-loader" \
         usdrecord --camera main_cam --renderer "$renderer" --purposes render \
         assets/full_assets/Teapot/Teapot.usd "/results/matched-$renderer.jpg"; then
