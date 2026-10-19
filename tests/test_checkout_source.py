@@ -66,12 +66,13 @@ class CheckoutSourceTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual((self.remote / 'content').read_text(), 'second\n')
 
-    def test_cycles_builder_rejects_noncommit_ref_before_checkout(self):
-        environment = dict(os.environ, CYCLES_REF='main')
+    def test_cycles_builder_requires_source_selection_before_checkout(self):
+        environment = dict(os.environ)
+        environment.pop('CYCLES_TAG', None)
         result = subprocess.run(['bash', str(ROOT / 'build_cycles.sh')],
                                 env=environment, text=True, capture_output=True)
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn('must be a full lowercase commit ID', result.stderr)
+        self.assertIn('CYCLES_TAG is required', result.stderr)
 
 
 if __name__ == '__main__':

@@ -1,7 +1,6 @@
-# Build the selected Cycles tag or commit; OSL and OpenVDB default to ON.
+# Build the selected Cycles tag, branch or commit; OSL and OpenVDB default to ON.
 ARG CYCLES_TAG
 ARG CYCLES_REPO_URL=https://projects.blender.org/blender/cycles.git
-ARG CYCLES_REF
 ARG WITH_CYCLES_OSL=ON
 ARG WITH_CYCLES_OPENVDB=ON
 COPY build_cycles.sh /usr/local/aswf/build_cycles.sh

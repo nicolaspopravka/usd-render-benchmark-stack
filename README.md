@@ -70,28 +70,23 @@ and its runnable overlay. The implementation is in [repairs](repairs/),
 | [CY2023](profiles/cy2023.json) | `ci-moonray:2023.6` | v4.0.2 | OFF / ON |
 | [CY2024](profiles/cy2024.json) | `ci-moonray:2024.10` | v4.3.0 | ON / ON |
 | [CY2025](profiles/cy2025.json) | `ci-moonray:2025.9` | v4.5.0 | ON / ON |
+| [CY2026](profiles/cy2026.json) | `ci-moonray:2026.7` | main + selected PRs | ON / ON |
+| [CY2027](profiles/cy2027.json) | `ci-moonray:2027.2` | main + selected PRs | ON / ON |
 
 The [CY2026](profiles/cy2026.json) and [CY2027](profiles/cy2027.json) profiles
-use released `ci-vfxall:2026-clang20.7` and `ci-vfxall:2027-clang22.2` bases
-with their supplied Storm delegates. They build no additional delegates.
-CY2026 selects the Python lookup repair; CY2027 needs no repair.
-
-### Development candidates
-
-The profiles in [profiles/candidates](profiles/candidates/) test Cycles on
-`ci-moonray:2026.7` and `ci-moonray:2027.2`, with both bases pinned by digest.
-They leave the maintained annual profiles unchanged. The Cycles source is
-upstream main `a456b761` plus [#86](https://projects.blender.org/blender/cycles/pulls/86)
+select digest-pinned `ci-moonray:2026.7` and `ci-moonray:2027.2` bases and build
+Cycles from upstream main `a456b761` plus [#86](https://projects.blender.org/blender/cycles/pulls/86)
 (including its October 9 revision), [#87](https://projects.blender.org/blender/cycles/pulls/87),
-and [#78](https://projects.blender.org/blender/cycles/pulls/78); draft #81 is excluded.
-The source commit is pinned in each profile. Build and render qualification
-are pending; the earlier gray Teapot output remains an acceptance check.
+and [#78](https://projects.blender.org/blender/cycles/pulls/78). The source commit
+is pinned in each profile, with no additional source patches. Draft #81 and
+MoonRay are excluded. Build and render qualification are pending; the earlier
+gray Teapot output remains an acceptance check. The OSL / OpenVDB table entries
+are requested settings; their effective configuration still needs verification.
 
-`CYCLES_REF` selects a full commit ID and takes precedence over `CYCLES_TAG`.
-`CYCLES_REPO_URL` selects the source repository. Checkout failures stop the
-build, and the resolved commit is printed in the build log. The candidate
-source contains only the selected upstream PR changes, with no additional
-source patches.
+`CYCLES_TAG` accepts a tag, branch or full commit ID. `CYCLES_REPO_URL` selects
+the source repository and defaults to upstream. Checkout failures stop the build,
+and the resolved commit is printed in the build log. The CY2023–CY2025 source
+selections are unchanged.
 
 ### Repairs
 

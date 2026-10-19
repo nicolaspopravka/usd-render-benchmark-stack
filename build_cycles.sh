@@ -14,17 +14,11 @@ readonly WITH_CYCLES_OPENVDB="${WITH_CYCLES_OPENVDB:-ON}"
 readonly OPTIX_ROOT_DIR="${OPTIX_ROOT_DIR:-${ASWF_INSTALL_PREFIX}/NVIDIA-OptiX-SDK-8.0.0}"
 readonly CYCLES_RUNTIME_OPTIX_ROOT_DIR="${OPTIX_ROOT_DIR}"
 
-if [ -n "${CYCLES_REF:-}" ]; then
-  [[ "$CYCLES_REF" =~ ^[0-9a-f]{40}$ ]] || {
-    echo 'ERROR: CYCLES_REF must be a full lowercase commit ID' >&2
-    exit 1
-  }
-fi
-readonly SOURCE_REF="${CYCLES_REF:-${CYCLES_TAG:?CYCLES_TAG or CYCLES_REF is required}}"
+: "${CYCLES_TAG:?CYCLES_TAG is required (tag, branch or full commit ID)}"
 
 mkdir -p "$BUILD_ROOT"
 bash "$(dirname "${BASH_SOURCE[0]}")/build-support/checkout-source.sh" \
-  "$CYCLES_REPO_URL" "$SOURCE_REF" "$BUILD_ROOT/cycles"
+  "$CYCLES_REPO_URL" "$CYCLES_TAG" "$BUILD_ROOT/cycles"
 
 CXX_ARGS=()
 if [ -n "${VFX_CXX_STANDARD:-}" ]; then
