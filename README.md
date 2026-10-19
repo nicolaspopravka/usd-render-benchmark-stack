@@ -76,6 +76,23 @@ use released `ci-vfxall:2026-clang20.7` and `ci-vfxall:2027-clang22.2` bases
 with their supplied Storm delegates. They build no additional delegates.
 CY2026 selects the Python lookup repair; CY2027 needs no repair.
 
+### Development candidates
+
+The profiles in [profiles/candidates](profiles/candidates/) test Cycles on
+`ci-moonray:2026.7` and `ci-moonray:2027.2`, with both bases pinned by digest.
+They leave the maintained annual profiles unchanged. The Cycles source is
+upstream main `a456b761` plus [#86](https://projects.blender.org/blender/cycles/pulls/86)
+(including its October 9 revision), [#87](https://projects.blender.org/blender/cycles/pulls/87),
+and [#78](https://projects.blender.org/blender/cycles/pulls/78); draft #81 is excluded.
+The source commit is pinned in each profile. Build and render qualification
+are pending; the earlier gray Teapot output remains an acceptance check.
+
+`CYCLES_REF` selects a full commit ID and takes precedence over `CYCLES_TAG`.
+`CYCLES_REPO_URL` selects the source repository. Checkout failures stop the
+build, and the resolved commit is printed in the build log. The candidate
+source contains only the selected upstream PR changes, with no additional
+source patches.
+
 ### Repairs
 
 These profiles select the following repairs. Upstream changes do not alter

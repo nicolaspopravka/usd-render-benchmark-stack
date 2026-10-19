@@ -1,0 +1,16 @@
+{
+  "year": 2027,
+  "base_image": "aswf/ci-moonray:2027.2@sha256:09a2dd6ca504c4001043d1c0b5151b0768192e196dc6a1b55680d4546d2ec32c",
+  "cxx_conformance": true,
+  "repairs": [
+    "rez",
+    "epoxy",
+    "usd-cmake"
+  ],
+  "delegates": {
+    "cycles": {
+      "CYCLES_REPO_URL": "https://projects.blender.org/Nicolas-Popravka/cycles.git",
+      "CYCLES_REF": "1aaf40e480a1f1111f1141e4bd5a257d4dd62203"
+    }
+  }
+}

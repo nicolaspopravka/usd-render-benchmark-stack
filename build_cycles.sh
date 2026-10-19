@@ -3,7 +3,7 @@
 # Install into /opt/cycles; profiles select source and feature overrides.
 set -euxo pipefail
 
-readonly CYCLES_URL="https://projects.blender.org/blender/cycles.git"
+readonly CYCLES_REPO_URL="${CYCLES_REPO_URL:-https://projects.blender.org/blender/cycles.git}"
 readonly BUILD_ROOT="/opt/build-cycles"
 readonly ASWF_INSTALL_PREFIX="/usr/local"
 readonly CYCLES_INSTALL_PREFIX="/opt/cycles"
@@ -14,10 +14,17 @@ readonly WITH_CYCLES_OPENVDB="${WITH_CYCLES_OPENVDB:-ON}"
 readonly OPTIX_ROOT_DIR="${OPTIX_ROOT_DIR:-${ASWF_INSTALL_PREFIX}/NVIDIA-OptiX-SDK-8.0.0}"
 readonly CYCLES_RUNTIME_OPTIX_ROOT_DIR="${OPTIX_ROOT_DIR}"
 
-: "${CYCLES_TAG:?CYCLES_TAG is required}"
+if [ -n "${CYCLES_REF:-}" ]; then
+  [[ "$CYCLES_REF" =~ ^[0-9a-f]{40}$ ]] || {
+    echo 'ERROR: CYCLES_REF must be a full lowercase commit ID' >&2
+    exit 1
+  }
+fi
+readonly SOURCE_REF="${CYCLES_REF:-${CYCLES_TAG:?CYCLES_TAG or CYCLES_REF is required}}"
 
 mkdir -p "$BUILD_ROOT"
-git clone --branch "$CYCLES_TAG" --depth 1 "$CYCLES_URL" "$BUILD_ROOT/cycles"
+bash "$(dirname "${BASH_SOURCE[0]}")/build-support/checkout-source.sh" \
+  "$CYCLES_REPO_URL" "$SOURCE_REF" "$BUILD_ROOT/cycles"
 
 CXX_ARGS=()
 if [ -n "${VFX_CXX_STANDARD:-}" ]; then
