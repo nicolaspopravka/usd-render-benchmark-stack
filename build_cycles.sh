@@ -14,11 +14,11 @@ readonly WITH_CYCLES_OPENVDB="${WITH_CYCLES_OPENVDB:-ON}"
 readonly OPTIX_ROOT_DIR="${OPTIX_ROOT_DIR:-${ASWF_INSTALL_PREFIX}/NVIDIA-OptiX-SDK-8.0.0}"
 readonly CYCLES_RUNTIME_OPTIX_ROOT_DIR="${OPTIX_ROOT_DIR}"
 
-: "${CYCLES_TAG:?CYCLES_TAG is required (tag, branch or full commit ID)}"
+: "${CYCLES_TAG:?CYCLES_TAG is required}"
 
 mkdir -p "$BUILD_ROOT"
-bash "$(dirname "${BASH_SOURCE[0]}")/build-support/checkout-source.sh" \
-  "$CYCLES_REPO_URL" "$CYCLES_TAG" "$BUILD_ROOT/cycles"
+git clone --branch "$CYCLES_TAG" --depth 1 "$CYCLES_REPO_URL" "$BUILD_ROOT/cycles"
+git -C "$BUILD_ROOT/cycles" rev-parse HEAD
 
 CXX_ARGS=()
 if [ -n "${VFX_CXX_STANDARD:-}" ]; then

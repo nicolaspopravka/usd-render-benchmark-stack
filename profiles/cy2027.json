@@ -10,7 +10,7 @@
   "delegates": {
     "cycles": {
       "CYCLES_REPO_URL": "https://projects.blender.org/Nicolas-Popravka/cycles.git",
-      "CYCLES_TAG": "1aaf40e480a1f1111f1141e4bd5a257d4dd62203"
+      "CYCLES_TAG": "codex/integration/cycles-cy2026-cy2027-public"
     }
   }
 }

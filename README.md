@@ -77,15 +77,17 @@ The [CY2026](profiles/cy2026.json) and [CY2027](profiles/cy2027.json) profiles
 select digest-pinned `ci-moonray:2026.7` and `ci-moonray:2027.2` bases and build
 Cycles from upstream main `a456b761` plus [#86](https://projects.blender.org/blender/cycles/pulls/86)
 (including its October 9 revision), [#87](https://projects.blender.org/blender/cycles/pulls/87),
-and [#78](https://projects.blender.org/blender/cycles/pulls/78). The source commit
-is pinned in each profile, with no additional source patches. Draft #81 and
+and [#78](https://projects.blender.org/blender/cycles/pulls/78). They select branch
+`codex/integration/cycles-cy2026-cy2027-public`, currently at
+[`1aaf40e4`](https://projects.blender.org/Nicolas-Popravka/cycles/commit/1aaf40e480a1f1111f1141e4bd5a257d4dd62203),
+with no additional source patches. Draft #81 and
 MoonRay are excluded. Build and render qualification are pending; the earlier
 gray Teapot output remains an acceptance check. The OSL / OpenVDB table entries
 are requested settings; their effective configuration still needs verification.
 
-`CYCLES_TAG` accepts a tag, branch or full commit ID. `CYCLES_REPO_URL` selects
-the source repository and defaults to upstream. Checkout failures stop the build,
-and the resolved commit is printed in the build log. The CY2023–CY2025 source
+`CYCLES_TAG` selects a tag or branch through the existing `git clone --branch`
+command. `CYCLES_REPO_URL` selects the source repository and defaults to upstream.
+The checked-out commit is printed in the build log. The CY2023–CY2025 source
 selections are unchanged.
 
 ### Repairs
