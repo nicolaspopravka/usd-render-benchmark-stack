@@ -6,7 +6,8 @@
     "rez",
     "pythonpath",
     "epoxy",
-    "usd-cmake"
+    "usd-cmake",
+    "hd-default-renderer"
   ],
   "delegates": {
     "cycles": {
