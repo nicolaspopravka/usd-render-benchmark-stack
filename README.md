@@ -70,8 +70,8 @@ and its runnable overlay. The implementation is in [repairs](repairs/),
 | [CY2023](profiles/cy2023.json) | `ci-moonray:2023.6` | v4.0.2 | OFF / ON |
 | [CY2024](profiles/cy2024.json) | `ci-moonray:2024.10` | v4.3.0 | ON / ON |
 | [CY2025](profiles/cy2025.json) | `ci-moonray:2025.9` | v4.5.0 | ON / ON |
-| [CY2026](profiles/cy2026.json) | `ci-moonray:2026.7` | main + selected PRs | ON / ON |
-| [CY2027](profiles/cy2027.json) | `ci-moonray:2027.2` | main + selected PRs | ON / ON |
+| [CY2026](profiles/cy2026.json) | `ci-moonray:2026.7` | main + selected PRs | OFF / ON |
+| [CY2027](profiles/cy2027.json) | `ci-moonray:2027.2` | main + selected PRs | OFF / ON |
 
 ### Repairs
 
