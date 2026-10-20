@@ -3,7 +3,7 @@
 # Install into /opt/cycles; profiles select source and feature overrides.
 set -euxo pipefail
 
-readonly CYCLES_URL="https://projects.blender.org/blender/cycles.git"
+readonly CYCLES_REPO_URL="${CYCLES_REPO_URL:-https://projects.blender.org/blender/cycles.git}"
 readonly BUILD_ROOT="/opt/build-cycles"
 readonly ASWF_INSTALL_PREFIX="/usr/local"
 readonly CYCLES_INSTALL_PREFIX="/opt/cycles"
@@ -17,7 +17,8 @@ readonly CYCLES_RUNTIME_OPTIX_ROOT_DIR="${OPTIX_ROOT_DIR}"
 : "${CYCLES_TAG:?CYCLES_TAG is required}"
 
 mkdir -p "$BUILD_ROOT"
-git clone --branch "$CYCLES_TAG" --depth 1 "$CYCLES_URL" "$BUILD_ROOT/cycles"
+git clone --branch "$CYCLES_TAG" --depth 1 "$CYCLES_REPO_URL" "$BUILD_ROOT/cycles"
+git -C "$BUILD_ROOT/cycles" rev-parse HEAD
 
 CXX_ARGS=()
 if [ -n "${VFX_CXX_STANDARD:-}" ]; then

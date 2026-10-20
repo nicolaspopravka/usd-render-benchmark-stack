@@ -70,11 +70,8 @@ and its runnable overlay. The implementation is in [repairs](repairs/),
 | [CY2023](profiles/cy2023.json) | `ci-moonray:2023.6` | v4.0.2 | OFF / ON |
 | [CY2024](profiles/cy2024.json) | `ci-moonray:2024.10` | v4.3.0 | ON / ON |
 | [CY2025](profiles/cy2025.json) | `ci-moonray:2025.9` | v4.5.0 | ON / ON |
-
-The [CY2026](profiles/cy2026.json) and [CY2027](profiles/cy2027.json) profiles
-use released `ci-vfxall:2026-clang20.7` and `ci-vfxall:2027-clang22.2` bases
-with their supplied Storm delegates. They build no additional delegates.
-CY2026 selects the Python lookup repair; CY2027 needs no repair.
+| [CY2026](profiles/cy2026.json) | `ci-moonray:2026.7` | main + selected PRs | OFF / ON |
+| [CY2027](profiles/cy2027.json) | `ci-moonray:2027.2` | main + selected PRs | OFF / ON |
 
 ### Repairs
 
@@ -85,7 +82,7 @@ the pinned images; remove a repair after checking the replacement base.
 | --- | --- | --- | --- |
 | [rez](repairs/rez.pristine) | Rez package environment | — | [ASWF PR #467](https://github.com/AcademySoftwareFoundation/aswf-docker/pull/467) |
 | [pythonpath](repairs/pythonpath.runnable) | OpenUSD Python module lookup | — | — |
-| [hd-default-renderer](repairs/hd-default-renderer.runnable) | CY2025 Storm/GL renderer selection | [#49](https://github.com/nicolaspopravka/usd-render-benchmark/issues/49) | [OpenUSD PR #4238](https://github.com/PixarAnimationStudios/OpenUSD/pull/4238) (USD-12684; not merged) |
+| [hd-default-renderer](repairs/hd-default-renderer.runnable) | CY2025–CY2027 Storm/GL renderer selection | [#49](https://github.com/nicolaspopravka/usd-render-benchmark/issues/49) | [OpenUSD PR #4238](https://github.com/PixarAnimationStudios/OpenUSD/pull/4238) (USD-12684; not merged) |
 | [git-lfs](repairs/git-lfs.pristine) | OpenMoonRay source checkout | — | — |
 | [epoxy](repairs/epoxy.pristine) | Cycles development dependency | — | — |
 | [usd-cmake](repairs/usd-cmake.pristine) | OpenUSD hints and native dependency exports | [#34](https://github.com/nicolaspopravka/usd-render-benchmark/issues/34) | [ASWF #480](https://github.com/AcademySoftwareFoundation/aswf-docker/issues/480), [PR #490](https://github.com/AcademySoftwareFoundation/aswf-docker/pull/490) |
