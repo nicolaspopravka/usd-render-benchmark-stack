@@ -1,17 +1,4 @@
 {
   "year": 2027,
-  "base_image": "aswf/ci-moonray:2027.2@sha256:09a2dd6ca504c4001043d1c0b5151b0768192e196dc6a1b55680d4546d2ec32c",
-  "cxx_conformance": true,
-  "repairs": [
-    "rez",
-    "epoxy",
-    "usd-cmake",
-    "hd-default-renderer"
-  ],
-  "delegates": {
-    "cycles": {
-      "CYCLES_REPO_URL": "https://projects.blender.org/Nicolas-Popravka/cycles.git",
-      "CYCLES_TAG": "codex/integration/cycles-cy2026-cy2027-public"
-    }
-  }
+  "base_image": "aswf/ci-vfxall:2027-clang22.3@sha256:6fcd40f641abc896c8fab3b85a0bad45c657b5013e1d796f9ed4e7b44e160106"
 }
