@@ -1,26 +1,18 @@
-name: Rebuild October ASWF profiles without obsolete repairs
+name: CY2026 software demo check
 on:
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
-  rebuild:
+  demo:
     runs-on: ubuntu-24.04
-    timeout-minutes: 120
-    strategy:
-      fail-fast: false
-      max-parallel: 2
-      matrix:
-        year: ['2023', '2024', '2025', '2026', '2027']
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      - name: Build both stages and check installed packages
-        run: bash tools/release-build-check/run.sh profiles/cy${{ matrix.year }}.json "$PWD/results"
+      - name: Build candidate and run published and candidate software demos
+        run: bash tools/software-demo-check.sh
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: build-cy${{ matrix.year }}
-          path: |
-            results/
-            !results/**/build/**
-          if-no-files-found: error
+          name: cy2026-software-demo
+          path: results/
