@@ -1,6 +1,0 @@
-cmake_minimum_required(VERSION 3.20)
-project(ReleasedUSDConsumer LANGUAGES CXX)
-find_package(pxr CONFIG REQUIRED)
-find_package(pxr CONFIG REQUIRED)
-add_executable(consumer main.cpp)
-target_link_libraries(consumer PRIVATE usd)
