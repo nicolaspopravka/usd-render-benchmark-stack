@@ -1,4 +1,4 @@
-# Copy to .github/workflows/qualify-aswf-october27.yml on an approved diagnostic
+# Copy to .github/workflows/build.yml on an approved diagnostic
 # branch. This file has no active trigger at its current location.
 name: Qualify October 27 ASWF release
 on:

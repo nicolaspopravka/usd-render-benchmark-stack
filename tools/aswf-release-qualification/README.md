@@ -52,10 +52,14 @@ reported separately from recovery of the LLVM abort.
 ## Native Linux workflow, awaiting authorization
 
 `check.yml` is an inactive workflow prepared for a diagnostic branch. After
-approval, copy it to `.github/workflows/qualify-aswf-october27.yml` on a stack diagnostic branch
+approval, copy it to `.github/workflows/build.yml` on a stack diagnostic branch
 containing only this tooling and that workflow. Dispatch `phase=consumer` first:
 five pinned-image jobs, at most two concurrent, 45 minutes per job, with the
 additional unchanged MoonRay configure on CY2025. Review the artifacts before
 dispatching `phase=render,year=2025` (one 120-minute job). Later render years
 require deliberate selection. Permissions are contents:read, with no publishing
 or registry credentials. Do not push the private plans or evidence with it.
+
+Use the existing registered build.yml path on the diagnostic branch: GitHub
+rejects workflow_dispatch for a new path absent from the default branch.
+The production main workflow is unchanged.
