@@ -1,29 +1,26 @@
-name: Build stack
-
+name: Rebuild October ASWF profiles without obsolete repairs
 on:
   workflow_dispatch:
-    inputs:
-      profile:
-        description: Profile JSON path
-        required: true
-        default: profiles/cy2025.json
-        type: string
-
 permissions:
   contents: read
-  packages: write
-
 jobs:
-  build:
+  rebuild:
     runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        year: ['2023', '2024', '2025', '2026', '2027']
     steps:
       - uses: actions/checkout@v4
-      - uses: docker/login-action@v3
+      - name: Build both stages and check installed packages
+        run: bash tools/release-build-check/run.sh profiles/cy${{ matrix.year }}.json "$PWD/results"
+      - uses: actions/upload-artifact@v4
+        if: always()
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build and publish pristine and runnable
-        env:
-          PROFILE: ${{ inputs.profile }}
-        run: python3 tools/build.py "$PROFILE" --push
+          name: build-cy${{ matrix.year }}
+          path: |
+            results/
+            !results/**/build/**
+          if-no-files-found: error
