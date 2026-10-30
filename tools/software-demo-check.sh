@@ -5,7 +5,7 @@ python3 tools/build.py profiles/cy2026.json 2>&1 | tee results/build.log
 candidate=$(sed -n 's/^Runnable: //p' results/build.log | tail -1)
 control=ghcr.io/nicolaspopravka/usd-render-benchmark:2026@sha256:6d35b1c7db7e04387b6999f0e688d8612f33fd6b6f3e1e0aaa202fe2f65dd4d5
 docker pull "$control"
-for kind in published candidate; do
+for kind in candidate; do
   image="$control"
   if [[ "$kind" = candidate ]]; then image="$candidate"; fi
   out="$PWD/results/$kind"
@@ -20,17 +20,22 @@ for kind in published candidate; do
   mkdir "$run/previous"
   mv "$run/logs" "$run/renderers" "$run/render_summary.md" "$run/previous/"
   set +e
-  docker run --rm --platform linux/amd64     --mount "type=bind,source=$run,target=/benchmark"     --env REZ_PACKAGES_PATH=/benchmark/packages     --workdir /benchmark --entrypoint bash "$image" -c '
+  docker run --rm --platform linux/amd64     --mount "type=bind,source=$run,target=/benchmark"     --env REZ_PACKAGES_PATH=/benchmark/packages --env LIBGL_DRIVERS_PATH=/usr/local/lib/dri     --workdir /benchmark --entrypoint bash "$image" -c '
       set -e
       dnf install -y --disablerepo=cuda mesa-dri-drivers
       rpm -qa | sort | grep -E "^(mesa|llvm|libglvnd)" > mesa-packages.txt
+      ls -l /usr/local/lib/dri > driver.txt
+      ldd /usr/local/lib/dri/swrast_dri.so >> driver.txt
       LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a bash render_script.sh
+      if [[ -f renderers/GL/Teapot.jpg ]]; then
+        LIBGL_ALWAYS_SOFTWARE=1 LD_DEBUG=libs xvfb-run -a bash render_script.sh > loader-trace.log 2>&1
+      fi
       python3 generate_render_summary.py --system-specs "Software-rendered Docker demo"
     ' 2>&1 | tee "$out/container.log"
   status=${PIPESTATUS[0]}
   set -e
   printf 'container=%s\n' "$status" > "$out/status.txt"
-  for item in logs renderers render_summary.md mesa-packages.txt; do
+  for item in logs renderers render_summary.md mesa-packages.txt driver.txt loader-trace.log; do
     if [[ -e "$run/$item" ]]; then sudo cp -a "$run/$item" "$out/"; fi
   done
 done
