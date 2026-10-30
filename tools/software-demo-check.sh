@@ -3,11 +3,10 @@ set -euo pipefail
 mkdir results
 python3 tools/build.py profiles/cy2026.json 2>&1 | tee results/build.log
 candidate=$(sed -n 's/^Runnable: //p' results/build.log | tail -1)
-control=ghcr.io/nicolaspopravka/usd-render-benchmark:2026@sha256:6d35b1c7db7e04387b6999f0e688d8612f33fd6b6f3e1e0aaa202fe2f65dd4d5
-docker pull "$control"
+docker build --progress=plain --build-arg BASE_IMAGE="$candidate" -t mesa-reviewed:2026 tools/mesa-llvm20-reviewed 2>&1 | tee results/mesa-build.log
+candidate=mesa-reviewed:2026
 for kind in candidate; do
-  image="$control"
-  if [[ "$kind" = candidate ]]; then image="$candidate"; fi
+  image="$candidate"
   out="$PWD/results/$kind"
   mkdir -p "$out"
   docker inspect --format '{{.Id}} {{json .RepoDigests}} {{json .Config.Labels}}' "$image" > "$out/image.txt"
@@ -27,15 +26,19 @@ for kind in candidate; do
       ls -l /usr/local/lib/dri > driver.txt
       ldd /usr/local/lib/dri/swrast_dri.so >> driver.txt
       LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a bash render_script.sh
+      test -s renderers/GL/Teapot.jpg
+      ! grep -q "ERROR: usdrecord returned non-zero exit status" logs/GL_Teapot.log
+      cp -a logs ordinary-logs
       if [[ -f renderers/GL/Teapot.jpg ]]; then
         LIBGL_ALWAYS_SOFTWARE=1 LD_DEBUG=libs xvfb-run -a bash render_script.sh > loader-trace.log 2>&1
       fi
+      grep "calling init:" loader-trace.log > initialized-libraries.log
       python3 generate_render_summary.py --system-specs "Software-rendered Docker demo"
     ' 2>&1 | tee "$out/container.log"
   status=${PIPESTATUS[0]}
   set -e
   printf 'container=%s\n' "$status" > "$out/status.txt"
-  for item in logs renderers render_summary.md mesa-packages.txt driver.txt loader-trace.log; do
+  for item in logs renderers render_summary.md mesa-packages.txt driver.txt initialized-libraries.log ordinary-logs; do
     if [[ -e "$run/$item" ]]; then sudo cp -a "$run/$item" "$out/"; fi
   done
 done
