@@ -41,8 +41,3 @@ RUN /usr/local/bin/meson setup /build /src \
 FROM ${BASE_IMAGE}
 
 COPY --from=mesa-build /mesa-root/usr/local/lib/dri/swrast_dri.so /usr/local/lib/dri/swrast_dri.so
-COPY --from=mesa-build /mesa-root/usr/local/lib/libglapi.so.0.0.0 /usr/local/lib/libglapi.so.0.0.0
-
-RUN ln -sf libglapi.so.0.0.0 /usr/local/lib/libglapi.so.0 \
- && ln -sf libglapi.so.0 /usr/local/lib/libglapi.so \
- && ldconfig
