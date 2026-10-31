@@ -104,7 +104,7 @@ Clone a run branch with its submodules:
 
 ```bash
 git clone \
-  --branch demo/run3 \
+  --branch demo/run1 \
   --single-branch \
   --recurse-submodules \
   https://github.com/nicolaspopravka/usd-render-benchmark.git \
@@ -131,12 +131,18 @@ clones a benchmark branch, initializes its submodules, mounts it into the
 selected image, runs the harness with Mesa and Xvfb, generates the summary,
 and uploads the resulting files.
 
-Use the `Runnable:` reference printed by the build:
+The verified Storm/Teapot software demo uses `demo/run1` and
+`ghcr.io/nicolaspopravka/usd-render-benchmark:2026@sha256:4990be69cc2daf4ddff9178346ff9fc2c1f823524d90823922d022a77d04da94`.
+[Run #119](https://github.com/nicolaspopravka/usd-render-benchmark-stack/actions/runs/41222067959)
+completed on October 31, 2026 with OpenUSD 26.03. This image is the earlier
+CY2026.4 runnable, distinct from the current CY2026 profile above.
+Set `RUNNABLE_IMAGE` to that reference for this demo. Other builds print their
+own `Runnable:` reference:
 
 ```bash
 gh workflow run run-demo.yml \
   --repo nicolaspopravka/usd-render-benchmark-stack \
-  -f run_branch=demo/run3 \
+  -f run_branch=demo/run1 \
   -f runnable_image="$RUNNABLE_IMAGE"
 ```
 
