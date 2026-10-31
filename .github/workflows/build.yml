@@ -1,4 +1,4 @@
-name: CY2026 software demo check
+name: CY2027 software demo check
 on:
   workflow_dispatch:
 permissions:
@@ -9,10 +9,10 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      - name: Build candidate and run published and candidate software demos
+      - name: Build maintained CY2027 and check software demo
         run: bash tools/software-demo-check.sh
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: cy2026-software-demo
+          name: cy2027-software-demo
           path: results/
