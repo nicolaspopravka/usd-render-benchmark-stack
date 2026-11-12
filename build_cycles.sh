@@ -19,6 +19,11 @@ readonly CYCLES_RUNTIME_OPTIX_ROOT_DIR="${OPTIX_ROOT_DIR}"
 mkdir -p "$BUILD_ROOT"
 git clone --branch "$CYCLES_TAG" --depth 1 "$CYCLES_URL" "$BUILD_ROOT/cycles"
 
+git -C "$BUILD_ROOT/cycles" rev-parse HEAD
+if [[ "$CYCLES_TAG" == "v5.3.0" ]]; then
+  test "$(git -C "$BUILD_ROOT/cycles" rev-parse HEAD)" = "b3f6262640f1a2f2d10b55b6ffccbf310ce0f981"
+fi
+
 CXX_ARGS=()
 if [ -n "${VFX_CXX_STANDARD:-}" ]; then
     CXX_ARGS=(-DCMAKE_CXX_STANDARD="$VFX_CXX_STANDARD"
