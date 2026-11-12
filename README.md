@@ -70,6 +70,8 @@ and its runnable overlay. The implementation is in [repairs](repairs/),
 | [CY2023](profiles/cy2023.json) | `ci-moonray:2023.7` | v4.0.2 | OFF / ON |
 | [CY2024](profiles/cy2024.json) | `ci-moonray:2024.11` | v4.3.0 | ON / ON |
 | [CY2025](profiles/cy2025.json) | `ci-moonray:2025.10` | v4.5.0 | ON / ON |
+| [CY2026](profiles/cy2026.json) | `ci-vfxall:2026-clang20.8` | main (development) | OFF / ON |
+| [CY2027](profiles/cy2027.json) | `ci-vfxall:2027-clang22.3` | main (development) | OFF / ON |
 
 The [CY2026](profiles/cy2026.json) and [CY2027](profiles/cy2027.json) profiles
 use released `ci-vfxall:2026-clang20.8` and `ci-vfxall:2027-clang22.3` bases
@@ -157,22 +159,3 @@ mode selects GCC toolset 11/C++17 for CY2023–CY2025, or toolset 14/C++20 for
 CY2026–CY2027. The shared launcher activates the settings in each delegate
 build shell. These are build settings; they do not establish conformance of
 inherited ASWF components or runtime/render conformance.
-
-### CY2026/CY2027 Cycles candidate
-
-These profiles build upstream Cycles `main` using ASWF dependencies. Epoxy development files are supplied on both
-profiles; CY2026 retains its Python-path repair. No Cycles source patches or
-fork integration branch are selected. OSL/OpenVDB are requested with existing
-defaults; effective settings and loading validation must be read from build
-evidence. These development candidates are not render-qualified.
-
-Candidate builds [CY2026](https://github.com/nicolaspopravka/usd-render-benchmark-stack/actions/runs/43223888362)
-and [CY2027](https://github.com/nicolaspopravka/usd-render-benchmark-stack/actions/runs/43223894475)
-succeeded using upstream commit `6abef8c62bf9d6896a81faf86bfd96121802a7be`
-(5.4 development). Both enable OpenVDB and disable OSL through the USD finder.
-The [CY2026 software demo](https://github.com/nicolaspopravka/usd-render-benchmark-stack/actions/runs/43225963332)
-records LLVM duplicate-option aborts for Storm and Cycles, without images.
-The [CY2027 software demo](https://github.com/nicolaspopravka/usd-render-benchmark-stack/actions/runs/43225969004)
-writes a gray Cycles Teapot with material warnings. Its Storm-labeled attempt
-also selects Cycles and produces the identical image; it does not validate Storm.
-Green demo workflow status does not imply all renderer processes succeeded.
