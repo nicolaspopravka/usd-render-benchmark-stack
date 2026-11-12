@@ -91,7 +91,7 @@ the pinned images; remove a repair after checking the replacement base.
 | --- | --- | --- | --- |
 | [rez](repairs/rez.pristine) | Rez package environment | — | [ASWF PR #467](https://github.com/AcademySoftwareFoundation/aswf-docker/pull/467) |
 | [pythonpath](repairs/pythonpath.runnable) | OpenUSD Python module lookup | — | — |
-| [hd-default-renderer](repairs/hd-default-renderer.runnable) | CY2025 Storm/GL renderer selection | [#49](https://github.com/nicolaspopravka/usd-render-benchmark/issues/49) | [OpenUSD PR #4238](https://github.com/PixarAnimationStudios/OpenUSD/pull/4238) (USD-12684; not merged) |
+| [hd-default-renderer](repairs/hd-default-renderer.runnable) | CY2025 Storm/GL renderer selection | [#49](https://github.com/nicolaspopravka/usd-render-benchmark/issues/49) | [OpenUSD PR #4238](https://github.com/PixarAnimationStudios/OpenUSD/pull/4238) (USD-12684; closed without merging) |
 | [git-lfs](repairs/git-lfs.pristine) | OpenMoonRay source checkout | — | — |
 | [epoxy](repairs/epoxy.pristine) | Cycles development dependency | — | — |
 
@@ -150,7 +150,7 @@ gh workflow run run-demo.yml \
 
 Download the `run-output` artifact and inspect its logs, images and summary.
 The harness continues after a renderer fails, so workflow success alone does
-not establish render success. Embree is not included in these profiles.
+not establish render success. The hdEmbree render delegate is not included in these profiles.
 
 ## Optional host C++ conformance
 
