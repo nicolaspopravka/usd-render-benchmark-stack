@@ -70,11 +70,13 @@ and its runnable overlay. The implementation is in [repairs](repairs/),
 | [CY2023](profiles/cy2023.json) | `ci-moonray:2023.7` | v4.0.2 | OFF / ON |
 | [CY2024](profiles/cy2024.json) | `ci-moonray:2024.11` | v4.3.0 | ON / ON |
 | [CY2025](profiles/cy2025.json) | `ci-moonray:2025.10` | v4.5.0 | ON / ON |
+| [CY2026](profiles/cy2026.json) | `ci-vfxall:2026-clang20.8` | v5.4.0 dev | OFF / ON |
+| [CY2027](profiles/cy2027.json) | `ci-vfxall:2027-clang22.3` | v5.4.0 dev | OFF / ON |
 
 The [CY2026](profiles/cy2026.json) and [CY2027](profiles/cy2027.json) profiles
 use released `ci-vfxall:2026-clang20.8` and `ci-vfxall:2027-clang22.3` bases
-with their supplied Storm delegates. They build no additional delegates.
-CY2026 selects the Python lookup repair; CY2027 needs no repair.
+with their supplied Storm delegates and build upstream Cycles `main`.
+Both select Epoxy development files; CY2026 also selects the Python lookup repair.
 
 The October 27 bases supply the native CMake packages used by these profiles;
 the previous `usd-cmake` repair is no longer selected. The remaining additions
@@ -89,7 +91,7 @@ the pinned images; remove a repair after checking the replacement base.
 | --- | --- | --- | --- |
 | [rez](repairs/rez.pristine) | Rez package environment | — | [ASWF PR #467](https://github.com/AcademySoftwareFoundation/aswf-docker/pull/467) |
 | [pythonpath](repairs/pythonpath.runnable) | OpenUSD Python module lookup | — | — |
-| [hd-default-renderer](repairs/hd-default-renderer.runnable) | CY2025 Storm/GL renderer selection | [#49](https://github.com/nicolaspopravka/usd-render-benchmark/issues/49) | [OpenUSD PR #4238](https://github.com/PixarAnimationStudios/OpenUSD/pull/4238) (USD-12684; not merged) |
+| [hd-default-renderer](repairs/hd-default-renderer.runnable) | CY2025 Storm/GL renderer selection | [#49](https://github.com/nicolaspopravka/usd-render-benchmark/issues/49) | [OpenUSD PR #4238](https://github.com/PixarAnimationStudios/OpenUSD/pull/4238) (USD-12684; closed without merging) |
 | [git-lfs](repairs/git-lfs.pristine) | OpenMoonRay source checkout | — | — |
 | [epoxy](repairs/epoxy.pristine) | Cycles development dependency | — | — |
 
@@ -148,7 +150,7 @@ gh workflow run run-demo.yml \
 
 Download the `run-output` artifact and inspect its logs, images and summary.
 The harness continues after a renderer fails, so workflow success alone does
-not establish render success. Embree is not included in these profiles.
+not establish render success. The hdEmbree render delegate is not included in these profiles.
 
 ## Optional host C++ conformance
 
