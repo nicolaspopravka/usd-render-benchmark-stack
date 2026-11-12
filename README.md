@@ -70,8 +70,8 @@ and its runnable overlay. The implementation is in [repairs](repairs/),
 | [CY2023](profiles/cy2023.json) | `ci-moonray:2023.7` | v4.0.2 | OFF / ON |
 | [CY2024](profiles/cy2024.json) | `ci-moonray:2024.11` | v4.3.0 | ON / ON |
 | [CY2025](profiles/cy2025.json) | `ci-moonray:2025.10` | v4.5.0 | ON / ON |
-| [CY2026](profiles/cy2026.json) | `ci-vfxall:2026-clang20.8` | main (development) | OFF / ON |
-| [CY2027](profiles/cy2027.json) | `ci-vfxall:2027-clang22.3` | main (development) | OFF / ON |
+| [CY2026](profiles/cy2026.json) | `ci-vfxall:2026-clang20.8` | v5.4.0 dev | OFF / ON |
+| [CY2027](profiles/cy2027.json) | `ci-vfxall:2027-clang22.3` | v5.4.0 dev | OFF / ON |
 
 The [CY2026](profiles/cy2026.json) and [CY2027](profiles/cy2027.json) profiles
 use released `ci-vfxall:2026-clang20.8` and `ci-vfxall:2027-clang22.3` bases
