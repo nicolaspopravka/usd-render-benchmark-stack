@@ -73,8 +73,8 @@ and its runnable overlay. The implementation is in [repairs](repairs/),
 
 The [CY2026](profiles/cy2026.json) and [CY2027](profiles/cy2027.json) profiles
 use released `ci-vfxall:2026-clang20.8` and `ci-vfxall:2027-clang22.3` bases
-with their supplied Storm delegates. They build no additional delegates.
-CY2026 selects the Python lookup repair; CY2027 needs no repair.
+with their supplied Storm delegates and build upstream Cycles `main`.
+Both select Epoxy development files; CY2026 also selects the Python lookup repair.
 
 The October 27 bases supply the native CMake packages used by these profiles;
 the previous `usd-cmake` repair is no longer selected. The remaining additions
