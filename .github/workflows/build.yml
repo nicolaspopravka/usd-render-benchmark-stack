@@ -1,29 +1,31 @@
-name: Build stack
-
+name: Check candidate loading
 on:
   workflow_dispatch:
     inputs:
-      profile:
-        description: Profile JSON path
+      image:
         required: true
-        default: profiles/cy2025.json
         type: string
-
 permissions:
   contents: read
-  packages: write
-
+  packages: read
 jobs:
-  build:
+  check:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build and publish pristine and runnable
+      - name: Check loading without rendering
         env:
-          PROFILE: ${{ inputs.profile }}
-        run: python3 tools/build.py "$PROFILE" --push
+          IMAGE: ${{ inputs.image }}
+        run: |
+          docker run --rm "$IMAGE" bash -lc '
+            set -euo pipefail
+            ldd -r /opt/cycles/hydra/hdCycles.so | tee /tmp/linkage.txt
+            if grep -E "not found|undefined symbol" /tmp/linkage.txt; then exit 1; fi
+            python3 -c "from pxr import Plug; p=Plug.Registry().GetPluginWithName("hdCycles"); assert p is not None; assert p.Load(); print("PLUGIN_LOAD_PASS", p.path)"
+            /opt/cycles/bin/cycles --help
+            usdrecord --help
+          '
