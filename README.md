@@ -67,11 +67,18 @@ and its runnable overlay. The implementation is in [repairs](repairs/),
 
 | Profile | ASWF base | Cycles | Cycles OSL / OpenVDB |
 | --- | --- | --- | --- |
-| [CY2023](profiles/cy2023.json) | `ci-moonray:2023.6` | v4.0.2 | OFF / ON |
-| [CY2024](profiles/cy2024.json) | `ci-moonray:2024.10` | v4.3.0 | ON / ON |
-| [CY2025](profiles/cy2025.json) | `ci-moonray:2025.9` | v4.5.0 | ON / ON |
-| [CY2026](profiles/cy2026.json) | `ci-moonray:2026.7` | main + selected PRs | OFF / ON |
-| [CY2027](profiles/cy2027.json) | `ci-moonray:2027.2` | main + selected PRs | OFF / ON |
+| [CY2023](profiles/cy2023.json) | `ci-moonray:2023.7` | v4.0.2 | OFF / ON |
+| [CY2024](profiles/cy2024.json) | `ci-moonray:2024.11` | v4.3.0 | ON / ON |
+| [CY2025](profiles/cy2025.json) | `ci-moonray:2025.10` | v4.5.0 | ON / ON |
+
+The [CY2026](profiles/cy2026.json) and [CY2027](profiles/cy2027.json) profiles
+use released `ci-vfxall:2026-clang20.8` and `ci-vfxall:2027-clang22.3` bases
+with their supplied Storm delegates. They build no additional delegates.
+CY2026 selects the Python lookup repair; CY2027 needs no repair.
+
+The October 27 bases supply the native CMake packages used by these profiles;
+the previous `usd-cmake` repair is no longer selected. The remaining additions
+provide runtime lookup, build prerequisites and renderer selection.
 
 ### Repairs
 
@@ -82,10 +89,9 @@ the pinned images; remove a repair after checking the replacement base.
 | --- | --- | --- | --- |
 | [rez](repairs/rez.pristine) | Rez package environment | — | [ASWF PR #467](https://github.com/AcademySoftwareFoundation/aswf-docker/pull/467) |
 | [pythonpath](repairs/pythonpath.runnable) | OpenUSD Python module lookup | — | — |
-| [hd-default-renderer](repairs/hd-default-renderer.runnable) | CY2025–CY2027 Storm/GL renderer selection | [#49](https://github.com/nicolaspopravka/usd-render-benchmark/issues/49) | [OpenUSD PR #4238](https://github.com/PixarAnimationStudios/OpenUSD/pull/4238) (USD-12684; not merged) |
+| [hd-default-renderer](repairs/hd-default-renderer.runnable) | CY2025 Storm/GL renderer selection | [#49](https://github.com/nicolaspopravka/usd-render-benchmark/issues/49) | [OpenUSD PR #4238](https://github.com/PixarAnimationStudios/OpenUSD/pull/4238) (USD-12684; not merged) |
 | [git-lfs](repairs/git-lfs.pristine) | OpenMoonRay source checkout | — | — |
 | [epoxy](repairs/epoxy.pristine) | Cycles development dependency | — | — |
-| [usd-cmake](repairs/usd-cmake.pristine) | OpenUSD hints and native dependency exports | [#34](https://github.com/nicolaspopravka/usd-render-benchmark/issues/34) | [ASWF #480](https://github.com/AcademySoftwareFoundation/aswf-docker/issues/480), [PR #490](https://github.com/AcademySoftwareFoundation/aswf-docker/pull/490) |
 
 CY2023 disables Cycles OSL because v4.0.2's Clang finder does not support the
 shared Clang library layout in this image. OpenVDB remains enabled. CY2024 and
@@ -98,7 +104,7 @@ Clone a run branch with its submodules:
 
 ```bash
 git clone \
-  --branch demo/run3 \
+  --branch demo/run1 \
   --single-branch \
   --recurse-submodules \
   https://github.com/nicolaspopravka/usd-render-benchmark.git \
@@ -125,12 +131,18 @@ clones a benchmark branch, initializes its submodules, mounts it into the
 selected image, runs the harness with Mesa and Xvfb, generates the summary,
 and uploads the resulting files.
 
-Use the `Runnable:` reference printed by the build:
+The verified Storm/Teapot software demo uses `demo/run1` and
+`ghcr.io/nicolaspopravka/usd-render-benchmark:2026@sha256:4990be69cc2daf4ddff9178346ff9fc2c1f823524d90823922d022a77d04da94`.
+[Run #119](https://github.com/nicolaspopravka/usd-render-benchmark-stack/actions/runs/41222067959)
+completed on October 31, 2026 with OpenUSD 26.03. This image is the earlier
+CY2026.4 runnable, distinct from the current CY2026 profile above.
+Set `RUNNABLE_IMAGE` to that reference for this demo. Other builds print their
+own `Runnable:` reference:
 
 ```bash
 gh workflow run run-demo.yml \
   --repo nicolaspopravka/usd-render-benchmark-stack \
-  -f run_branch=demo/run3 \
+  -f run_branch=demo/run1 \
   -f runnable_image="$RUNNABLE_IMAGE"
 ```
 
@@ -145,3 +157,12 @@ mode selects GCC toolset 11/C++17 for CY2023–CY2025, or toolset 14/C++20 for
 CY2026–CY2027. The shared launcher activates the settings in each delegate
 build shell. These are build settings; they do not establish conformance of
 inherited ASWF components or runtime/render conformance.
+
+### CY2026/CY2027 Cycles candidate
+
+These profiles build upstream Cycles `main` using ASWF dependencies. Each build
+logs its actual source commit. Epoxy development files are supplied on both
+profiles; CY2026 retains its Python-path repair. No Cycles source patches or
+fork integration branch are selected. OSL/OpenVDB are requested with existing
+defaults; effective settings and loading validation must be read from build
+evidence. These development candidates are not render-qualified.

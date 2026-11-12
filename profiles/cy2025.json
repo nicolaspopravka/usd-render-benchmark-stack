@@ -1,13 +1,12 @@
 {
   "year": 2025,
-  "base_image": "aswf/ci-moonray:2025.9@sha256:4d6ea72b401efc672b70805f7b33648841263e3028e3a42320bc4a9bf81ef0f4",
+  "base_image": "aswf/ci-moonray:2025.10@sha256:4fbe01ecbae8abe83dd165d6c9e1304c9e020af94c23408d00da3b39933eb5af",
   "cxx_conformance": true,
   "repairs": [
     "rez",
     "pythonpath",
     "git-lfs",
     "epoxy",
-    "usd-cmake",
     "hd-default-renderer"
   ],
   "delegates": {
