@@ -165,3 +165,14 @@ profiles; CY2026 retains its Python-path repair. No Cycles source patches or
 fork integration branch are selected. OSL/OpenVDB are requested with existing
 defaults; effective settings and loading validation must be read from build
 evidence. These development candidates are not render-qualified.
+
+Candidate builds [CY2026](https://github.com/nicolaspopravka/usd-render-benchmark-stack/actions/runs/43223888362)
+and [CY2027](https://github.com/nicolaspopravka/usd-render-benchmark-stack/actions/runs/43223894475)
+succeeded using upstream commit `6abef8c62bf9d6896a81faf86bfd96121802a7be`
+(5.4 development). Both enable OpenVDB and disable OSL through the USD finder.
+The [CY2026 software demo](https://github.com/nicolaspopravka/usd-render-benchmark-stack/actions/runs/43225963332)
+records LLVM duplicate-option aborts for Storm and Cycles, without images.
+The [CY2027 software demo](https://github.com/nicolaspopravka/usd-render-benchmark-stack/actions/runs/43225969004)
+writes a gray Cycles Teapot with material warnings. Its Storm-labeled attempt
+also selects Cycles and produces the identical image; it does not validate Storm.
+Green demo workflow status does not imply all renderer processes succeeded.
