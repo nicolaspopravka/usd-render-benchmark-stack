@@ -160,8 +160,7 @@ inherited ASWF components or runtime/render conformance.
 
 ### CY2026/CY2027 Cycles candidate
 
-These profiles build upstream Cycles `main` using ASWF dependencies. Each build
-logs its actual source commit. Epoxy development files are supplied on both
+These profiles build upstream Cycles `main` using ASWF dependencies. Epoxy development files are supplied on both
 profiles; CY2026 retains its Python-path repair. No Cycles source patches or
 fork integration branch are selected. OSL/OpenVDB are requested with existing
 defaults; effective settings and loading validation must be read from build
