@@ -1,5 +1,10 @@
 name: Validate Cycles documented Pixar USD recipe
 on:
+  push:
+    branches: [codex/validate/cycles-pixar-documented-recipe]
+    paths:
+      - .github/workflows/cycles-pixar-recipe.yml
+      - build-support/compat/**
   workflow_dispatch:
 permissions:
   contents: read
