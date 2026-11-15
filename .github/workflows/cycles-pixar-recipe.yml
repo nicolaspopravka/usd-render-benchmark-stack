@@ -1,0 +1,33 @@
+name: Validate Cycles documented Pixar USD recipe
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake git-lfs python3-venv \
+            libx11-dev libxt-dev libxrandr-dev libxinerama-dev libxcursor-dev \
+            libxi-dev libgl1-mesa-dev libglu1-mesa-dev libglew-dev \
+            libxkbcommon-x11-0 libxcb-cursor0 libfontconfig1 libsm6
+          python3 -m venv "$RUNNER_TEMP/recipe-venv"
+          "$RUNNER_TEMP/recipe-venv/bin/pip" install PyOpenGL PySide6 Jinja2
+      - name: Run unchanged documented commands on baseline and candidate
+        env:
+          VALIDATION_ROOT: ${{ runner.temp }}/cycles-pixar-recipe
+        run: |
+          source "$RUNNER_TEMP/recipe-venv/bin/activate"
+          bash build-support/compat/cycles-pixar-recipe.sh
+      - name: Retain build logs and provenance
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cycles-pixar-documented-recipe
+          path: ${{ runner.temp }}/cycles-pixar-recipe/evidence/
+          retention-days: 14

@@ -1,0 +1,59 @@
+diff --git a/BUILDING.md b/BUILDING.md
+index 7a5f7c4ac..9489cc01b 100644
+--- a/BUILDING.md
++++ b/BUILDING.md
+@@ -41,7 +41,10 @@ Get the Cycles source code:
+     git clone https://projects.blender.org/blender/cycles.git
+     cd cycles
+ 
+-At the moment, when using USD from the USD repository, Cycles will build without OSL and NanoVDB support.
++When using USD from the USD repository, Cycles will build without OSL support.
++NanoVDB defaults to OFF for external USD builds. To enable it, configure with
++`-DWITH_CYCLES_NANOVDB=ON`; its headers are discovered separately from USD.
++Explicit settings in an existing CMake cache are preserved.
+ To build Cycles, download the Cycles dependency libraries and point CMake to the USD directory like this.
+ 
+     make update
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 7c0d9fd55..94bea8e1f 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -120,6 +120,12 @@ set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS
+ # Use precompiled library dependencies
+ option(WITH_LIBS_PRECOMPILED        "Use precompiled library dependencies" ON)
+ 
++# External USD installations do not necessarily provide NanoVDB headers.
++set(_cycles_nanovdb_default ON)
++if(PXR_ROOT AND NOT HOUDINI_ROOT)
++  set(_cycles_nanovdb_default OFF)
++endif()
++
+ # Library dependencies
+ option(WITH_CYCLES_ALEMBIC          "Build with Alembic procedural support" ON)
+ option(WITH_CYCLES_EMBREE           "Build with Embree support" ON)
+@@ -128,9 +134,10 @@ option(WITH_CYCLES_OPENIMAGEDENOISE "Build with OpenImageDenoise support" ON)
+ option(WITH_CYCLES_OPENSUBDIV       "Build with OpenSubdiv support" ON)
+ option(WITH_CYCLES_OPENVDB          "Build with OpenVDB support" ON)
+ option(WITH_CYCLES_PUGIXML          "Build with XML support" ON)
+-option(WITH_CYCLES_NANOVDB          "Build with NanoVDB support" ON)
++option(WITH_CYCLES_NANOVDB          "Build with NanoVDB support" ${_cycles_nanovdb_default})
+ option(WITH_CYCLES_OSL              "Build with OSL support" ON)
+ option(WITH_CYCLES_USD              "Build with USD support" ON)
++unset(_cycles_nanovdb_default)
+ 
+ option(WITH_LEGACY_LIBRARIES        "Build with older VFX platform 2024 libraries, for compatibility with Houdini or USD" OFF)
+ 
+diff --git a/src/cmake/Modules/FindUSDPixar.cmake b/src/cmake/Modules/FindUSDPixar.cmake
+index 9460752ce..061f98bdf 100644
+--- a/src/cmake/Modules/FindUSDPixar.cmake
++++ b/src/cmake/Modules/FindUSDPixar.cmake
+@@ -123,8 +123,7 @@ if(pxr_FOUND)
+ 
+   message(STATUS "OSL is not part of the USD package, disabling WITH_CYCLES_OSL")
+   set(WITH_CYCLES_OSL OFF)
+-  message(STATUS "NanoVDB is not part of the USD package, disabling WITH_CYCLES_NANOVDB")
+-  set(WITH_CYCLES_NANOVDB OFF)
++  # NanoVDB is discovered separately by external_libs.cmake when enabled.
+ 
+   unset(_pxr_library_dir)
+ else()
