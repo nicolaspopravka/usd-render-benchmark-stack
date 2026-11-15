@@ -49,7 +49,7 @@ jobs:
           path: |
             ${{ runner.temp }}/cycles-pixar-recipe/sdk-install.tar
             ${{ runner.temp }}/cycles-pixar-recipe/sdk-python-install.txt
-      - name: Restore and validate installed SDK
+      - name: Restore complete installed SDK
         if: success()
         env:
           VALIDATION_ROOT: ${{ runner.temp }}/cycles-pixar-recipe

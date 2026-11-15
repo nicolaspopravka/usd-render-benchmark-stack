@@ -55,13 +55,10 @@ if [ "$mode" = validate-sdk ]; then
   mkdir -p "$prefix"
   tar -xf "$root/sdk-install.tar" -C "$prefix" || exit 82
   test -d "$prefix/libraries" && test -s "$prefix/pxrConfig.cmake" || exit 83
-  mkdir -p "$root/sdk-probe"
-  cat > "$root/sdk-probe/CMakeLists.txt" <<'CMAKE'
-cmake_minimum_required(VERSION 3.20)
-project(SDKProbe LANGUAGES CXX)
-find_package(pxr CONFIG REQUIRED PATHS "${PXR_ROOT}" NO_DEFAULT_PATH)
-CMAKE
-  run_step sdk-restore-probe cmake -S "$root/sdk-probe" -B "$root/sdk-probe-build" -DPXR_ROOT="$prefix" || exit 1
+  test -s "$prefix/lib/cmake/MaterialX/MaterialXConfig.cmake" || exit 84
+  test -s "$prefix/lib/cmake/TBB/TBBConfig.cmake" || exit 85
+  # Actual Cycles configuration below is the SDK compatibility check. Do not
+  # replace it with a miniature project whose package-search policies differ.
   exit 0
 fi
 case "$mode" in baseline|candidate) ;; *) exit 64;; esac
