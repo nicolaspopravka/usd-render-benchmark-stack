@@ -1,0 +1,56 @@
+diff --git a/BUILDING.md b/BUILDING.md
+index 7a5f7c4ac..a6f9f8d3d 100644
+--- a/BUILDING.md
++++ b/BUILDING.md
+@@ -48,9 +48,11 @@ To build Cycles, download the Cycles dependency libraries and point CMake to the
+     cmake -B ./build -DPXR_ROOT="<path to USD install>"
+     make
+ 
+-Test in usdview.
++Test in usdview. Set `PYTHONPATH` to the Python module directory reported by
++`build_usd.py`: this is `lib/python` in older USD installations and a versioned
++`lib/python3.X/site-packages` directory in newer installations.
+ 
+-    PYTHONPATH=<path to USD install>/lib/python PXR_PLUGINPATH_NAME=<path to cycles>/install/hydra <path to USD install>/bin/usdview
++    PYTHONPATH="<USD Python module directory>" PXR_PLUGINPATH_NAME=<path to cycles>/install/hydra <path to USD install>/bin/usdview
+ 
+ ## Hydra Render Delegate for Houdini
+ 
+diff --git a/src/cmake/external_libs.cmake b/src/cmake/external_libs.cmake
+index 5b5ae3572..9fe0ba607 100644
+--- a/src/cmake/external_libs.cmake
++++ b/src/cmake/external_libs.cmake
+@@ -1055,6 +1055,12 @@ elseif(UNIX)
+   else()
+     set(PLATFORM_LIB_INSTALL_DIR "lib")
+   endif()
++  # RPATH also searches this directory for dependencies of bundled libraries.
++  if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT HOUDINI_FOUND)
++    string(APPEND CMAKE_EXE_LINKER_FLAGS " -Wl,--disable-new-dtags")
++    string(APPEND CMAKE_SHARED_LINKER_FLAGS " -Wl,--disable-new-dtags")
++  endif()
++
+   # For install step, set rpath relative to where shared libs will be copied.
+   set(CMAKE_SKIP_INSTALL_RPATH FALSE)
+   list(APPEND CMAKE_INSTALL_RPATH $ORIGIN/${PLATFORM_LIB_INSTALL_DIR})
+diff --git a/src/hydra/CMakeLists.txt b/src/hydra/CMakeLists.txt
+index f1af78c92..cbbde7548 100644
+--- a/src/hydra/CMakeLists.txt
++++ b/src/hydra/CMakeLists.txt
+@@ -169,7 +169,15 @@ if(WITH_CYCLES_HYDRA_RENDER_DELEGATE)
+   else()
+     # Put the root `plugInfo.json` one level up.
+     delayed_install("${CMAKE_CURRENT_SOURCE_DIR}" "plugInfo.json" ${CYCLES_HYDRA_INSTALL_PATH})
+-    delayed_install("" $<TARGET_FILE:${HdCyclesPluginName}> ${CYCLES_HYDRA_INSTALL_PATH})
++    if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT WITH_CYCLES_BLENDER)
++      # Install the target so CMake replaces build paths with the installed lib directory.
++      set_target_properties(${HdCyclesPluginName} PROPERTIES
++        INSTALL_RPATH "$ORIGIN/../${PLATFORM_LIB_INSTALL_DIR}")
++      install(TARGETS ${HdCyclesPluginName}
++        LIBRARY DESTINATION ${CYCLES_HYDRA_INSTALL_PATH})
++    else()
++      delayed_install("" $<TARGET_FILE:${HdCyclesPluginName}> ${CYCLES_HYDRA_INSTALL_PATH})
++    endif()
+   endif()
+ 
+   set_target_properties(${HdCyclesPluginName}

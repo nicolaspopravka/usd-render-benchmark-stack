@@ -26,22 +26,49 @@ jobs:
             libxkbcommon-x11-0 libxcb-cursor0 libfontconfig1 libsm6
           python -m venv "$RUNNER_TEMP/recipe-venv"
           "$RUNNER_TEMP/recipe-venv/bin/pip" install PyOpenGL PySide6 Jinja2
+      - uses: actions/cache/restore@v4
+        id: sdk-cache
+        with:
+          key: aligned-pixar-3ed9ded5-py313-ubuntu24-${{ hashFiles('build-support/compat/pixar-onetbb-alignment.patch') }}
+          path: |
+            ${{ runner.temp }}/cycles-pixar-recipe/usd-install/bin
+            ${{ runner.temp }}/cycles-pixar-recipe/usd-install/include
+            ${{ runner.temp }}/cycles-pixar-recipe/usd-install/lib
+            ${{ runner.temp }}/cycles-pixar-recipe/usd-install/plugin
+            ${{ runner.temp }}/cycles-pixar-recipe/usd-install/share
+            ${{ runner.temp }}/cycles-pixar-recipe/usd-install/cmake
+            ${{ runner.temp }}/cycles-pixar-recipe/usd-install/pxrConfig.cmake
+            ${{ runner.temp }}/cycles-pixar-recipe/sdk-python-install.txt
       - name: Build Pixar SDK with matching oneTBB
+        if: steps.sdk-cache.outputs.cache-hit != 'true'
         id: sdk
         env:
           VALIDATION_ROOT: ${{ runner.temp }}/cycles-pixar-recipe
         run: |
           source "$RUNNER_TEMP/recipe-venv/bin/activate"
           bash build-support/compat/cycles-pixar-recipe.sh sdk
-      - name: Build and load unmodified Cycles baseline
+      - uses: actions/cache/save@v4
+        if: steps.sdk-cache.outputs.cache-hit != 'true' && steps.sdk.outcome == 'success'
+        with:
+          key: ${{ steps.sdk-cache.outputs.cache-primary-key }}
+          path: |
+            ${{ runner.temp }}/cycles-pixar-recipe/usd-install/bin
+            ${{ runner.temp }}/cycles-pixar-recipe/usd-install/include
+            ${{ runner.temp }}/cycles-pixar-recipe/usd-install/lib
+            ${{ runner.temp }}/cycles-pixar-recipe/usd-install/plugin
+            ${{ runner.temp }}/cycles-pixar-recipe/usd-install/share
+            ${{ runner.temp }}/cycles-pixar-recipe/usd-install/cmake
+            ${{ runner.temp }}/cycles-pixar-recipe/usd-install/pxrConfig.cmake
+            ${{ runner.temp }}/cycles-pixar-recipe/sdk-python-install.txt
+      - name: Build and load packaging-fixed control
         if: success()
         env:
           VALIDATION_ROOT: ${{ runner.temp }}/cycles-pixar-recipe
         run: |
           source "$RUNNER_TEMP/recipe-venv/bin/activate"
           bash build-support/compat/cycles-pixar-recipe.sh baseline
-      - name: Build and load NanoVDB candidate
-        if: always() && steps.sdk.outcome == 'success'
+      - name: Build and load packaging-fixed NanoVDB candidate
+        if: always() && (steps.sdk.outcome == 'success' || steps.sdk-cache.outputs.cache-hit == 'true')
         env:
           VALIDATION_ROOT: ${{ runner.temp }}/cycles-pixar-recipe
         run: |
