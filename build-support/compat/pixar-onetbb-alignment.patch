@@ -1,0 +1,13 @@
+diff --git a/build_scripts/build_usd.py b/build_scripts/build_usd.py
+index ea5e7aa..be0bd75 100644
+--- a/build_scripts/build_usd.py
++++ b/build_scripts/build_usd.py
+@@ -1028,7 +1028,7 @@ BOOST = Dependency("boost", InstallBoost, *BOOST_VERSION_FILES)
+ ############################################################
+ # Intel oneTBB
+ 
+-ONETBB_URL = "https://github.com/oneapi-src/oneTBB/archive/refs/tags/v2021.12.0.zip"
++ONETBB_URL = "https://github.com/oneapi-src/oneTBB/archive/refs/tags/v2022.3.0.zip"
+ 
+ def InstallOneTBB(context, force, buildArgs):
+     with CurrentWorkingDirectory(DownloadURL(ONETBB_URL, context, force)):
