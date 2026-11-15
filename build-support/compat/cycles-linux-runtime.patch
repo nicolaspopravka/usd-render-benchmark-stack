@@ -34,10 +34,10 @@ index 5b5ae3572..9fe0ba607 100644
    set(CMAKE_SKIP_INSTALL_RPATH FALSE)
    list(APPEND CMAKE_INSTALL_RPATH $ORIGIN/${PLATFORM_LIB_INSTALL_DIR})
 diff --git a/src/hydra/CMakeLists.txt b/src/hydra/CMakeLists.txt
-index f1af78c92..cbbde7548 100644
+index f1af78c92..d8fd7935c 100644
 --- a/src/hydra/CMakeLists.txt
 +++ b/src/hydra/CMakeLists.txt
-@@ -169,7 +169,15 @@ if(WITH_CYCLES_HYDRA_RENDER_DELEGATE)
+@@ -169,7 +169,20 @@ if(WITH_CYCLES_HYDRA_RENDER_DELEGATE)
    else()
      # Put the root `plugInfo.json` one level up.
      delayed_install("${CMAKE_CURRENT_SOURCE_DIR}" "plugInfo.json" ${CYCLES_HYDRA_INSTALL_PATH})
@@ -46,6 +46,11 @@ index f1af78c92..cbbde7548 100644
 +      # Install the target so CMake replaces build paths with the installed lib directory.
 +      set_target_properties(${HdCyclesPluginName} PROPERTIES
 +        INSTALL_RPATH "$ORIGIN/../${PLATFORM_LIB_INSTALL_DIR}")
++      if(PXR_ROOT)
++        # The external USD installation is not bundled with the delegate.
++        set_property(TARGET ${HdCyclesPluginName} APPEND PROPERTY
++          INSTALL_RPATH "${PXR_CMAKE_DIR}/lib")
++      endif()
 +      install(TARGETS ${HdCyclesPluginName}
 +        LIBRARY DESTINATION ${CYCLES_HYDRA_INSTALL_PATH})
 +    else()
