@@ -46,6 +46,22 @@ if [ "$mode" = sdk ]; then
   grep 'get_thread_reference_vertex' "$evidence/sdk-tbb-exports.txt" || exit 75
   sdk_cache="$(find "$prefix/build" -path '*/usd-source/CMakeCache.txt' -print -quit)"
   sed -n 's/^PXR_PYTHON_INSTALL_DIR:STRING=//p' "$sdk_cache" > "$root/sdk-python-install.txt"
+  # Keep every installed resource, including MaterialX libraries and future additions.
+  tar --exclude='./build' --exclude='./src' -C "$prefix" -cf "$root/sdk-install.tar" .
+  tar -tf "$root/sdk-install.tar" > "$evidence/sdk-cache-manifest.txt"
+  exit 0
+fi
+if [ "$mode" = validate-sdk ]; then
+  mkdir -p "$prefix"
+  tar -xf "$root/sdk-install.tar" -C "$prefix" || exit 82
+  test -d "$prefix/libraries" && test -s "$prefix/pxrConfig.cmake" || exit 83
+  mkdir -p "$root/sdk-probe"
+  cat > "$root/sdk-probe/CMakeLists.txt" <<'CMAKE'
+cmake_minimum_required(VERSION 3.20)
+project(SDKProbe LANGUAGES CXX)
+find_package(pxr CONFIG REQUIRED PATHS "${PXR_ROOT}" NO_DEFAULT_PATH)
+CMAKE
+  run_step sdk-restore-probe cmake -S "$root/sdk-probe" -B "$root/sdk-probe-build" -DPXR_ROOT="$prefix" || exit 1
   exit 0
 fi
 case "$mode" in baseline|candidate) ;; *) exit 64;; esac
